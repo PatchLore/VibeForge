@@ -37,8 +37,8 @@ export default function LivePlayer({ channel }: LivePlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationRef = useRef<number>();
-  const fadeTimeoutRef = useRef<NodeJS.Timeout>();
+  const animationRef = useRef<number | undefined>(undefined);
+  const fadeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const fallbackPlaylist = fallbackPlaylists[channel as keyof typeof fallbackPlaylists] || fallbackPlaylists.melancholy;
   const playlist = storedTracks.length > 0 ? storedTracks.map(track => track.audio_url) : fallbackPlaylist;
