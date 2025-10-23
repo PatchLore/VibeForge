@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
-);
+// Only create Supabase client if environment variables are available
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY 
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+  : null;
 
 const BASE_URL = "https://api.kie.ai/api/v1";
 
@@ -78,19 +78,23 @@ export async function POST(req: Request) {
 
     if (!result) throw new Error("Timeout: Music generation took too long");
 
-    // Store the generated track in Supabase
-    try {
-      await supabase.from("tracks").insert({
-        title: result.title || "Untitled Vibe",
-        prompt: result.prompt || finalPrompt,
-        audio_url: result.audioUrl,
-        duration: result.duration,
-        created_at: new Date().toISOString(),
-      });
-      console.log("Track stored successfully in Supabase");
-    } catch (storageError) {
-      console.warn("Failed to store track in Supabase:", storageError);
-      // Don't break the generation if storage fails
+    // Store the generated track in Supabase (if available)
+    if (supabase) {
+      try {
+        await supabase.from("tracks").insert({
+          title: result.title || "Untitled Vibe",
+          prompt: result.prompt || finalPrompt,
+          audio_url: result.audioUrl,
+          duration: result.duration,
+          created_at: new Date().toISOString(),
+        });
+        console.log("Track stored successfully in Supabase");
+      } catch (storageError) {
+        console.warn("Failed to store track in Supabase:", storageError);
+        // Don't break the generation if storage fails
+      }
+    } else {
+      console.log("Supabase not configured, skipping database storage");
     }
 
     return NextResponse.json({
