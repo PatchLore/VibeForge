@@ -155,16 +155,18 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
 
   return (
     <div className="space-y-6">
-      <audio 
-        ref={audioRef} 
-        src={audioUrl} 
-        preload="metadata" 
-        loop 
-        crossOrigin="anonymous"
-        style={{
-          transition: 'opacity 0.5s ease-in-out'
-        }}
-      />
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl} 
+          preload="metadata" 
+          loop 
+          crossOrigin="anonymous"
+          style={{
+            transition: 'opacity 0.5s ease-in-out'
+          }}
+        />
+      )}
       
       {/* Video Background */}
       {videoUrl && (

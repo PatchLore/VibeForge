@@ -84,24 +84,10 @@ export default function Home() {
       setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]); // Keep only last 10 tracks
     } catch (error) {
       console.error('Error generating SoundPainting:', error);
-      // For demo purposes, we'll use placeholder URLs
-      const placeholderAudioUrl = null; // No fallback audio
-      const placeholderVideoUrl = '/videos/placeholder.html';
-      
-      setAudioUrl(placeholderAudioUrl);
-      setVideoUrl(placeholderVideoUrl);
-      setAudioSource('fallback');
-      
-      // Save placeholder to local storage
-      const newTrack: SavedTrack = {
-        id: Date.now().toString(),
-        audioUrl: placeholderAudioUrl,
-        mood: vibe,
-        generatedAt: new Date().toISOString(),
-        duration: 600,
-        isFavorite: false
-      };
-      setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]);
+      // Don't set any audio URLs or sources on error
+      setAudioUrl(null);
+      setVideoUrl(null);
+      setAudioSource(null);
     } finally {
       setIsGenerating(false);
     }
