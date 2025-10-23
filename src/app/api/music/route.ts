@@ -1,119 +1,86 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Only create Supabase client if environment variables are available
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY 
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
-  : null;
-
-const BASE_URL = "https://api.kie.ai/api/v1";
+import { supabase } from "@/lib/supabase";
+import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 
 export async function POST(req: Request) {
+  const { prompt } = await req.json();
+  const apiKey = process.env.KIE_API_KEY;
+
+  if (!apiKey) return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+
   try {
-    const { prompt } = await req.json();
-    const finalPrompt =
-      prompt ||
-      "A calming ambient soundscape with soft pads, warm tones, and deep atmosphere";
+    const finalPrompt = prompt || "A calming ambient soundscape with soft pads, warm tones, and deep atmosphere";
 
-    // Step 1: Create generation task
-    const genRes = await fetch(`${BASE_URL}/generate`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.KIE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt: finalPrompt,
-        customMode: false,
-        instrumental: true,
-        model: "V5",
-        callBackUrl: "https://your-app.com/callback", // Placeholder callback URL
-      }),
-    });
-
-    const genData = await genRes.json();
-    if (!genRes.ok || genData.code !== 200)
-      throw new Error(`Generation failed: ${genData.msg || "Unknown error"}`);
-
-    const taskId = genData.data.taskId;
+    // Step 1: Generate music
+    console.log("🎵 Starting music generation...");
+    const taskId = await generateMusic(apiKey, finalPrompt);
     console.log("Task ID:", taskId);
 
-    // Step 2: Poll until success or timeout
+    // Step 2: Poll for completion
+    let trackData;
     const start = Date.now();
-    const timeout = 1000 * 60 * 5; // 5 minutes max
-    let result;
+    const timeout = 600000; // 10 minutes max
     let pollCount = 0;
 
-    while (Date.now() - start < timeout) {
+    while (!trackData && Date.now() - start < timeout) {
       pollCount++;
       console.log(`Polling attempt ${pollCount} for task ${taskId}`);
       
-      const statusRes = await fetch(
-        `${BASE_URL}/generate/record-info?taskId=${taskId}`,
-        {
-          headers: { Authorization: `Bearer ${process.env.KIE_API_KEY}` },
-        }
-      );
-
-      const statusData = await statusRes.json();
-      if (!statusRes.ok || statusData.code !== 200)
-        throw new Error(statusData.msg || "Status check failed");
-
-      const status = statusData.data.status;
-      console.log(`Task ${taskId} status: ${status}`);
-
-      if (status === "SUCCESS" && statusData.data.response) {
-        result = statusData.data.response.sunoData[0];
+      const result = await checkMusicStatus(apiKey, taskId);
+      if (result?.status === "SUCCESS" && result?.audioUrl) {
+        trackData = result;
         console.log(`Task ${taskId} completed successfully!`);
         break;
-      } else if (
-        status === "CREATE_TASK_FAILED" ||
-        status === "GENERATE_AUDIO_FAILED"
-      ) {
-        throw new Error(statusData.data.errorMessage || "Audio generation failed");
       }
-
-      await new Promise((r) => setTimeout(r, 10000)); // wait 10s before next poll
+      await new Promise(r => setTimeout(r, 10000)); // wait 10s before next poll
     }
 
-    if (!result) throw new Error("Timeout: Music generation took too long");
+    if (!trackData) throw new Error("Music generation timed out");
 
-    // Store the generated track in Supabase (if available)
+    // Step 3: Generate matching AI painting
+    console.log("🎨 Starting image generation...");
+    const imageUrl = await generateImage(apiKey, finalPrompt);
+    console.log("Image generated:", imageUrl);
+
+    // Step 4: Store in Supabase
     if (supabase) {
       try {
         await supabase.from("tracks").insert({
-          title: result.title || "Untitled Vibe",
-          prompt: result.prompt || finalPrompt,
-          audio_url: result.audioUrl,
-          duration: result.duration,
+          title: trackData.title || "Untitled Vibe",
+          prompt: finalPrompt,
+          audio_url: trackData.audioUrl,
+          image_url: imageUrl,
+          duration: trackData.duration || 600,
           created_at: new Date().toISOString(),
         });
-        console.log("Track stored successfully in Supabase");
+        console.log("🎵🎨 SoundPainting stored successfully in Supabase");
       } catch (storageError) {
-        console.warn("Failed to store track in Supabase:", storageError);
-        // Don't break the generation if storage fails
+        console.warn("Failed to store SoundPainting in Supabase:", storageError);
       }
     } else {
       console.log("Supabase not configured, skipping database storage");
     }
 
     return NextResponse.json({
+      success: true,
       provider: "suno-api",
-      title: result.title,
-      prompt: result.prompt,
-      audioUrl: result.audioUrl,
-      duration: result.duration,
-      tags: result.tags,
+      title: trackData.title,
+      prompt: finalPrompt,
+      audioUrl: trackData.audioUrl,
+      imageUrl: imageUrl,
+      duration: trackData.duration,
+      tags: trackData.tags,
     });
+
   } catch (err: any) {
-    console.error("Error in /api/music:", err.message);
+    console.error("SoundPainting error:", err);
 
     // fallback local track
-  const FALLBACKS = [
-    "/audio/fallback/ambient-a.wav",
-    "/audio/fallback/ambient-b.wav",
-    "/audio/fallback/ambient-c.wav",
-  ];
+    const FALLBACKS = [
+      "/audio/fallback/ambient-a.wav",
+      "/audio/fallback/ambient-b.wav",
+      "/audio/fallback/ambient-c.wav",
+    ];
     const fallback = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
     
     return NextResponse.json(

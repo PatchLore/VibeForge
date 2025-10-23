@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Player from '@/components/Player';
 import Visualizer from '@/components/Visualizer';
 import TrendingVibes from '@/components/TrendingVibes';
+import TrackCard from '@/components/TrackCard';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 
@@ -42,47 +43,38 @@ export default function Home() {
     
     setIsGenerating(true);
     try {
-      // Generate both audio and video simultaneously
-      const [audioResponse, videoResponse] = await Promise.all([
-        fetch('/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ vibe }),
-        }),
-        fetch('/api/visual', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ vibe }),
-        })
-      ]);
+      // Generate SoundPainting (music + image) via the new API
+      const response = await fetch('/api/music', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: vibe }),
+      });
 
-      if (!audioResponse.ok) {
-        throw new Error('Failed to generate audio');
+      if (!response.ok) {
+        throw new Error('Failed to generate SoundPainting');
       }
 
-      const audioData = await audioResponse.json();
-      const videoData = await videoResponse.json();
+      const data = await response.json();
       
-      setAudioUrl(audioData.audioUrl);
-      setVideoUrl(videoData.visualUrl);
-      setAudioSource(audioData.source || 'fallback');
+      setAudioUrl(data.audioUrl);
+      setVideoUrl(data.imageUrl); // Use imageUrl as videoUrl for display
+      setAudioSource(data.provider === 'suno-api' ? 'riffusion' : 'fallback');
       
-      // Save to local storage
+      // Save to local storage with SoundPainting data
       const newTrack: SavedTrack = {
         id: Date.now().toString(),
-        audioUrl: audioData.audioUrl,
+        audioUrl: data.audioUrl,
+        imageUrl: data.imageUrl,
         mood: vibe,
         generatedAt: new Date().toISOString(),
-        duration: audioData.duration || 600,
+        duration: data.duration || 600,
         isFavorite: false
       };
       setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]); // Keep only last 10 tracks
     } catch (error) {
-      console.error('Error generating vibe:', error);
+      console.error('Error generating SoundPainting:', error);
       // For demo purposes, we'll use placeholder URLs
       const placeholderAudioUrl = '/audio/fallback/ambient-a.wav';
       const placeholderVideoUrl = '/videos/placeholder.html';
@@ -206,50 +198,28 @@ export default function Home() {
                 <p className="text-gray-300 text-lg">No vibes yet. Forge your first emotional soundscape!</p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 {savedTracks.map((track, index) => (
                   <motion.div
                     key={track.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-medium mb-2">{track.mood}</h3>
-                        <p className="text-gray-300 text-sm">
-                          {new Date(track.generatedAt).toLocaleDateString()} • {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
-          </p>
-        </div>
-                      <div className="flex space-x-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => {
-                            setAudioUrl(track.audioUrl);
-                            setShowHistory(false);
-                          }}
-                          className="p-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white"
-                        >
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                          </svg>
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => {
-                            setSavedTracks(prev => prev.filter(t => t.id !== track.id));
-                          }}
-                          className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                        >
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </motion.button>
-                      </div>
-                    </div>
+                    <TrackCard
+                      track={{
+                        id: track.id,
+                        title: track.mood,
+                        prompt: track.mood,
+                        audio_url: track.audioUrl,
+                        image_url: track.imageUrl,
+                        duration: track.duration,
+                        created_at: track.generatedAt,
+                      }}
+                      onDelete={(id) => {
+                        setSavedTracks(prev => prev.filter(t => t.id !== id));
+                      }}
+                    />
                   </motion.div>
                 ))}
               </div>
