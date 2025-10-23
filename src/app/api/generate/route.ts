@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       
       // Fallback to placeholder
       return NextResponse.json({
-        audioUrl: '/audio/fallback/ambient-a.wav',
+        audioUrl: null, // No fallback audio
         vibe: vibe,
         duration: 600,
         generatedAt: new Date().toISOString(),

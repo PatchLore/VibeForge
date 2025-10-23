@@ -7,22 +7,11 @@ interface LivePlayerProps {
   channel: string;
 }
 
+// No fallback audio - use empty playlists
 const fallbackPlaylists = {
-  melancholy: [
-    '/audio/fallback/ambient-a.wav',
-    '/audio/fallback/ambient-b.wav',
-    '/audio/fallback/ambient-c.wav'
-  ],
-  euphoric: [
-    '/audio/fallback/ambient-a.wav',
-    '/audio/fallback/ambient-b.wav',
-    '/audio/fallback/ambient-c.wav'
-  ],
-  nostalgic: [
-    '/audio/fallback/ambient-a.wav',
-    '/audio/fallback/ambient-b.wav',
-    '/audio/fallback/ambient-c.wav'
-  ]
+  melancholy: [],
+  euphoric: [],
+  nostalgic: []
 };
 
 export default function LivePlayer({ channel }: LivePlayerProps) {

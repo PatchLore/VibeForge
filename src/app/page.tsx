@@ -85,7 +85,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error generating SoundPainting:', error);
       // For demo purposes, we'll use placeholder URLs
-      const placeholderAudioUrl = '/audio/fallback/ambient-a.wav';
+      const placeholderAudioUrl = null; // No fallback audio
       const placeholderVideoUrl = '/videos/placeholder.html';
       
       setAudioUrl(placeholderAudioUrl);
