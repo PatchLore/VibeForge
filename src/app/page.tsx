@@ -346,20 +346,22 @@ export default function Home() {
             className="space-y-8"
           >
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
-              <Player
-                audioUrl={audioUrl}
-                videoUrl={videoUrl}
-                vibe={vibe}
-                isPlaying={isPlaying}
-                setIsPlaying={setIsPlaying}
-                onNewGeneration={() => {
-                  setAudioUrl(null);
-                  setVideoUrl(null);
-                  setVibe('');
-                  setAudioSource(null);
-                }}
-                source={audioSource}
-              />
+              {audioUrl && (
+                <Player
+                  audioUrl={audioUrl}
+                  videoUrl={videoUrl}
+                  vibe={vibe}
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                  onNewGeneration={() => {
+                    setAudioUrl(null);
+                    setVideoUrl(null);
+                    setVibe('');
+                    setAudioSource(null);
+                  }}
+                  source={audioSource}
+                />
+              )}
             </div>
             
             <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
