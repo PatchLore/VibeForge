@@ -75,30 +75,10 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("SoundPainting error:", err);
 
-    // Check if it's a credit issue
-    if (err.message.includes("credits are insufficient") || err.message.includes("top up")) {
-      return NextResponse.json(
-        {
-          provider: "error",
-          error: "API credits insufficient. Please add credits to your Kie.ai account to generate SoundPaintings.",
-          message: "Your Kie.ai API credits have been exhausted. Please visit the Kie.ai dashboard to add more credits and continue generating music and artwork.",
-          audioUrl: null,
-          imageUrl: null,
-        },
-        { status: 402 } // Payment Required
-      );
-    }
-
-    // For other errors, return a more informative response
-    return NextResponse.json(
-      {
-        provider: "error",
-        error: err.message,
-        message: "Unable to generate SoundPainting. Please try again later.",
-        audioUrl: null,
-        imageUrl: null,
-      },
-      { status: 500 }
-    );
+    // Return professional error message instead of fallback audio
+    return NextResponse.json({
+      success: false,
+      message: "🎵 SoundPainting generation is temporarily unavailable. Please try again in a few moments.",
+    }, { status: 503 });
   }
 }

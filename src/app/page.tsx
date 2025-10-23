@@ -29,6 +29,7 @@ export default function Home() {
   const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('vibe-forge-tracks', []);
   const [isClient, setIsClient] = useState(false);
   const [audioSource, setAudioSource] = useState<'riffusion' | 'fallback' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -42,6 +43,7 @@ export default function Home() {
     if (!vibe.trim()) return;
     
     setIsGenerating(true);
+    setError(null); // Clear any previous errors
     try {
       // Generate SoundPainting (music + image) via the new API
       const response = await fetch('/api/music', {
@@ -54,9 +56,10 @@ export default function Home() {
 
       const data = await response.json();
       
-      // Handle API credit errors
-      if (data.provider === 'error') {
-        alert(data.message || data.error);
+      // Handle professional error messages
+      if (data.success === false) {
+        // Show error message in UI instead of alert
+        setError(data.message);
         return;
       }
       
@@ -304,6 +307,25 @@ export default function Home() {
                 'Generate My Vibe'
               )}
             </motion.button>
+
+            {/* Error Message Display */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 p-4 bg-red-500/20 border border-red-400/30 rounded-xl text-center"
+              >
+                <p className="text-red-200 text-sm mb-2">{error}</p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleGenerate}
+                  className="px-4 py-2 bg-red-500/30 hover:bg-red-500/40 rounded-lg text-red-100 text-sm transition-colors"
+                >
+                  🔁 Try Again
+                </motion.button>
+              </motion.div>
+            )}
           </motion.div>
         ) : showTrending ? (
           <motion.div
