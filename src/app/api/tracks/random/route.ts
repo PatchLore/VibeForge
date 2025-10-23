@@ -19,7 +19,7 @@ export async function GET() {
     const random = data[Math.floor(Math.random() * data.length)];
     return NextResponse.json({ track: random });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });
   }
 }
 
