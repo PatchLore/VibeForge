@@ -52,11 +52,17 @@ export default function Home() {
         body: JSON.stringify({ prompt: vibe }),
       });
 
+      const data = await response.json();
+      
+      // Handle API credit errors
+      if (data.provider === 'error') {
+        alert(data.message || data.error);
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to generate SoundPainting');
       }
-
-      const data = await response.json();
       
       setAudioUrl(data.audioUrl);
       setVideoUrl(data.imageUrl); // Use imageUrl as videoUrl for display

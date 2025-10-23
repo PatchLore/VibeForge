@@ -75,21 +75,30 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("SoundPainting error:", err);
 
-    // fallback local track
-    const FALLBACKS = [
-      "/audio/fallback/ambient-a.wav",
-      "/audio/fallback/ambient-b.wav",
-      "/audio/fallback/ambient-c.wav",
-    ];
-    const fallback = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
-    
+    // Check if it's a credit issue
+    if (err.message.includes("credits are insufficient") || err.message.includes("top up")) {
+      return NextResponse.json(
+        {
+          provider: "error",
+          error: "API credits insufficient. Please add credits to your Kie.ai account to generate SoundPaintings.",
+          message: "Your Kie.ai API credits have been exhausted. Please visit the Kie.ai dashboard to add more credits and continue generating music and artwork.",
+          audioUrl: null,
+          imageUrl: null,
+        },
+        { status: 402 } // Payment Required
+      );
+    }
+
+    // For other errors, return a more informative response
     return NextResponse.json(
       {
-        provider: "fallback",
-        audioUrl: fallback,
+        provider: "error",
         error: err.message,
+        message: "Unable to generate SoundPainting. Please try again later.",
+        audioUrl: null,
+        imageUrl: null,
       },
-      { status: 200 } // Return 200 to avoid client errors
+      { status: 500 }
     );
   }
 }
