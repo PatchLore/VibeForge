@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 
 interface PlayerProps {
   audioUrl: string;
-  videoUrl?: string;
+  videoUrl?: string | null;
   vibe?: string;
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   onNewGeneration: () => void;
-  source?: 'riffusion' | 'fallback';
+  source?: 'riffusion' | 'fallback' | null;
 }
 
 export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlaying, onNewGeneration, source }: PlayerProps) {
