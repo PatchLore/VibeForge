@@ -1,9 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function GET(req: Request) {
   try {
@@ -15,31 +10,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing taskId" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from("tracks")
-      .select("*")
-      .eq("task_id", taskId)
-      .maybeSingle();
-
-    if (error) {
-      console.error("❌ [Status] DB error:", error.message);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
-    }
-
-    if (!data) {
-      return NextResponse.json({ status: "PENDING" });
-    }
-
-    return NextResponse.json({
-      status: "SUCCESS",
-      track: {
-        title: data.title,
-        prompt: data.prompt,
-        audioUrl: data.audio_url,
-        imageUrl: data.image_url,
-        duration: data.duration,
-      },
+    // For now, always return PENDING to test the endpoint
+    // This will be updated once we confirm the endpoint is working
+    return NextResponse.json({ 
+      status: "PENDING",
+      message: "Generation in progress...",
+      taskId: taskId
     });
+
   } catch (err: any) {
     console.error("💥 [Status] Unexpected error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
