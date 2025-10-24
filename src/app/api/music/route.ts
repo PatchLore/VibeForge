@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       prompt: finalPrompt,
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("SoundPainting error:", err);
 
     // Return professional error message instead of fallback audio

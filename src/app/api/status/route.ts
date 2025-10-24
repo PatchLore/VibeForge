@@ -53,8 +53,9 @@ export async function GET(req: Request) {
         duration: data.duration,
       },
     });
-  } catch (err: any) {
-    console.error("💥 Unexpected error in /api/status:", err.message || err);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("💥 Unexpected error in /api/status:", errorMessage);
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }
