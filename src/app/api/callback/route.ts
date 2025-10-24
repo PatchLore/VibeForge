@@ -12,15 +12,17 @@ export async function POST(request: NextRequest) {
     if (status === 'completed' && data?.audioUrl) {
       console.log('✅ Music generation completed:', data.audioUrl);
       
-      // Store the completed music in Supabase for the user to retrieve
+      // Store the completed music in Supabase tracks table
       try {
         const { data: insertData, error } = await supabase
-          .from('generated_tracks')
+          .from('tracks')
           .insert({
             task_id: taskId,
+            title: `SoundPainting - ${new Date().toLocaleDateString()}`,
+            prompt: data.prompt || 'Generated SoundPainting',
             audio_url: data.audioUrl,
             image_url: data.imageUrl || null,
-            status: 'completed',
+            duration: data.duration || 600,
             created_at: new Date().toISOString()
           });
 
@@ -43,10 +45,14 @@ export async function POST(request: NextRequest) {
       // Store failure status
       try {
         await supabase
-          .from('generated_tracks')
+          .from('tracks')
           .insert({
             task_id: taskId,
-            status: 'failed',
+            title: 'Failed Generation',
+            prompt: 'Generation failed',
+            audio_url: null,
+            image_url: null,
+            duration: 0,
             created_at: new Date().toISOString()
           });
       } catch (dbError) {

@@ -70,7 +70,7 @@ export default function Home() {
       // Handle the new response format with taskId
       if (data.taskId) {
         // Show message that generation has started
-        setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes. We'll notify you as soon as it's ready. Feel free to explore while you wait.`);
+        setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.`);
         
         // Start polling for completion
         pollForCompletion(data.taskId);
@@ -107,32 +107,34 @@ export default function Home() {
     const maxAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
     let attempts = 0;
 
-    const poll = async () => {
+    const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/status?taskId=${taskId}`);
-        const data = await response.json();
+        const res = await fetch(`/api/status?taskId=${taskId}`);
+        const json = await res.json();
 
-        if (data.status === 'completed') {
+        if (json.status === "SUCCESS") {
           // Generation completed successfully!
-          setError(null);
-          setAudioUrl(data.audioUrl);
-          setVideoUrl(data.imageUrl);
+          setError("✅ Your SoundPainting is ready — press play to experience your vibe.");
+          setAudioUrl(json.track.audioUrl);
+          setVideoUrl(json.track.imageUrl);
           setAudioSource('riffusion');
           
           // Save to local storage
           const newTrack: SavedTrack = {
             id: Date.now().toString(),
-            audioUrl: data.audioUrl,
-            imageUrl: data.imageUrl,
+            audioUrl: json.track.audioUrl,
+            imageUrl: json.track.imageUrl,
             mood: vibe,
             generatedAt: new Date().toISOString(),
-            duration: 600,
+            duration: json.track.duration || 600,
             isFavorite: false
           };
           setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]);
           setIsGenerating(false);
           return;
-        } else if (data.status === 'failed') {
+        } else if (json.status === "PENDING") {
+          console.log("⏳ Track still pending...");
+        } else {
           setError('❌ Generation failed. Please try again.');
           setIsGenerating(false);
           return;
@@ -141,16 +143,16 @@ export default function Home() {
         // Continue polling if still processing
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(poll, 10000); // Poll every 10 seconds
+          setTimeout(checkStatus, 10000); // Poll every 10 seconds
         } else {
           setError('⏰ Generation is taking longer than expected. Please try again.');
           setIsGenerating(false);
         }
-      } catch (error) {
-        console.error('Polling error:', error);
+      } catch (err) {
+        console.error("💥 Error checking status:", err);
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(poll, 10000);
+          setTimeout(checkStatus, 10000);
         } else {
           setError('❌ Unable to check generation status. Please try again.');
           setIsGenerating(false);
@@ -159,7 +161,7 @@ export default function Home() {
     };
 
     // Start polling after 30 seconds
-    setTimeout(poll, 30000);
+    setTimeout(checkStatus, 30000);
   };
 
   return (

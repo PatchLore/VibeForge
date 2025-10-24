@@ -1,57 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export async function GET(request: NextRequest) {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const taskId = searchParams.get('taskId');
+    const { searchParams } = new URL(req.url);
+    const taskId = searchParams.get("taskId");
 
     if (!taskId) {
-      return NextResponse.json(
-        { error: 'Task ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing taskId" }, { status: 400 });
     }
 
-    // Check if the track is completed in the database
     const { data, error } = await supabase
-      .from('generated_tracks')
-      .select('*')
-      .eq('task_id', taskId)
-      .single();
+      .from("tracks")
+      .select("*")
+      .eq("task_id", taskId)
+      .maybeSingle();
 
     if (error) {
-      // Track not found or still processing
-      return NextResponse.json({
-        status: 'processing',
-        message: 'Generation in progress...'
-      });
+      console.error("❌ [Status] DB error:", error.message);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
 
-    if (data.status === 'completed') {
-      return NextResponse.json({
-        status: 'completed',
-        audioUrl: data.audio_url,
-        imageUrl: data.image_url,
-        message: 'Generation completed!'
-      });
-    } else if (data.status === 'failed') {
-      return NextResponse.json({
-        status: 'failed',
-        message: 'Generation failed. Please try again.'
-      });
+    if (!data) {
+      return NextResponse.json({ status: "PENDING" });
     }
 
     return NextResponse.json({
-      status: 'processing',
-      message: 'Generation in progress...'
+      status: "SUCCESS",
+      track: {
+        title: data.title,
+        prompt: data.prompt,
+        audioUrl: data.audio_url,
+        imageUrl: data.image_url,
+        duration: data.duration,
+      },
     });
-
-  } catch (error) {
-    console.error('❌ Status check error:', error);
-    return NextResponse.json(
-      { error: 'Status check failed' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.error("💥 [Status] Unexpected error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
