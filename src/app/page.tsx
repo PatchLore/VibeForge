@@ -66,6 +66,13 @@ export default function Home() {
       if (!response.ok) {
         throw new Error('Failed to generate SoundPainting');
       }
+
+      // Handle the new response format with taskId
+      if (data.taskId) {
+        // Show message that generation has started
+        setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes. We'll notify you as soon as it's ready. Feel free to explore while you wait.`);
+        return;
+      }
       
       setAudioUrl(data.audioUrl);
       setVideoUrl(data.imageUrl); // Use imageUrl as videoUrl for display
@@ -293,6 +300,11 @@ export default function Home() {
                 'Generate My Vibe'
               )}
             </motion.button>
+
+            {/* V5 Model Note */}
+            <p className="text-xs text-zinc-400 mt-2 text-center">
+              Uses Kie.ai V5 for faster, high-quality generation.
+            </p>
 
             {/* Error Message Display */}
             {error && (

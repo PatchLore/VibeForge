@@ -125,3 +125,4 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     </motion.div>
   );
 }
+
