@@ -1,8 +1,7 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "src",
   "functions": {
-    "api/status/route.ts": {
+    "src/app/api/status/route.ts": {
       "runtime": "nodejs18.x",
       "maxDuration": 30
     }
