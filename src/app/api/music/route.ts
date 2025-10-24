@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   console.log("🎵 GET /api/music endpoint reached");
   return NextResponse.json({
