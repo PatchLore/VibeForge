@@ -1,5 +1,7 @@
 {
   "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "functions": {
     "src/app/api/status/route.ts": {
       "runtime": "nodejs18.x",
