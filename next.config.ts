@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
+    serverActions: true
   },
-  output: 'standalone'
+  output: "standalone"
 };
 
 export default nextConfig;
