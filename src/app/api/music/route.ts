@@ -11,9 +11,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { prompt } = await req.json();
-
+  console.log("🎵 POST /api/music endpoint reached");
+  
   try {
+    const { prompt } = await req.json();
+    console.log("📝 Received prompt:", prompt);
+
     const finalPrompt = prompt || "A calming ambient soundscape with soft pads, warm tones, and deep atmosphere";
 
     // Step 1: Generate music
