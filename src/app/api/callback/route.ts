@@ -12,14 +12,47 @@ export async function POST(request: NextRequest) {
     if (status === 'completed' && data?.audioUrl) {
       console.log('✅ Music generation completed:', data.audioUrl);
       
-      // Here you could save to database, notify users, etc.
-      // For now, just log the success
+      // Store the completed music in Supabase for the user to retrieve
+      try {
+        const { data: insertData, error } = await supabase
+          .from('generated_tracks')
+          .insert({
+            task_id: taskId,
+            audio_url: data.audioUrl,
+            image_url: data.imageUrl || null,
+            status: 'completed',
+            created_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('❌ Database insert error:', error);
+        } else {
+          console.log('✅ Music saved to database:', insertData);
+        }
+      } catch (dbError) {
+        console.error('❌ Database error:', dbError);
+      }
+      
       return NextResponse.json({ 
         success: true, 
         message: 'Music generation completed successfully' 
       });
     } else if (status === 'failed') {
       console.error('❌ Music generation failed:', data);
+      
+      // Store failure status
+      try {
+        await supabase
+          .from('generated_tracks')
+          .insert({
+            task_id: taskId,
+            status: 'failed',
+            created_at: new Date().toISOString()
+          });
+      } catch (dbError) {
+        console.error('❌ Database error:', dbError);
+      }
+      
       return NextResponse.json({ 
         success: false, 
         message: 'Music generation failed' 

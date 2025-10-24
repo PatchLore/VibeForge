@@ -71,6 +71,9 @@ export default function Home() {
       if (data.taskId) {
         // Show message that generation has started
         setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes. We'll notify you as soon as it's ready. Feel free to explore while you wait.`);
+        
+        // Start polling for completion
+        pollForCompletion(data.taskId);
         return;
       }
       
@@ -98,6 +101,65 @@ export default function Home() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const pollForCompletion = async (taskId: string) => {
+    const maxAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/status?taskId=${taskId}`);
+        const data = await response.json();
+
+        if (data.status === 'completed') {
+          // Generation completed successfully!
+          setError(null);
+          setAudioUrl(data.audioUrl);
+          setVideoUrl(data.imageUrl);
+          setAudioSource('riffusion');
+          
+          // Save to local storage
+          const newTrack: SavedTrack = {
+            id: Date.now().toString(),
+            audioUrl: data.audioUrl,
+            imageUrl: data.imageUrl,
+            mood: vibe,
+            generatedAt: new Date().toISOString(),
+            duration: 600,
+            isFavorite: false
+          };
+          setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]);
+          setIsGenerating(false);
+          return;
+        } else if (data.status === 'failed') {
+          setError('❌ Generation failed. Please try again.');
+          setIsGenerating(false);
+          return;
+        }
+
+        // Continue polling if still processing
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 10000); // Poll every 10 seconds
+        } else {
+          setError('⏰ Generation is taking longer than expected. Please try again.');
+          setIsGenerating(false);
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 10000);
+        } else {
+          setError('❌ Unable to check generation status. Please try again.');
+          setIsGenerating(false);
+        }
+      }
+    };
+
+    // Start polling after 30 seconds
+    setTimeout(poll, 30000);
   };
 
   return (
