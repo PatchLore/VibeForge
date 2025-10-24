@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 interface TrackCardProps {
   track: {
@@ -46,9 +47,11 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       {/* Artwork */}
       {track.image_url && (
         <div className="relative mb-4 overflow-hidden rounded-xl">
-          <img 
+          <Image 
             src={track.image_url} 
             alt={track.title} 
+            width={400}
+            height={256}
             className="w-full h-64 object-cover transition-transform duration-300 hover:scale-105" 
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
