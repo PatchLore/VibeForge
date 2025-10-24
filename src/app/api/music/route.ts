@@ -3,19 +3,26 @@ import { supabase } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 
 export async function GET() {
+  console.log("🎵 GET /api/music endpoint reached");
   return NextResponse.json({
-    message: "Music API endpoint is working",
-    methods: ["POST"],
+    message: "GET works",
+    endpoint: "/api/music",
+    methods: ["GET", "POST"],
     timestamp: new Date().toISOString()
   });
 }
 
 export async function POST(req: Request) {
   console.log("🎵 POST /api/music endpoint reached");
+  console.log("🔍 Request method:", req.method);
+  console.log("🔍 Request URL:", req.url);
+  console.log("🔍 Request headers:", Object.fromEntries(req.headers.entries()));
   
   try {
-    const { prompt } = await req.json();
-    console.log("📝 Received prompt:", prompt);
+    const body = await req.json();
+    console.log("📝 Request body:", body);
+    const { prompt } = body;
+    console.log("📝 Extracted prompt:", prompt);
 
     const finalPrompt = prompt || "A calming ambient soundscape with soft pads, warm tones, and deep atmosphere";
 
