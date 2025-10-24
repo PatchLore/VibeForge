@@ -1,4 +1,6 @@
 {
+  "framework": "nextjs",
+  "rootDirectory": "src",
   "functions": {
     "api/status/route.ts": {
       "runtime": "nodejs18.x",

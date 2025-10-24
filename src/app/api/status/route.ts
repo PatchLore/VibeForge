@@ -6,7 +6,8 @@ export const runtime = "nodejs"; // Guarantees server runtime
 
 export async function GET(req: Request) {
   try {
-    console.log("🔍 /api/status endpoint reached");
+    console.log("🚀 [DEPLOYMENT] /api/status endpoint reached - Vercel deployment successful!");
+    console.log("🔍 [DEPLOYMENT] Request URL:", req.url);
 
     const { searchParams } = new URL(req.url);
     const taskId = searchParams.get("taskId");
