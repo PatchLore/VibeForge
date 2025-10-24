@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 
+export async function GET() {
+  return NextResponse.json({
+    message: "Music API endpoint is working",
+    methods: ["POST"],
+    timestamp: new Date().toISOString()
+  });
+}
+
 export async function POST(req: Request) {
   const { prompt } = await req.json();
 
