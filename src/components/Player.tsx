@@ -168,7 +168,7 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
         />
       )}
       
-      {/* Video Background */}
+      {/* Video/Image Background */}
       {videoUrl && (
         <motion.div
           initial={{ opacity: 0, scale: 1.1 }}
@@ -181,6 +181,12 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
               src={videoUrl}
               className="w-full h-full border-0"
               allow="autoplay"
+            />
+          ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+            <img
+              src={videoUrl}
+              alt="Generated art"
+              className="w-full h-full object-cover"
             />
           ) : (
             <video

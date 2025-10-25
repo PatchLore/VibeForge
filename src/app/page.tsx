@@ -424,9 +424,12 @@ export default function Home() {
               )}
             </div>
             
-            <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
-              <Visualizer isPlaying={isPlaying} />
-            </div>
+            {/* Only show Visualizer if no image was generated */}
+            {!videoUrl && (
+              <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
+                <Visualizer isPlaying={isPlaying} />
+              </div>
+            )}
           </motion.div>
         )}
         </div>
