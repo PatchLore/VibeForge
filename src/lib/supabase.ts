@@ -1,7 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Only create Supabase client if environment variables are available
-export const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY 
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+// Client-side Supabase client (for browser)
+export const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL, 
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+  : null;
+
+// Server-side Supabase client (for API routes)
+export const supabaseAdmin = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
   : null;
 

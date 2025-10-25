@@ -347,3 +347,4 @@ export default function OptimizedLivePlayer({ channel }: OptimizedLivePlayerProp
     </div>
   );
 }
+

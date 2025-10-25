@@ -150,3 +150,4 @@ export async function updateUserPlan(userId: string, plan: string): Promise<bool
 
 export { CREDITS_PER_GENERATION };
 
+

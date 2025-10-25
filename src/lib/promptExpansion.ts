@@ -142,3 +142,4 @@ export function getRandomVibe(): string {
   return inspirations[Math.floor(Math.random() * inspirations.length)];
 }
 
+

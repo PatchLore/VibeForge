@@ -217,3 +217,4 @@ Based on code, you need to create these in Stripe:
 - Stripe Support: https://support.stripe.com
 - Vercel Environment Variables: https://vercel.com/docs/environment-variables
 
+

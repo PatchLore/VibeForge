@@ -28,3 +28,4 @@ export async function GET() {
     return NextResponse.json({ tracks: [], error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });
   }
 }
+

@@ -103,3 +103,4 @@ curl -s https://soundswoop.com/robots.txt
 ❌ **Mixed content** → Ensure all URLs use HTTPS
 ❌ **Not indexed** → Submit sitemap to Google Search Console
 
+

@@ -16,6 +16,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
+import AuthButton from '@/components/AuthButton';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -287,6 +288,7 @@ export default function Home() {
             >
               💎 Pricing
             </motion.a>
+            <AuthButton />
           </div>
         </motion.div>
 

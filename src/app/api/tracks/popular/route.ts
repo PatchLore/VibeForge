@@ -54,3 +54,4 @@ export async function GET() {
     return NextResponse.json({ moods: [], error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });
   }
 }
+
