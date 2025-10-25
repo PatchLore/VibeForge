@@ -8,9 +8,14 @@ import TrendingVibes from '@/components/TrendingVibes';
 import TrackCard from '@/components/TrackCard';
 import FAQ from '@/components/FAQ';
 import FeatureHighlights from '@/components/FeatureHighlights';
+import PromptPresets from '@/components/PromptPresets';
+import GenerationProgress from '@/components/GenerationProgress';
+import FeedbackButtons from '@/components/FeedbackButtons';
+import MiniPlayer from '@/components/MiniPlayer';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
+import { track } from '@vercel/analytics';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -34,14 +39,17 @@ export default function Home() {
   const [audioSource, setAudioSource] = useState<'riffusion' | 'fallback' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
+  const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
+    track('Preset Used', { preset: vibeValue });
   };
 
   const handleInspireMe = () => {
     const randomVibe = getRandomVibe();
     setVibe(randomVibe);
+    track('Inspire Me Clicked');
   };
 
   useEffect(() => {
@@ -53,6 +61,10 @@ export default function Home() {
     
     setIsGenerating(true);
     setError(null); // Clear any previous errors
+    
+    // Track analytics event
+    track('Track Generated', { vibe });
+    
     try {
       // Generate SoundPainting (music + image) via the new API
       const response = await fetch('/api/music', {
@@ -181,25 +193,44 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated gradient orb backgrounds */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      
+      <div className="max-w-4xl w-full relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl md:text-6xl font-light text-white mb-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-5xl md:text-6xl font-light text-white mb-4"
+          >
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
-              VibeForge
+              🎵 Create AI-Generated Music & Art Instantly
             </span>
-          </h1>
-          <p className="text-xl text-gray-300 mb-4">
-            AI Music Generator - Create Music with AI
-          </p>
-          <p className="text-base text-gray-400 mb-8 max-w-2xl mx-auto">
-            The free AI music creation app that generates personalized soundscapes in seconds. Create music with AI based on your emotions and vibe.
-          </p>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-xl text-gray-300 mb-4"
+          >
+            Powered by VibeForge
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-base text-gray-400 mb-8 max-w-2xl mx-auto"
+          >
+            Describe a vibe, and let AI compose your soundtrack.
+          </motion.p>
           
           {/* Navigation */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -255,6 +286,14 @@ export default function Home() {
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white hover:from-pink-600 hover:to-cyan-600 transition-all"
             >
               🎧 Infinite Vibes
+            </motion.a>
+            <motion.a
+              href="/pricing"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 rounded-xl bg-white/20 text-gray-300 hover:bg-white/30 transition-all"
+            >
+              💎 Pricing
             </motion.a>
           </div>
         </motion.div>
@@ -359,24 +398,8 @@ export default function Home() {
             </div>
 
             <div className="mb-8">
-              <p className="text-white text-lg mb-4">Or choose a quick vibe:</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {quickVibes.map((vibeOption) => (
-                  <motion.button
-                    key={vibeOption.value}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleVibeSelect(vibeOption.value)}
-                    className={`p-3 rounded-xl border transition-all duration-200 ${
-                      vibe === vibeOption.value
-                        ? 'bg-gradient-to-r from-pink-500 to-cyan-500 border-pink-400 text-white'
-                        : 'bg-white/10 border-white/30 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    {vibeOption.label}
-                  </motion.button>
-                ))}
-              </div>
+              <p className="text-white text-lg mb-4">Or choose a preset:</p>
+              <PromptPresets onPresetSelect={handleVibeSelect} />
             </div>
 
             <motion.button
@@ -436,6 +459,14 @@ export default function Home() {
               </motion.div>
             )}
           </motion.div>
+        ) : isGenerating ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-12"
+          >
+            <GenerationProgress />
+          </motion.div>
         ) : showTrending ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -487,7 +518,10 @@ export default function Home() {
             <FAQ />
           </>
         )}
-        </div>
+        
+        {/* Mini Player */}
+        <MiniPlayer audioUrl={audioUrl} trackTitle={currentTrackTitle || vibe} />
+      </div>
     </div>
   );
 }
