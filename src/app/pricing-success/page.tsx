@@ -18,53 +18,108 @@ function PricingSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [user, setUser] = useState<any>(null);
-  const [planType, setPlanType] = useState<string>('Pro');
   const [sessionData, setSessionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
+    const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
+        // Fetch user data
+        if (supabase) {
+          const { data: { user } } = await supabase.auth.getUser();
+          setUser(user);
+        }
         
-        // Try to fetch session details if session_id is available
+        // Fetch session details if session_id is available
         if (sessionId) {
           try {
             const response = await fetch(`/api/retrieve-checkout-session?session_id=${sessionId}`);
             if (response.ok) {
               const sessionData = await response.json();
               setSessionData(sessionData);
-              if (sessionData.plan_name) {
-                setPlanType(sessionData.plan_name.replace('Soundswoop ', ''));
-              }
+            } else {
+              const errorData = await response.json();
+              setError(errorData.error || 'Failed to retrieve session details');
             }
           } catch (error) {
-            console.log('Could not fetch session details:', error);
+            console.error('Error fetching session details:', error);
+            setError('Failed to retrieve session details');
           }
+        } else {
+          setError('No session ID provided');
         }
       } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error('Error fetching data:', error);
+        setError('Failed to load subscription details');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUser();
+    fetchData();
   }, [sessionId]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <div className="text-white text-xl">Retrieving your subscription details…</div>
+        </div>
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-2xl w-full text-center"
+        >
+          <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
+            <div className="text-6xl mb-6">⚠️</div>
+            <h1 className="text-3xl font-semibold text-white mb-4">
+              Subscription Details Not Found
+            </h1>
+            <p className="text-gray-300 text-lg mb-8">
+              We couldn't find your subscription details. Please contact support.
+            </p>
+            <div className="space-y-4">
+              <motion.a
+                href="mailto:support@soundswoop.com"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="inline-block px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-semibold hover:from-pink-600 hover:to-cyan-600 transition-all"
+              >
+                Contact Support
+              </motion.a>
+              <div>
+                <motion.a
+                  href="/pricing"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="inline-block px-6 py-3 rounded-xl bg-white/20 text-white font-semibold hover:bg-white/30 transition-all"
+                >
+                  Back to Pricing
+                </motion.a>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Dynamic title based on plan
+  const planName = sessionData?.plan_name || '';
+  const title = planName.toLowerCase().includes("creator")
+    ? "Welcome to Soundswoop Creator!"
+    : planName.toLowerCase().includes("pro")
+    ? "Welcome to Soundswoop Pro!"
+    : "Welcome to Soundswoop!";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
@@ -100,7 +155,7 @@ function PricingSuccessContent() {
           className="bg-gradient-to-br from-cyan-500/10 to-violet-500/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
         >
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Welcome to Soundswoop {planType}!
+            {title}
           </h1>
           
           <p className="text-gray-300 text-lg mb-8">
@@ -108,42 +163,22 @@ function PricingSuccessContent() {
           </p>
 
           {/* Summary Box */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/20">
+          <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl mt-6 text-gray-200 space-y-2">
             <h3 className="text-xl font-semibold text-white mb-4">Subscription Details</h3>
-            <div className="space-y-3 text-left">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Plan:</span>
-                <span className="text-white font-semibold">{sessionData?.plan_name || planType}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Email:</span>
-                <span className="text-white font-semibold">{sessionData?.customer_email || user?.email || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Amount:</span>
-                <span className="text-white font-semibold">
-                  ${sessionData?.amount_total ? (sessionData.amount_total / 100).toFixed(2) : '0.00'} {sessionData?.currency?.toUpperCase() || 'USD'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Status:</span>
-                <span className={`font-semibold ${sessionData?.payment_status === 'paid' ? 'text-green-400' : 'text-yellow-400'}`}>
-                  {sessionData?.payment_status || 'Processing'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Activated:</span>
-                <span className="text-white font-semibold">
-                  {sessionData?.created_at ? new Date(sessionData.created_at).toLocaleDateString() : new Date().toLocaleDateString()}
-                </span>
-              </div>
-              {sessionId && (
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Session ID:</span>
-                  <code className="text-pink-400 text-sm">{sessionId.slice(0, 8)}...</code>
-                </div>
-              )}
-            </div>
+            <p><strong>Plan:</strong> {sessionData?.plan_name || 'N/A'}</p>
+            <p><strong>Email:</strong> {sessionData?.customer_email || user?.email || 'N/A'}</p>
+            <p><strong>Status:</strong> 
+              <span className={`ml-2 ${sessionData?.payment_status === 'paid' ? 'text-green-400' : 'text-yellow-400'}`}>
+                {sessionData?.payment_status || 'Processing'}
+              </span>
+            </p>
+            <p><strong>Activated:</strong> {sessionData?.created_at ? new Date(sessionData.created_at).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+            {sessionData?.amount_total && (
+              <p><strong>Amount:</strong> ${(sessionData.amount_total / 100).toFixed(2)} {sessionData.currency?.toUpperCase() || 'USD'}</p>
+            )}
+            {sessionId && (
+              <p><strong>Session ID:</strong> <code className="text-pink-400 text-sm">{sessionId.slice(0, 8)}...</code></p>
+            )}
           </div>
 
           {/* Action Buttons */}
