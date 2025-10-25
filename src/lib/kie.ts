@@ -37,7 +37,7 @@ export async function generateMusic(prompt: string) {
       customMode: false,
       instrumental: true,
       model: "V5",
-      callBackUrl: process.env.KIE_CALLBACK_URL || "https://soothe-ai.vercel.app/api/callback",
+      callBackUrl: process.env.KIE_CALLBACK_URL || "https://vibe-forge.vercel.app/api/callback",
     }),
   });
 
