@@ -3,6 +3,14 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = "force-dynamic";
 
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'Callback endpoint is active and ready to receive Kie.ai callbacks',
+    endpoint: '/api/callback',
+    timestamp: new Date().toISOString()
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
