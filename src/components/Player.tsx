@@ -168,56 +168,75 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
         />
       )}
       
-      {/* Video/Image Background */}
+      {/* Generated Artwork Display */}
       {videoUrl && (
         <motion.div
           initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="relative w-full h-64 rounded-3xl overflow-hidden mb-6 animate-video-fade-in"
+          className="flex flex-col items-center mb-6"
         >
-          {videoUrl.endsWith('.html') ? (
-            <iframe
-              src={videoUrl}
-              className="w-full h-full border-0"
-              allow="autoplay"
-            />
-          ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-            <img
-              src={videoUrl}
-              alt="Generated art"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              className="w-full h-full object-cover"
-              loop
-              muted
-              playsInline
-              autoPlay
-            />
-          )}
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/50" />
-          
-          {/* Vibe Text Overlay */}
-          {vibe && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="absolute bottom-6 left-6 right-6"
+          {/* Artwork Container with Neon Glow */}
+          <div className="relative max-w-4xl w-full">
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-pink-500/20 to-cyan-500/20 p-1 shadow-2xl">
+              {/* Neon Glow Border */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
+              
+              {videoUrl.endsWith('.html') ? (
+                <iframe
+                  src={videoUrl}
+                  className="w-full h-96 border-0 rounded-xl"
+                  allow="autoplay"
+                />
+              ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                <img
+                  src={videoUrl}
+                  alt="AI Generated Artwork"
+                  className="w-full h-auto max-h-[600px] object-contain rounded-xl"
+                />
+              ) : (
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  className="w-full h-auto max-h-[600px] object-contain rounded-xl"
+                  loop
+                  muted
+                  playsInline
+                  autoPlay
+                />
+              )}
+            </div>
+            
+            {/* Download Button */}
+            {videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = videoUrl;
+                  link.download = `soundswoop-artwork-${Date.now()}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                📥 Download Image
+              </motion.button>
+            )}
+            
+            {/* Attribution */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="text-xs text-gray-400 text-center mt-3"
             >
-              <h4 className="text-2xl font-light text-white mb-2 drop-shadow-2xl animate-text-glow">
-                "{vibe}"
-              </h4>
-              <p className="text-white/90 text-sm drop-shadow-2xl">
-                Your emotional soundscape
-              </p>
-            </motion.div>
-          )}
+              Generated with Soundswoop AI
+            </motion.p>
+          </div>
         </motion.div>
       )}
       
