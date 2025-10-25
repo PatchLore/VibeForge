@@ -19,6 +19,7 @@ function PricingSuccessContent() {
   const sessionId = searchParams.get('session_id');
   const [user, setUser] = useState<any>(null);
   const [planType, setPlanType] = useState<string>('Pro');
+  const [sessionData, setSessionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,8 +39,9 @@ function PricingSuccessContent() {
             const response = await fetch(`/api/retrieve-checkout-session?session_id=${sessionId}`);
             if (response.ok) {
               const sessionData = await response.json();
-              if (sessionData.metadata?.plan_type) {
-                setPlanType(sessionData.metadata.plan_type === 'pro' ? 'Pro' : 'Creator');
+              setSessionData(sessionData);
+              if (sessionData.plan_name) {
+                setPlanType(sessionData.plan_name.replace('Soundswoop ', ''));
               }
             }
           } catch (error) {
@@ -111,17 +113,29 @@ function PricingSuccessContent() {
             <div className="space-y-3 text-left">
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">Plan:</span>
-                <span className="text-white font-semibold">{planType}</span>
+                <span className="text-white font-semibold">{sessionData?.plan_name || planType}</span>
               </div>
-              {user?.email && (
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Email:</span>
-                  <span className="text-white font-semibold">{user.email}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Email:</span>
+                <span className="text-white font-semibold">{sessionData?.customer_email || user?.email || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Amount:</span>
+                <span className="text-white font-semibold">
+                  ${sessionData?.amount_total ? (sessionData.amount_total / 100).toFixed(2) : '0.00'} {sessionData?.currency?.toUpperCase() || 'USD'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Status:</span>
+                <span className={`font-semibold ${sessionData?.payment_status === 'paid' ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {sessionData?.payment_status || 'Processing'}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-300">Activated:</span>
-                <span className="text-white font-semibold">{new Date().toLocaleDateString()}</span>
+                <span className="text-white font-semibold">
+                  {sessionData?.created_at ? new Date(sessionData.created_at).toLocaleDateString() : new Date().toLocaleDateString()}
+                </span>
               </div>
               {sessionId && (
                 <div className="flex justify-between items-center">
