@@ -92,12 +92,14 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
-              const link = document.createElement('a');
-              link.href = track.image_url;
-              link.download = `soundswoop-artwork-${track.id}.png`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
+              if (track.image_url) {
+                const link = document.createElement('a');
+                link.href = track.image_url;
+                link.download = `soundswoop-artwork-${track.id}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }
             }}
             className="mt-3 px-4 py-2 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
           >
