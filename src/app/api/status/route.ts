@@ -13,7 +13,7 @@ export async function GET(req: Request) {
       return NextResponse.next();
     }
 
-    console.log("🚀 [DEPLOYMENT] /api/status endpoint reached - Vercel deployment successful!");
+    console.log("🚀 [DEPLOYMENT] /api/status endpoint reached - Vercel deployment successful! [CACHE CLEAR]");
     console.log("🔍 [DEPLOYMENT] Request URL:", req.url);
 
     const { searchParams } = new URL(req.url);
