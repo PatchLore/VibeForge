@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://vibe-forge.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://soundswoop.com';
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({

@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/_next/'],
       },
     ],
-    sitemap: 'https://vibe-forge.vercel.app/sitemap.xml',
+    sitemap: 'https://soundswoop.com/sitemap.xml',
   }
 }
 

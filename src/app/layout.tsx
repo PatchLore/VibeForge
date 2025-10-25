@@ -34,14 +34,14 @@ export const metadata: Metadata = {
   authors: [{ name: "VibeForge" }],
   creator: "VibeForge",
   publisher: "VibeForge",
-  metadataBase: new URL("https://vibe-forge.vercel.app"),
+  metadataBase: new URL("https://soundswoop.com"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://vibe-forge.vercel.app",
+    url: "https://soundswoop.com",
     siteName: "VibeForge",
     title: "VibeForge - AI Music Generator | Create Music with AI",
     description: "Create personalized AI-generated music in seconds. Free AI music creation powered by Kie.ai.",
@@ -112,7 +112,7 @@ export default function RootLayout({
                 "ratingCount": "1250"
               },
               "description": "Create personalized AI-generated music in seconds. Free AI music creation app powered by Kie.ai.",
-              "screenshot": "https://vibe-forge.vercel.app/og-image.png",
+              "screenshot": "https://soundswoop.com/og-image.png",
               "featureList": [
                 "AI Music Generation",
                 "Personalized Soundscapes",
@@ -131,7 +131,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Product",
               "name": "VibeForge AI Music Generator",
-              "image": "https://vibe-forge.vercel.app/og-image.png",
+              "image": "https://soundswoop.com/og-image.png",
               "description": "AI-powered music generator that creates personalized soundscapes based on your emotions and vibe.",
               "brand": {
                 "@type": "Brand",

@@ -26,7 +26,7 @@ export async function generateMusic(prompt: string) {
   const apiKey = KIE_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
-  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://vibe-forge.vercel.app/api/callback";
+  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://soundswoop.com/api/callback";
   console.log("🎵 Calling Kie.ai music generation API...");
   console.log("📡 Callback URL:", callbackUrl);
   console.log("📝 Prompt:", prompt);
