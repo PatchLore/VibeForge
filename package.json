@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.1.0",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.76.1",
     "@vercel/analytics": "^1.5.0",
     "axios": "^1.12.2",

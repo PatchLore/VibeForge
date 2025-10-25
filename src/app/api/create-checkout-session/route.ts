@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -23,11 +25,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { plan, userId, email } = await request.json();
+    // Initialize Supabase client and get authenticated user
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!plan || !userId || !email) {
+    if (authError || !user) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/auth/signup`);
+    }
+
+    const { plan } = await request.json();
+
+    if (!plan) {
       return NextResponse.json(
-        { error: 'Plan, userId, and email are required' },
+        { error: 'Plan is required' },
         { status: 400 }
       );
     }
@@ -59,14 +80,13 @@ export async function POST(request: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?canceled=true`,
       metadata: {
-        user_email: email,
-        plan_type: plan,
+        user_id: user.id,
+        plan: plan,
       },
-      customer_email: email,
+      customer_email: user.email,
     });
 
     return NextResponse.json({ 
-      sessionId: session.id,
       url: session.url 
     });
 

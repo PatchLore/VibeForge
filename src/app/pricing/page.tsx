@@ -27,11 +27,6 @@ export default function PricingPage() {
   }, []);
 
   const startCheckout = async (plan: string) => {
-    if (!user) {
-      alert('Please sign in to upgrade your plan');
-      return;
-    }
-
     setLoading(plan);
     
     try {
@@ -42,10 +37,14 @@ export default function PricingPage() {
         },
         body: JSON.stringify({
           plan,
-          userId: user.id,
-          email: user.email,
         }),
       });
+
+      if (response.redirected) {
+        // User is not authenticated, redirect to signup
+        window.location.href = response.url;
+        return;
+      }
 
       const data = await response.json();
       
