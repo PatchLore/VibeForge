@@ -6,7 +6,7 @@ import { addCredits, updateUserPlan, getOrCreateUser } from '@/lib/credits';
 export const dynamic = "force-dynamic";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2025-09-30.clover',
 });
 
 const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
