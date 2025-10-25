@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
+import { deductCredits, getUserCredits, getOrCreateUser, CREDITS_PER_GENERATION } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,38 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     console.log("📝 Request body:", body);
-    const { prompt } = body;
+    const { prompt, userId } = body;
     console.log("📝 Extracted prompt:", prompt);
 
     const userVibe = prompt || "calm";
+    
+    // Check and deduct credits
+    if (userId) {
+      const userCredits = await getUserCredits(userId);
+      
+      if (!userCredits || userCredits.credits < CREDITS_PER_GENERATION) {
+        console.warn('⚠️ Insufficient credits:', userCredits?.credits);
+        return NextResponse.json({
+          success: false,
+          error: 'INSUFFICIENT_CREDITS',
+          message: `Not enough credits. You need ${CREDITS_PER_GENERATION} credits to generate music. You have ${userCredits?.credits || 0} credits.`,
+          credits: userCredits?.credits || 0
+        }, { status: 403 });
+      }
+
+      // Deduct credits
+      const deducted = await deductCredits(userId, CREDITS_PER_GENERATION);
+      if (!deducted) {
+        console.error('❌ Failed to deduct credits');
+        return NextResponse.json({
+          success: false,
+          error: 'CREDIT_DEDUCTION_FAILED',
+          message: 'Failed to process credits. Please try again.'
+        }, { status: 500 });
+      }
+
+      console.log(`✅ Deducted ${CREDITS_PER_GENERATION} credits from user ${userId}`);
+    }
     
     // Expand the user's vibe into detailed prompts
     const { musicPrompt, artPrompt } = generateExpandedPrompt(userVibe);
