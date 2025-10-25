@@ -1,24 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+  : null;
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
-  const startCheckout = async (type: 'subscription' | 'topup', priceId: string) => {
-    setLoading(priceId);
+  // Get current user on component mount
+  useEffect(() => {
+    if (!supabase) return;
+    
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
+
+  const startCheckout = async (plan: string) => {
+    if (!user) {
+      alert('Please sign in to upgrade your plan');
+      return;
+    }
+
+    setLoading(plan);
     
     try {
-      const response = await fetch('/api/checkout', {
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type,
-          priceId,
-          email: 'user@example.com', // In production, get from user session
+          plan,
+          userId: user.id,
         }),
       });
 
@@ -26,6 +50,8 @@ export default function PricingPage() {
       
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
       }
     } catch (error) {
       console.error('Checkout error:', error);
@@ -75,7 +101,7 @@ export default function PricingPage() {
       ],
       button: {
         text: 'Upgrade to Pro',
-        action: () => startCheckout('subscription', 'price_pro_month'),
+        action: () => startCheckout('pro'),
         type: 'action' as const
       },
       popular: true,
@@ -98,7 +124,7 @@ export default function PricingPage() {
       ],
       button: {
         text: 'Get Creator',
-        action: () => startCheckout('subscription', 'price_creator_month'),
+        action: () => startCheckout('creator'),
         type: 'action' as const
       },
       popular: false,
@@ -242,7 +268,7 @@ export default function PricingPage() {
                 ) : (
                   <motion.button
                     onClick={plan.button.action}
-                    disabled={loading === `price_${plan.id}_month` || plan.comingSoon}
+                    disabled={loading === plan.id || plan.comingSoon}
                     whileHover={{ scale: plan.comingSoon ? 1 : 1.02 }}
                     whileTap={{ scale: plan.comingSoon ? 1 : 0.98 }}
                     className={`
@@ -255,7 +281,7 @@ export default function PricingPage() {
                       }
                     `}
                   >
-                    {loading === `price_${plan.id}_month` ? 'Loading...' : plan.button.text}
+                    {loading === plan.id ? 'Loading...' : plan.button.text}
                   </motion.button>
                 )}
               </div>
@@ -278,11 +304,11 @@ export default function PricingPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => startCheckout('topup', 'price_topup_1k')}
-                disabled={loading === 'price_topup_1k'}
+                onClick={() => startCheckout('topup')}
+                disabled={loading === 'topup'}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-semibold hover:from-pink-600 hover:to-cyan-600 transition-all disabled:opacity-50"
               >
-                {loading === 'price_topup_1k' ? 'Loading...' : 'Buy Credits'}
+                {loading === 'topup' ? 'Loading...' : 'Buy Credits'}
               </motion.button>
             </div>
           </div>

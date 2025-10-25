@@ -1,155 +1,155 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { supabase } from '@/lib/supabase';
-import { addCredits, updateUserPlan, getOrCreateUser } from '@/lib/credits';
+import { createClient } from '@supabase/supabase-js';
 
-export const dynamic = "force-dynamic";
-
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-const stripe = stripeSecretKey
-  ? new Stripe(stripeSecretKey, {
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: '2025-09-30.clover',
     })
   : null;
 
-const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
-  price_pro_month: { credits: 2000, plan: 'pro' },
-  price_creator_month: { credits: 5000, plan: 'creator' },
-  price_topup_1k: { credits: 1000, plan: 'free' },
-};
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 export async function POST(request: NextRequest) {
-  if (!stripe) {
-    console.error('❌ Stripe not configured');
+  if (!stripe || !supabase) {
     return NextResponse.json(
-      { error: 'Stripe not configured' },
+      { error: 'Stripe or Supabase not configured' },
       { status: 500 }
     );
   }
 
   const body = await request.text();
-  const signature = request.headers.get('stripe-signature');
-
-  if (!signature || !webhookSecret) {
-    console.error('❌ Missing signature or webhook secret');
-    return NextResponse.json(
-      { error: 'Webhook configuration error' },
-      { status: 400 }
-    );
-  }
+  const signature = request.headers.get('stripe-signature')!;
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err) {
-    console.error('❌ Webhook signature verification failed:', err);
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  console.log('📧 Webhook event received:', event.type);
-
   try {
-    // Handle checkout.session.completed
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      
-      console.log('✅ Checkout completed:', session.id);
-      
-      const metadata = session.metadata;
-      const customerEmail = session.customer_email || session.customer_details?.email;
-      
-      if (!customerEmail) {
-        console.error('❌ No customer email found');
-        return NextResponse.json({ received: true });
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await handleSuccessfulCheckout(session);
+        break;
       }
-
-      // Get or create user
-      const userId = await getOrCreateUser(customerEmail);
-      if (!userId) {
-        console.error('❌ Failed to get/create user');
-        return NextResponse.json({ received: true });
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleSuccessfulPayment(invoice);
+        break;
       }
-
-      // Get price info from metadata
-      const priceInfo = PRICE_MAP[metadata?.priceId || ''];
-      if (!priceInfo) {
-        console.error('❌ Unknown price ID:', metadata?.priceId);
-        return NextResponse.json({ received: true });
-      }
-
-      // Add credits
-      await addCredits(userId, priceInfo.credits);
-      console.log(`✅ Added ${priceInfo.credits} credits to user ${userId}`);
-
-      // Update plan if subscription
-      if (metadata?.type === 'subscription') {
-        await updateUserPlan(userId, priceInfo.plan);
-        console.log(`✅ Updated plan to ${priceInfo.plan}`);
-      }
-
-      // Store Stripe customer ID
-      if (session.customer && supabase) {
-        await supabase
-          .from('users')
-          .update({ stripe_customer_id: session.customer as string })
-          .eq('id', userId);
-      }
-    }
-
-    // Handle subscription renewal
-    if (event.type === 'invoice.payment_succeeded') {
-      const invoice = event.data.object as Stripe.Invoice;
-      
-      console.log('✅ Invoice payment succeeded:', invoice.id);
-      
-      // Access subscription via bracket notation for compatibility
-      const subscriptionId = (invoice as any).subscription;
-      
-      if (subscriptionId && supabase) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        
-        const customerId = typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer?.id;
-
-        if (customerId) {
-          // Find user by Stripe customer ID
-          const { data: user } = await supabase
-            .from('users')
-            .select('id')
-            .eq('stripe_customer_id', customerId)
-            .single();
-
-          if (user) {
-            // Add monthly credits based on subscription
-            const lineItem = invoice.lines.data[0] as any;
-            const priceId = lineItem.price?.id;
-            const priceInfo = PRICE_MAP[priceId || ''];
-            
-            if (priceInfo) {
-              await addCredits(user.id, priceInfo.credits);
-              console.log(`✅ Renewal: Added ${priceInfo.credits} credits to user ${user.id}`);
-            }
-          }
-        }
-      }
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
-
   } catch (error) {
-    console.error('❌ Webhook processing error:', error);
+    console.error('Webhook handler error:', error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { error: 'Webhook handler failed' },
       { status: 500 }
     );
   }
 }
 
+async function handleSuccessfulCheckout(session: Stripe.Checkout.Session) {
+  const { userId, plan } = session.metadata!;
+  const customerEmail = session.customer_email;
+
+  if (!userId || !plan) {
+    console.error('Missing metadata in checkout session');
+    return;
+  }
+
+  // Determine credits based on plan
+  const creditsMap: Record<string, number> = {
+    pro: 2500,
+    creator: 10000,
+  };
+
+  const credits = creditsMap[plan] || 0;
+
+  // Update user profile in Supabase
+  const { error } = await supabase!
+    .from('profiles')
+    .upsert({
+      id: userId,
+      email: customerEmail,
+      plan: plan,
+      credits: credits,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('Failed to update user profile:', error);
+    throw error;
+  }
+
+  console.log(`✅ Updated profile for user ${userId}: plan=${plan}, credits=${credits}`);
+}
+
+async function handleSuccessfulPayment(invoice: Stripe.Invoice) {
+  const customerId = typeof invoice.customer === 'string' 
+    ? invoice.customer 
+    : invoice.customer?.id;
+
+  if (!customerId) {
+    console.error('No customer ID in invoice');
+    return;
+  }
+
+  // Get customer details
+  const customer = await stripe!.customers.retrieve(customerId);
+  const customerEmail = customer && !customer.deleted ? customer.email : null;
+
+  if (!customerEmail) {
+    console.error('No customer email found');
+    return;
+  }
+
+  // Find user by email in Supabase
+  const { data: user, error: userError } = await supabase!
+    .from('profiles')
+    .select('id, plan, credits')
+    .eq('email', customerEmail)
+    .single();
+
+  if (userError || !user) {
+    console.error('User not found:', userError);
+    return;
+  }
+
+  // Determine credits based on current plan
+  const creditsMap: Record<string, number> = {
+    pro: 2500,
+    creator: 10000,
+  };
+
+  const credits = creditsMap[user.plan] || 0;
+
+  // Add credits to user account
+  const { error: updateError } = await supabase!
+    .from('profiles')
+    .update({
+      credits: user.credits + credits,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id);
+
+  if (updateError) {
+    console.error('Failed to add credits:', updateError);
+    throw updateError;
+  }
+
+  console.log(`✅ Added ${credits} credits to user ${user.id}`);
+}

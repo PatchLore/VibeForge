@@ -29,15 +29,15 @@ function SuccessContent() {
         transition={{ delay: 0.2, type: 'spring' }}
         className="text-8xl mb-6"
       >
-        ✅
+        🎉
       </motion.div>
       
       <h1 className="text-4xl font-semibold text-white mb-4">
-        Payment Successful!
+        Subscription Activated!
       </h1>
       
       <p className="text-gray-300 text-lg mb-8">
-        Your credits have been added to your account. You can now start generating amazing AI music!
+        Your Soundswoop plan is now active. Credits have been added to your account.
       </p>
 
       <div className="flex gap-4 justify-center">
@@ -64,7 +64,6 @@ function SuccessContent() {
 }
 
 export default function SuccessPage() {
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
       <Suspense fallback={
@@ -77,4 +76,3 @@ export default function SuccessPage() {
     </div>
   );
 }
-
