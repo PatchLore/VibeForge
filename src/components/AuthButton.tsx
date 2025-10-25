@@ -9,6 +9,9 @@ export default function AuthButton() {
   const { user, signOut, loading } = useAuth();
   const [showModal, setShowModal] = useState(false);
 
+  // Debug: Log auth state
+  console.log('AuthButton render:', { user, loading });
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -19,9 +22,13 @@ export default function AuthButton() {
 
   if (loading) {
     return (
-      <div className="px-6 py-3 rounded-xl bg-white/10 text-gray-300">
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="px-6 py-3 rounded-xl bg-white/10 text-gray-300"
+      >
         <div className="animate-pulse">Loading...</div>
-      </div>
+      </motion.button>
     );
   }
 
