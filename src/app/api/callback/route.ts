@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json({ 
-    message: 'Callback endpoint is active and ready to receive Kie.ai callbacks',
+    message: 'Callback endpoint is active and ready to receive API callbacks',
     endpoint: '/api/callback',
     timestamp: new Date().toISOString()
   });
@@ -14,9 +14,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('🎵 Kie.ai callback received:', JSON.stringify(body, null, 2));
+    console.log('🎵 API callback received:', JSON.stringify(body, null, 2));
 
-    // Parse Kie.ai callback format
+    // Parse API callback format
     const callbackData = body.data;
     const taskId = callbackData?.task_id;
     const callbackType = callbackData?.callbackType;

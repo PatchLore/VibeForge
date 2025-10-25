@@ -6,7 +6,7 @@ const features = [
   {
     icon: '🎵',
     title: 'AI Music Generation',
-    description: 'Create personalized music with advanced AI technology powered by Kie.ai'
+    description: 'Create personalized music with advanced AI technology'
   },
   {
     icon: '🎨',

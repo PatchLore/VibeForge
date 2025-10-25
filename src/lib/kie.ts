@@ -1,33 +1,33 @@
 // Removed unused NextResponse import
 
 // 🎯 API Key Manager - Clear separation of concerns
-const KIE_KEYS = {
+const API_KEYS = {
   music: process.env.VIBEFORGE_API_KEY,
   image: process.env.KIE_IMAGE_API_KEY,
 };
 
 // ⚠️ Runtime validation with clear warnings
-if (!KIE_KEYS.music) {
+if (!API_KEYS.music) {
   console.warn("⚠️ Missing VIBEFORGE_API_KEY (Music Generation) API key! Please add it to Vercel.");
 }
 
-if (!KIE_KEYS.image) {
+if (!API_KEYS.image) {
   console.warn("⚠️ Missing KIE_IMAGE_API_KEY (Image Generation) API key! Please add it to Vercel.");
 }
 
 // ✅ Startup confirmation
-console.log("✅ Kie.ai API keys loaded:");
-console.log("🎵 Music Key:", KIE_KEYS.music ? "Loaded ✅" : "Missing ❌");
-console.log("🖼️ Image Key:", KIE_KEYS.image ? "Loaded ✅" : "Missing ❌");
+console.log("✅ API keys loaded:");
+console.log("🎵 Music Key:", API_KEYS.music ? "Loaded ✅" : "Missing ❌");
+console.log("🖼️ Image Key:", API_KEYS.image ? "Loaded ✅" : "Missing ❌");
 
 const BASE_URL = "https://api.kie.ai/api/v1";
 
 export async function generateMusic(prompt: string) {
-  const apiKey = KIE_KEYS.music;
+  const apiKey = API_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
   const callbackUrl = process.env.KIE_CALLBACK_URL || "https://soundswoop.com/api/callback";
-  console.log("🎵 Calling Kie.ai music generation API...");
+  console.log("🎵 Calling music generation API...");
   console.log("📡 Callback URL:", callbackUrl);
   console.log("📝 Prompt:", prompt);
 
@@ -46,10 +46,10 @@ export async function generateMusic(prompt: string) {
     }),
   });
 
-  console.log("📡 Kie.ai response status:", response.status);
+  console.log("📡 API response status:", response.status);
 
   const data = await response.json();
-  console.log("📡 Kie.ai response data:", JSON.stringify(data, null, 2));
+  console.log("📡 API response data:", JSON.stringify(data, null, 2));
   
   if (!response.ok || data.code !== 200) {
     console.error("🎵 Music generation error:", data);
@@ -61,7 +61,7 @@ export async function generateMusic(prompt: string) {
 }
 
 export async function checkMusicStatus(taskId: string) {
-  const apiKey = KIE_KEYS.music;
+  const apiKey = API_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
   const response = await fetch(`${BASE_URL}/generate/record-info?taskId=${taskId}`, {
@@ -76,7 +76,7 @@ export async function checkMusicStatus(taskId: string) {
 }
 
 export async function generateImage(prompt: string) {
-  const apiKey = KIE_KEYS.image;
+  const apiKey = API_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
   const response = await fetch(`${BASE_URL}/generate/image`, {

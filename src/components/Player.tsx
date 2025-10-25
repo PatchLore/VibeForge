@@ -10,7 +10,7 @@ interface PlayerProps {
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
   onNewGeneration: () => void;
-  source?: 'riffusion' | 'fallback' | null;
+  source?: 'generated' | 'fallback' | null;
 }
 
 export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlaying, onNewGeneration, source }: PlayerProps) {
@@ -230,11 +230,11 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
         {source && (
           <div className="mt-3">
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-              source === 'riffusion' 
+              source === 'generated' 
                 ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
                 : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
             }`}>
-              {source === 'riffusion' ? '🎵 Generated with Riffusion' : '🎶 Using Fallback Track'}
+              {source === 'generated' ? '🎵 AI Generated Music' : '🎶 Using Fallback Track'}
             </span>
           </div>
         )}

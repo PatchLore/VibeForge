@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     console.log("Task ID:", taskId);
 
     // Return immediately with task ID - Vercel has 5-minute timeout limit
-    // The generation happens in the background via Kie.ai's callback system
+    // The generation happens in the background via the API's callback system
     return NextResponse.json({
       success: true,
       provider: "suno-api",

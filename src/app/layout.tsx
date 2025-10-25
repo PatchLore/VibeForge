@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     default: "Soundswoop – AI Music & Art Generator",
     template: "%s | Soundswoop"
   },
-  description: "Create personalized AI-generated music and art in seconds. Soundswoop uses advanced AI to generate unique soundscapes and visuals based on your emotions and vibe. Free AI music and art creation app powered by Kie.ai.",
+  description: "Create personalized AI-generated music and art in seconds. Soundswoop uses advanced AI to generate unique soundscapes and visuals based on your emotions and vibe. Free AI music and art creation app.",
   keywords: [
     "AI music generator",
     "create music with AI",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     "personalized AI music",
     "AI art generator",
     "Soundswoop",
-    "Kie.ai music"
+    "AI music generation"
   ],
   authors: [{ name: "Soundswoop" }],
   creator: "Soundswoop",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     url: "https://soundswoop.com",
     siteName: "Soundswoop",
     title: "Soundswoop – AI Music & Art Generator",
-    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation powered by Kie.ai.",
+    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation.",
     images: [
       {
         url: "/og-image.png",
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Soundswoop – AI Music & Art Generator",
-    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation powered by Kie.ai.",
+    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation.",
     images: ["/og-image.png"],
     creator: "@soundswoop",
   },
@@ -112,7 +112,7 @@ export default function RootLayout({
                 "ratingValue": "4.8",
                 "ratingCount": "1250"
               },
-              "description": "Create personalized AI-generated music and art in seconds. Free AI music and art creation app powered by Kie.ai.",
+              "description": "Create personalized AI-generated music and art in seconds. Free AI music and art creation app.",
               "screenshot": "https://soundswoop.com/og-image.png",
               "featureList": [
                 "AI Music Generation",

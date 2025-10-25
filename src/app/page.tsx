@@ -36,7 +36,7 @@ export default function Home() {
   const [showTrending, setShowTrending] = useState(false);
   const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('vibe-forge-tracks', []);
   const [isClient, setIsClient] = useState(false);
-  const [audioSource, setAudioSource] = useState<'riffusion' | 'fallback' | null>(null);
+  const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
@@ -107,7 +107,7 @@ export default function Home() {
       
       setAudioUrl(data.audioUrl);
       setVideoUrl(data.imageUrl); // Use imageUrl as videoUrl for display
-      setAudioSource(data.provider === 'suno-api' ? 'riffusion' : 'fallback');
+      setAudioSource(data.provider === 'suno-api' ? 'generated' : 'fallback');
       
       // Save to local storage with SoundPainting data
       const newTrack: SavedTrack = {
@@ -145,7 +145,7 @@ export default function Home() {
           setError("✅ Your SoundPainting is ready — press play to experience your vibe.");
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl);
-          setAudioSource('riffusion');
+          setAudioSource('generated');
           
           // Save to local storage
           const newTrack: SavedTrack = {
@@ -437,7 +437,7 @@ export default function Home() {
 
             {/* V5 Model Note */}
             <p className="text-xs text-zinc-400 mt-2 text-center">
-              Uses Kie.ai V5 for faster, high-quality generation.
+              Uses advanced AI for faster, high-quality generation.
             </p>
 
             {/* Error Message Display */}
