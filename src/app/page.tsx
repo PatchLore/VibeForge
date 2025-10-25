@@ -10,6 +10,7 @@ import FAQ from '@/components/FAQ';
 import FeatureHighlights from '@/components/FeatureHighlights';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
+import { getRandomVibe } from '@/lib/promptExpansion';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -32,9 +33,15 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [audioSource, setAudioSource] = useState<'riffusion' | 'fallback' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
+  };
+
+  const handleInspireMe = () => {
+    const randomVibe = getRandomVibe();
+    setVibe(randomVibe);
   };
 
   useEffect(() => {
@@ -71,6 +78,13 @@ export default function Home() {
 
       // Handle the new response format with taskId
       if (data.taskId) {
+        // Store expanded prompts for display
+        if (data.expandedPrompts) {
+          setExpandedPrompts(data.expandedPrompts);
+          console.log('🎵 Music Prompt:', data.expandedPrompts.music);
+          console.log('🎨 Art Prompt:', data.expandedPrompts.art);
+        }
+        
         // Show message that generation has started
         setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.`);
         
@@ -304,9 +318,19 @@ export default function Home() {
             className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
           >
             <div className="mb-8">
-              <label className="block text-white text-lg mb-4">
-                Describe your current vibe or feeling…
-              </label>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-white text-lg">
+                  Describe your current vibe or feeling…
+                </label>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleInspireMe}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
+                >
+                  🎲 Inspire Me
+                </motion.button>
+              </div>
               <textarea
                 value={vibe}
                 onChange={(e) => setVibe(e.target.value)}
@@ -314,6 +338,24 @@ export default function Home() {
                 className="w-full p-4 rounded-2xl bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
                 rows={3}
               />
+              
+              {/* Display expanded prompts when generating */}
+              {isGenerating && expandedPrompts && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 space-y-2 text-sm"
+                >
+                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                    <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
+                    <div className="text-gray-300 italic">{expandedPrompts.music}</div>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                    <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
+                    <div className="text-gray-300 italic">{expandedPrompts.art}</div>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <div className="mb-8">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
+import { generateExpandedPrompt } from "@/lib/promptExpansion";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,17 @@ export async function POST(req: Request) {
     const { prompt } = body;
     console.log("📝 Extracted prompt:", prompt);
 
-    const finalPrompt = prompt || "A calming ambient soundscape with soft pads, warm tones, and deep atmosphere";
+    const userVibe = prompt || "calm";
+    
+    // Expand the user's vibe into detailed prompts
+    const { musicPrompt, artPrompt } = generateExpandedPrompt(userVibe);
+    
+    console.log("🎵 Expanded Music Prompt:", musicPrompt);
+    console.log("🎨 Expanded Art Prompt:", artPrompt);
 
-    // Step 1: Generate music
+    // Step 1: Generate music using the expanded prompt
     console.log("🎵 Starting music generation...");
-    const taskId = await generateMusic(finalPrompt);
+    const taskId = await generateMusic(musicPrompt);
     console.log("Task ID:", taskId);
 
     // Return immediately with task ID - Vercel has 5-minute timeout limit
@@ -40,7 +47,11 @@ export async function POST(req: Request) {
       provider: "suno-api",
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
-      prompt: finalPrompt,
+      prompt: userVibe,
+      expandedPrompts: {
+        music: musicPrompt,
+        art: artPrompt
+      }
     });
 
   } catch (err: unknown) {
