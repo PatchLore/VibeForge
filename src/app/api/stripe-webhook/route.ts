@@ -117,8 +117,8 @@ export async function POST(request: NextRequest) {
 
           if (user) {
             // Add monthly credits based on subscription
-            const lineItem = invoice.lines.data[0];
-            const priceId = (lineItem as any).price?.id || lineItem.price;
+            const lineItem = invoice.lines.data[0] as any;
+            const priceId = lineItem.price?.id;
             const priceInfo = PRICE_MAP[priceId || ''];
             
             if (priceInfo) {
