@@ -3,9 +3,13 @@ import Stripe from 'stripe';
 
 export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-09-30.clover',
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+const stripe = stripeSecretKey 
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2025-09-30.clover',
+    })
+  : null;
 
 const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
   price_pro_month: { credits: 2000, plan: 'pro' },
@@ -15,6 +19,13 @@ const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { type, priceId, email } = body;
 

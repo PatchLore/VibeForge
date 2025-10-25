@@ -5,9 +5,13 @@ import { addCredits, updateUserPlan, getOrCreateUser } from '@/lib/credits';
 
 export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-09-30.clover',
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2025-09-30.clover',
+    })
+  : null;
 
 const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
   price_pro_month: { credits: 2000, plan: 'pro' },
@@ -18,6 +22,14 @@ const PRICE_MAP: Record<string, { credits: number; plan: string }> = {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
+  if (!stripe) {
+    console.error('❌ Stripe not configured');
+    return NextResponse.json(
+      { error: 'Stripe not configured' },
+      { status: 500 }
+    );
+  }
+
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
 
