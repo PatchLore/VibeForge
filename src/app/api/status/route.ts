@@ -10,7 +10,8 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     if (!url.pathname.endsWith("/api/status")) {
       console.log("🚫 [ROUTING] /api/status rejecting request to:", url.pathname);
-      return NextResponse.next();
+      // Return 404 instead of NextResponse.next() to avoid routing conflicts
+      return NextResponse.json({ error: "Route not found" }, { status: 404 });
     }
 
     console.log("🚀 [DEPLOYMENT] /api/status endpoint reached - Vercel deployment successful! [CACHE CLEAR]");
