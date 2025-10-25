@@ -43,6 +43,7 @@ export default function PricingPage() {
         body: JSON.stringify({
           plan,
           userId: user.id,
+          email: user.email,
         }),
       });
 

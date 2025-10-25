@@ -94,7 +94,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     console.log(`🛒 Processing checkout session: ${session.id}`);
 
     const customerEmail = session.customer_details?.email;
-    const plan = session.metadata?.plan;
+    const plan = session.metadata?.plan_type;
 
     if (!customerEmail) {
       console.error('❌ No customer email in checkout session');

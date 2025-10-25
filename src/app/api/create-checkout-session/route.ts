@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { plan, userId } = await request.json();
+    const { plan, userId, email } = await request.json();
 
-    if (!plan || !userId) {
+    if (!plan || !userId || !email) {
       return NextResponse.json(
-        { error: 'Plan and userId are required' },
+        { error: 'Plan, userId, and email are required' },
         { status: 400 }
       );
     }
@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
       metadata: {
-        userId,
-        plan,
+        user_email: email,
+        plan_type: plan,
       },
-      customer_email: userId, // Use userId as email for now
+      customer_email: email,
     });
 
     return NextResponse.json({ 
