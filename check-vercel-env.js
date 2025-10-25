@@ -79,3 +79,4 @@ try {
   console.log('2. Make sure you are in the correct project directory');
   console.log('3. Try running: vercel env ls');
 }
+

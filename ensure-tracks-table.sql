@@ -24,3 +24,4 @@ CREATE INDEX IF NOT EXISTS idx_tracks_created_at ON tracks(created_at);
 -- Grant permissions (adjust as needed for your setup)
 -- GRANT ALL ON tracks TO authenticated;
 -- GRANT ALL ON tracks TO service_role;
+
