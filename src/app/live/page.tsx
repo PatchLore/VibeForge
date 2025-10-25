@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import LivePlayer from '@/components/LivePlayer';
+import OptimizedLivePlayer from '@/components/OptimizedLivePlayer';
+import './live.css';
 
 const channels = [
   { id: 'melancholy', label: 'Melancholy', description: 'Deep emotional soundscapes for introspection' },
@@ -13,56 +14,17 @@ const channels = [
 export default function LivePage() {
   const [activeChannel, setActiveChannel] = useState('melancholy');
 
+  // Memoize channel data to prevent unnecessary re-renders
+  const channelData = useMemo(() => 
+    channels.find(c => c.id === activeChannel) || channels[0], 
+    [activeChannel]
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0">
-        <motion.div
-          animate={{
-            background: [
-              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 40% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
-              'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)'
-            ]
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute inset-0"
-        />
-        
-        {/* Floating Particles */}
-        {[...Array(20)].map((_, i) => {
-          // Use deterministic positioning based on index to avoid hydration mismatch
-          const left = ((i * 7 + 13) % 100);
-          const top = ((i * 11 + 17) % 100);
-          
-          return (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-blue-400/30 rounded-full"
-              animate={{
-                x: [0, 100, 0],
-                y: [0, -100, 0],
-                opacity: [0, 1, 0],
-                scale: [0, 1, 0]
-              }}
-              transition={{
-                duration: 15 + i * 2,
-                repeat: Infinity,
-                delay: i * 0.5,
-                ease: "easeInOut"
-              }}
-              style={{
-                left: `${left}%`,
-                top: `${top}%`
-              }}
-            />
-          );
-        })}
+    <div className="live-container min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 relative overflow-hidden">
+      {/* Simplified Static Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5" />
       </div>
 
       <div className="relative z-10 min-h-screen flex flex-col">
@@ -143,14 +105,14 @@ export default function LivePage() {
               </div>
             </motion.div>
 
-            {/* Live Player */}
+            {/* Live Player - Optimized Container */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
+              className="live-player-container rounded-3xl p-8"
             >
-              <LivePlayer channel={activeChannel} />
+              <OptimizedLivePlayer channel={activeChannel} />
             </motion.div>
 
             {/* Status */}
