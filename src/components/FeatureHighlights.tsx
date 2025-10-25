@@ -19,9 +19,9 @@ const features = [
     description: 'Generate your custom soundscape in 1-2 minutes'
   },
   {
-    icon: '💸',
-    title: '100% Free',
-    description: 'No account required, no credit card needed'
+    icon: '🎧',
+    title: 'Create Instantly, No Strings Attached',
+    description: 'Generate your first AI track or artwork for free'
   },
   {
     icon: '🎭',
