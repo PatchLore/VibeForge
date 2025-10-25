@@ -16,11 +16,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('🎵 Kie.ai callback received:', JSON.stringify(body, null, 2));
 
-    // Extract the generated music data
-    const { taskId, status, data } = body;
+    // Parse Kie.ai callback format
+    const callbackData = body.data;
+    const taskId = callbackData?.task_id;
+    const callbackType = callbackData?.callbackType;
+    const songs = callbackData?.data || [];
     
-    if (status === 'completed' && data?.audioUrl) {
-      console.log('✅ Music generation completed:', data.audioUrl);
+    console.log('📊 Callback type:', callbackType);
+    console.log('📊 Task ID:', taskId);
+    console.log('📊 Songs received:', songs.length);
+    
+    // Find the first song with audio_url (completed)
+    const completedSong = songs.find((song: any) => song.audio_url && song.audio_url !== '');
+    
+    if (completedSong) {
+      console.log('✅ Music generation completed:', completedSong.audio_url);
       
       // Store the completed music in Supabase tracks table
       if (supabase) {
@@ -29,11 +39,11 @@ export async function POST(request: NextRequest) {
             .from('tracks')
             .insert({
               task_id: taskId,
-              title: `SoundPainting - ${new Date().toLocaleDateString()}`,
-              prompt: data.prompt || 'Generated SoundPainting',
-              audio_url: data.audioUrl,
-              image_url: data.imageUrl || null,
-              duration: data.duration || 600,
+              title: completedSong.title || `SoundPainting - ${new Date().toLocaleDateString()}`,
+              prompt: completedSong.prompt || 'Generated SoundPainting',
+              audio_url: completedSong.audio_url,
+              image_url: completedSong.image_url || null,
+              duration: completedSong.duration || 600,
               created_at: new Date().toISOString()
             });
 
@@ -53,8 +63,8 @@ export async function POST(request: NextRequest) {
         success: true, 
         message: 'Music generation completed successfully' 
       });
-    } else if (status === 'failed') {
-      console.error('❌ Music generation failed:', data);
+    } else if (callbackType === 'failed') {
+      console.error('❌ Music generation failed:', callbackData);
       
       // Store failure status
       if (supabase) {
@@ -81,12 +91,14 @@ export async function POST(request: NextRequest) {
         success: false, 
         message: 'Music generation failed' 
       }, { status: 400 });
+    } else {
+      // Callback received but no completed song yet (still processing)
+      console.log('⏳ Callback received, but audio still processing. Callback type:', callbackType);
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Callback received, music still processing' 
+      });
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Callback received' 
-    });
 
   } catch (error) {
     console.error('❌ Callback error:', error);
