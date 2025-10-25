@@ -6,6 +6,8 @@ import Player from '@/components/Player';
 import Visualizer from '@/components/Visualizer';
 import TrendingVibes from '@/components/TrendingVibes';
 import TrackCard from '@/components/TrackCard';
+import FAQ from '@/components/FAQ';
+import FeatureHighlights from '@/components/FeatureHighlights';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 
@@ -178,8 +180,11 @@ export default function Home() {
               VibeForge
             </span>
           </h1>
-          <p className="text-xl text-gray-300 mb-8">
-            Emotional Soundscape Generator
+          <p className="text-xl text-gray-300 mb-4">
+            AI Music Generator - Create Music with AI
+          </p>
+          <p className="text-base text-gray-400 mb-8 max-w-2xl mx-auto">
+            The free AI music creation app that generates personalized soundscapes in seconds. Create music with AI based on your emotions and vibe.
           </p>
           
           {/* Navigation */}
@@ -431,6 +436,14 @@ export default function Home() {
               </div>
             )}
           </motion.div>
+        )}
+        
+        {/* SEO Content - Only show when not generating or playing */}
+        {!isGenerating && !audioUrl && !showHistory && !showTrending && (
+          <>
+            <FeatureHighlights />
+            <FAQ />
+          </>
         )}
         </div>
     </div>
