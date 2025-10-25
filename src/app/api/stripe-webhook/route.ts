@@ -97,29 +97,35 @@ export async function POST(request: NextRequest) {
       
       console.log('✅ Invoice payment succeeded:', invoice.id);
       
-      if (invoice.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(
-          invoice.subscription as string
-        );
+      const subscriptionId = typeof invoice.subscription === 'string' 
+        ? invoice.subscription 
+        : invoice.subscription?.id;
+      
+      if (subscriptionId && supabase) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         
-        const customerId = subscription.customer as string;
-        
-        // Find user by Stripe customer ID
-        const { data: user } = await supabase
-          .from('users')
-          .select('id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+        const customerId = typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer?.id;
 
-        if (user) {
-          // Add monthly credits based on subscription
-          const lineItem = invoice.lines.data[0];
-          const priceId = lineItem.price?.id;
-          const priceInfo = PRICE_MAP[priceId || ''];
-          
-          if (priceInfo) {
-            await addCredits(user.id, priceInfo.credits);
-            console.log(`✅ Renewal: Added ${priceInfo.credits} credits to user ${user.id}`);
+        if (customerId) {
+          // Find user by Stripe customer ID
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('stripe_customer_id', customerId)
+            .single();
+
+          if (user) {
+            // Add monthly credits based on subscription
+            const lineItem = invoice.lines.data[0];
+            const priceId = lineItem.price?.id;
+            const priceInfo = PRICE_MAP[priceId || ''];
+            
+            if (priceInfo) {
+              await addCredits(user.id, priceInfo.credits);
+              console.log(`✅ Renewal: Added ${priceInfo.credits} credits to user ${user.id}`);
+            }
           }
         }
       }
