@@ -1,12 +1,23 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 
 interface TrendingVibesProps {
   onVibeSelect: (vibe: string) => void;
 }
 
-const trendingVibes = [
+interface TrendingVibe {
+  id: string;
+  title: string;
+  description: string;
+  emoji: string;
+  color: string;
+  popularity: number;
+}
+
+// Fallback static vibes for when no community data is available
+const fallbackVibes: TrendingVibe[] = [
   {
     id: 'heartbroken-city',
     title: 'Heartbroken in the City',
@@ -73,20 +84,118 @@ const trendingVibes = [
   }
 ];
 
+// Emoji mapping for moods
+const moodEmojis: Record<string, string> = {
+  calm: '🌊',
+  energetic: '⚡',
+  dark: '🌑',
+  dreamy: '💭',
+  serene: '🌸',
+  nostalgic: '📸',
+  futuristic: '🚀',
+  romantic: '💕',
+  mysterious: '🔮',
+  euphoric: '🎉',
+  melancholy: '🌙',
+  cosmic: '✨',
+  urban: '🏙️',
+  nature: '🌿',
+  neon: '💫',
+  cinematic: '🎬',
+  heartbroken: '💔',
+  infinite: '♾️',
+  midnight: '🌃',
+  summer: '☀️',
+  rebellious: '🔥',
+  dance: '💃',
+  introspective: '🤔'
+};
+
+// Color mapping for moods
+const moodColors: Record<string, string> = {
+  calm: 'from-blue-500 to-purple-500',
+  energetic: 'from-yellow-500 to-orange-500',
+  dark: 'from-gray-500 to-black',
+  dreamy: 'from-pink-500 to-purple-500',
+  serene: 'from-green-500 to-blue-500',
+  nostalgic: 'from-yellow-500 to-orange-500',
+  futuristic: 'from-cyan-500 to-blue-500',
+  romantic: 'from-pink-500 to-red-500',
+  mysterious: 'from-purple-500 to-indigo-500',
+  euphoric: 'from-pink-500 to-cyan-500',
+  melancholy: 'from-indigo-500 to-purple-500',
+  cosmic: 'from-cyan-500 to-pink-500',
+  urban: 'from-gray-500 to-blue-500',
+  nature: 'from-green-500 to-emerald-500',
+  neon: 'from-pink-500 to-cyan-500',
+  cinematic: 'from-purple-500 to-pink-500',
+  heartbroken: 'from-blue-500 to-purple-500',
+  infinite: 'from-cyan-500 to-pink-500',
+  midnight: 'from-purple-500 to-pink-500',
+  summer: 'from-yellow-500 to-orange-500',
+  rebellious: 'from-red-500 to-pink-500',
+  dance: 'from-pink-500 to-cyan-500',
+  introspective: 'from-slate-500 to-blue-500'
+};
+
 export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
+  const [trendingVibes, setTrendingVibes] = useState<TrendingVibe[]>(fallbackVibes);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrendingVibes = async () => {
+      try {
+        const response = await fetch('/api/tracks/popular');
+        const data = await response.json();
+        
+        if (data.moods && data.moods.length > 0) {
+          // Convert API data to TrendingVibe format
+          const dynamicVibes: TrendingVibe[] = data.moods.map((mood: any, index: number) => ({
+            id: mood.mood,
+            title: mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1),
+            description: `Community-generated ${mood.mood} vibes`,
+            emoji: moodEmojis[mood.mood] || '🎵',
+            color: moodColors[mood.mood] || 'from-pink-500 to-cyan-500',
+            popularity: mood.popularity
+          }));
+          
+          setTrendingVibes(dynamicVibes);
+        }
+      } catch (error) {
+        console.error('Failed to fetch trending vibes:', error);
+        // Keep fallback vibes
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTrendingVibes();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-2xl font-light text-white mb-2">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
-            Trending Vibes
+            🔥 Live Trending Vibes
           </span>
         </h3>
         <p className="text-gray-300">Popular emotional soundscapes people are forging</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {trendingVibes.map((vibe, index) => (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, index) => (
+            <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20 animate-pulse">
+              <div className="h-8 bg-white/20 rounded mb-3"></div>
+              <div className="h-4 bg-white/20 rounded mb-2"></div>
+              <div className="h-4 bg-white/20 rounded w-3/4"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {trendingVibes.map((vibe, index) => (
           <motion.div
             key={vibe.id}
             initial={{ opacity: 0, y: 20 }}

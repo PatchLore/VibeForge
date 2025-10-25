@@ -35,14 +35,20 @@ export async function POST(request: NextRequest) {
       // Store the completed music in Supabase tracks table
       if (supabase) {
         try {
+          // Extract mood from prompt (first word)
+          const prompt = completedSong.prompt || 'Generated SoundPainting';
+          const mood = prompt.split(' ')[0].toLowerCase();
+          
           const { data: insertData, error } = await supabase
             .from('tracks')
             .insert({
               task_id: taskId,
-              title: completedSong.title || `SoundPainting - ${new Date().toLocaleDateString()}`,
-              prompt: completedSong.prompt || 'Generated SoundPainting',
+              title: completedSong.title || `Soundswoop - ${new Date().toLocaleDateString()}`,
+              prompt: prompt,
               audio_url: completedSong.audio_url,
               image_url: completedSong.image_url || null,
+              mood: mood,
+              likes: 0,
               duration: completedSong.duration || 600,
               created_at: new Date().toISOString()
             });
