@@ -97,9 +97,8 @@ export async function POST(request: NextRequest) {
       
       console.log('✅ Invoice payment succeeded:', invoice.id);
       
-      const subscriptionId = typeof invoice.subscription === 'string' 
-        ? invoice.subscription 
-        : invoice.subscription?.id;
+      // Access subscription via bracket notation for compatibility
+      const subscriptionId = (invoice as any).subscription;
       
       if (subscriptionId && supabase) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
