@@ -55,7 +55,7 @@ export function useAuth() {
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase!.auth.signInWithPassword({
       email,
       password,
     });
@@ -67,7 +67,7 @@ export function useAuth() {
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase!.auth.signUp({
       email,
       password,
     });
@@ -79,14 +79,14 @@ export function useAuth() {
   const signOut = async () => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase!.auth.signOut();
     if (error) throw error;
   };
 
   const resetPassword = async (email: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase!.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback`,
     });
     
