@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!process.env.NEXT_PUBLIC_SITE_URL) {
+      return NextResponse.json(
+        { error: 'NEXT_PUBLIC_SITE_URL environment variable not configured' },
+        { status: 500 }
+      );
+    }
+
     const { plan, userId, email } = await request.json();
 
     if (!plan || !userId || !email) {
@@ -49,8 +56,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?canceled=true`,
       metadata: {
         user_email: email,
         plan_type: plan,
