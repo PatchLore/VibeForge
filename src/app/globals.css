@@ -32,6 +32,56 @@
   .slider::-moz-range-thumb {
     @apply h-5 w-5 rounded-full bg-purple-500 cursor-pointer border-2 border-white shadow-lg;
   }
+
+  /* Auth Form Components */
+  .auth-form-container {
+    @apply bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20;
+  }
+
+  .cta-button {
+    @apply bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-semibold hover:from-pink-600 hover:to-cyan-600 transition-all duration-200;
+    min-height: 44px; /* Touch accessibility */
+  }
+
+  .cta-button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .cta-button:hover:not(:disabled) {
+    @apply transform scale-105;
+  }
+
+  .cta-button:active:not(:disabled) {
+    @apply transform scale-95;
+  }
+
+  /* Input field styling */
+  .auth-input {
+    @apply w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 transition-all duration-200 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400;
+    min-height: 44px; /* Touch accessibility */
+  }
+
+  .auth-input:focus {
+    @apply border-pink-400;
+  }
+
+  .auth-input.error {
+    @apply border-red-400 focus:ring-red-400;
+  }
+
+  /* Social login buttons */
+  .social-button {
+    @apply flex items-center justify-center px-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all;
+    min-height: 44px; /* Touch accessibility */
+  }
+
+  .social-button:hover {
+    @apply transform scale-105;
+  }
+
+  .social-button:active {
+    @apply transform scale-95;
+  }
 }
 
 @layer utilities {

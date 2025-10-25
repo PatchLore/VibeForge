@@ -16,7 +16,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
-import AuthButton from '@/components/AuthButton';
+import Navigation from '@/components/Navigation';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -226,70 +226,23 @@ export default function Home() {
           </motion.p>
           
           {/* Navigation */}
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setShowHistory(false);
-                setShowTrending(false);
-              }}
-              className={`px-6 py-3 rounded-xl transition-all ${
-                !showHistory && !showTrending
-                  ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-white' 
-                  : 'bg-white/20 text-gray-300 hover:bg-white/30'
-              }`}
-            >
-              Generate New
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setShowTrending(true);
-                setShowHistory(false);
-              }}
-              className={`px-6 py-3 rounded-xl transition-all ${
-                showTrending
-                  ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-white' 
-                  : 'bg-white/20 text-gray-300 hover:bg-white/30'
-              }`}
-            >
-              🔥 Trending Vibes
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setShowHistory(true);
-                setShowTrending(false);
-              }}
-              className={`px-6 py-3 rounded-xl transition-all ${
-                showHistory
-                  ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-white' 
-                  : 'bg-white/20 text-gray-300 hover:bg-white/30'
-              }`}
-            >
-              My Tracks {isClient ? `(${savedTracks.length})` : '(0)'}
-            </motion.button>
-            <motion.a
-              href="/live"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white hover:from-pink-600 hover:to-cyan-600 transition-all"
-            >
-              🎧 Infinite Vibes
-            </motion.a>
-            <motion.a
-              href="/pricing"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 rounded-xl bg-white/20 text-gray-300 hover:bg-white/30 transition-all"
-            >
-              💎 Pricing
-            </motion.a>
-            <AuthButton />
-          </div>
+          <Navigation
+            showHistory={showHistory}
+            showTrending={showTrending}
+            savedTracksCount={isClient ? savedTracks.length : 0}
+            onShowHistory={() => {
+              setShowHistory(true);
+              setShowTrending(false);
+            }}
+            onShowTrending={() => {
+              setShowTrending(true);
+              setShowHistory(false);
+            }}
+            onShowGenerate={() => {
+              setShowHistory(false);
+              setShowTrending(false);
+            }}
+          />
         </motion.div>
 
         {/* Trending Vibes Section */}
