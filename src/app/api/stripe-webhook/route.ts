@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Store Stripe customer ID
-      if (session.customer) {
+      if (session.customer && supabase) {
         await supabase
           .from('users')
           .update({ stripe_customer_id: session.customer as string })
