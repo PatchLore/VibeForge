@@ -28,6 +28,7 @@ export default function LivePlayer({ channel }: LivePlayerProps) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | undefined>(undefined);
   const fadeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const isSwitchingRef = useRef<boolean>(false);
 
   const fallbackPlaylist = fallbackPlaylists[channel as keyof typeof fallbackPlaylists] || fallbackPlaylists.melancholy;
   const playlist = storedTracks.length > 0 ? storedTracks.map(track => track.audio_url) : fallbackPlaylist;
@@ -194,16 +195,48 @@ export default function LivePlayer({ channel }: LivePlayerProps) {
     updateAmplitude();
   };
 
-  const playNextTrack = () => {
-    // If we have stored tracks, cycle through them
-    if (storedTracks.length > 0) {
-      const nextTrack = (currentTrack + 1) % storedTracks.length;
-      setCurrentTrack(nextTrack);
-      setCurrentTrackInfo(storedTracks[nextTrack]);
-    } else {
-      // If no stored tracks, just cycle through fallback playlist
-      const nextTrack = (currentTrack + 1) % fallbackPlaylist.length;
-      setCurrentTrack(nextTrack);
+  const playNextTrack = async () => {
+    const audio = audioRef.current;
+    if (!audio || isSwitchingRef.current) return;
+
+    // Check if we have any tracks to play
+    if (storedTracks.length === 0 && fallbackPlaylist.length === 0) {
+      console.log('No tracks available to play');
+      return;
+    }
+
+    isSwitchingRef.current = true;
+    
+    try {
+      // If we have stored tracks, cycle through them
+      if (storedTracks.length > 0) {
+        const nextTrack = (currentTrack + 1) % storedTracks.length;
+        setCurrentTrack(nextTrack);
+        setCurrentTrackInfo(storedTracks[nextTrack]);
+      } else {
+        // If no stored tracks, just cycle through fallback playlist
+        const nextTrack = (currentTrack + 1) % fallbackPlaylist.length;
+        setCurrentTrack(nextTrack);
+      }
+
+      // Wait a moment for the new track to load, then play
+      setTimeout(async () => {
+        try {
+          if (audioContextRef.current?.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+          await audio.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.error('Error playing next track:', error);
+          setIsPlaying(false);
+        } finally {
+          isSwitchingRef.current = false;
+        }
+      }, 500); // Increased delay to prevent flickering
+    } catch (error) {
+      console.error('Error switching tracks:', error);
+      isSwitchingRef.current = false;
     }
   };
 
@@ -256,7 +289,14 @@ export default function LivePlayer({ channel }: LivePlayerProps) {
 
   return (
     <div className="space-y-8">
-      <audio ref={audioRef} preload="metadata" />
+      <audio 
+        ref={audioRef} 
+        preload="metadata" 
+        onEnded={playNextTrack}
+        onLoadStart={() => setIsLoading(true)}
+        onCanPlay={() => setIsLoading(false)}
+        onError={() => setIsLoading(false)}
+      />
       
       {/* Now Playing Overlay */}
       <NowPlayingOverlay />

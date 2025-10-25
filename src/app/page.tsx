@@ -209,25 +209,17 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-5xl md:text-6xl font-light text-white mb-4"
+            className="text-5xl md:text-6xl font-bold text-white mb-4"
           >
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
-              🎵 Create AI-Generated Music & Art Instantly
+              Create art that matches your music.
             </span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-xl text-gray-300 mb-4"
-          >
-            Soundswoop
-          </motion.p>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-base text-gray-400 mb-8 max-w-2xl mx-auto"
+            className="text-xl md:text-2xl text-gray-400 mt-4"
           >
             Describe a vibe, and let AI compose your soundtrack.
           </motion.p>
