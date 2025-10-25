@@ -87,7 +87,7 @@ export function useAuth() {
     if (!supabase) throw new Error('Supabase not configured');
     
     const { error } = await supabase!.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/verified`,
     });
     
     if (error) throw error;
@@ -99,7 +99,7 @@ export function useAuth() {
     const { data, error } = await supabase!.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
       },
     });
     
@@ -113,7 +113,7 @@ export function useAuth() {
     const { data, error } = await supabase!.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
       },
     });
     

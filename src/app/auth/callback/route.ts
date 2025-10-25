@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const type = searchParams.get('type');
   const next = searchParams.get('next') ?? '/pricing';
 
   if (code) {
@@ -27,8 +28,15 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    
     if (!error) {
+      // Check if this is an email verification
+      if (type === 'signup' || type === 'recovery') {
+        return NextResponse.redirect(`${origin}/auth/verified`);
+      }
+      
+      // Regular OAuth or password reset
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

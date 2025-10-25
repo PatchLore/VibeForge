@@ -64,8 +64,17 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password);
-      router.push('/pricing');
+      const { data, error } = await signUp(email, password);
+      if (error) throw error;
+      
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        // Email confirmation required
+        setError('Please check your email and click the verification link to complete your account setup.');
+      } else {
+        // User is immediately signed in
+        router.push('/pricing');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     } finally {
