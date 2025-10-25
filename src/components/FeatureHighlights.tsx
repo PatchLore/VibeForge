@@ -44,7 +44,7 @@ export default function FeatureHighlights() {
         viewport={{ once: true }}
         className="text-3xl font-light text-white mb-8 text-center"
       >
-        Why Choose VibeForge?
+        Why Choose Soundswoop?
       </motion.h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

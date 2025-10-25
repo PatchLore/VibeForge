@@ -221,7 +221,7 @@ export default function Home() {
             transition={{ delay: 0.3 }}
             className="text-xl text-gray-300 mb-4"
           >
-            Powered by VibeForge
+            Soundswoop
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 20 }}

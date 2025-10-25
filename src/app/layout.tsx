@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "VibeForge - AI Music Generator | Create Music with AI",
-    template: "%s | VibeForge - AI Music Generator"
+    default: "Soundswoop – AI Music & Art Generator",
+    template: "%s | Soundswoop"
   },
-  description: "Create personalized AI-generated music in seconds. VibeForge uses advanced AI to generate unique soundscapes based on your emotions and vibe. Free AI music creation app powered by Kie.ai.",
+  description: "Create personalized AI-generated music and art in seconds. Soundswoop uses advanced AI to generate unique soundscapes and visuals based on your emotions and vibe. Free AI music and art creation app powered by Kie.ai.",
   keywords: [
     "AI music generator",
     "create music with AI",
@@ -28,12 +28,13 @@ export const metadata: Metadata = {
     "free AI music",
     "AI soundscape generator",
     "personalized AI music",
-    "VibeForge",
+    "AI art generator",
+    "Soundswoop",
     "Kie.ai music"
   ],
-  authors: [{ name: "VibeForge" }],
-  creator: "VibeForge",
-  publisher: "VibeForge",
+  authors: [{ name: "Soundswoop" }],
+  creator: "Soundswoop",
+  publisher: "Soundswoop",
   metadataBase: new URL("https://soundswoop.com"),
   alternates: {
     canonical: "/",
@@ -42,24 +43,24 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://soundswoop.com",
-    siteName: "VibeForge",
-    title: "VibeForge - AI Music Generator | Create Music with AI",
-    description: "Create personalized AI-generated music in seconds. Free AI music creation powered by Kie.ai.",
+    siteName: "Soundswoop",
+    title: "Soundswoop – AI Music & Art Generator",
+    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation powered by Kie.ai.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "VibeForge - AI Music Generator",
+        alt: "Soundswoop – AI Music & Art Generator",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "VibeForge - AI Music Generator",
-    description: "Create personalized AI-generated music in seconds. Free AI music creation powered by Kie.ai.",
+    title: "Soundswoop – AI Music & Art Generator",
+    description: "Create personalized AI-generated music and art in seconds. Free AI music and art creation powered by Kie.ai.",
     images: ["/og-image.png"],
-    creator: "@vibeforge",
+    creator: "@soundswoop",
   },
   robots: {
     index: true,
@@ -98,7 +99,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "SoftwareApplication",
-              "name": "VibeForge",
+              "name": "Soundswoop",
               "applicationCategory": "MusicApplication",
               "operatingSystem": "Web",
               "offers": {
@@ -111,10 +112,11 @@ export default function RootLayout({
                 "ratingValue": "4.8",
                 "ratingCount": "1250"
               },
-              "description": "Create personalized AI-generated music in seconds. Free AI music creation app powered by Kie.ai.",
+              "description": "Create personalized AI-generated music and art in seconds. Free AI music and art creation app powered by Kie.ai.",
               "screenshot": "https://soundswoop.com/og-image.png",
               "featureList": [
                 "AI Music Generation",
+                "AI Art Generation",
                 "Personalized Soundscapes",
                 "Emotion-Based Music Creation",
                 "Free and Instant",
@@ -130,12 +132,12 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Product",
-              "name": "VibeForge AI Music Generator",
+              "name": "Soundswoop AI Music & Art Generator",
               "image": "https://soundswoop.com/og-image.png",
-              "description": "AI-powered music generator that creates personalized soundscapes based on your emotions and vibe.",
+              "description": "AI-powered music and art generator that creates personalized soundscapes and visuals based on your emotions and vibe.",
               "brand": {
                 "@type": "Brand",
-                "name": "VibeForge"
+                "name": "Soundswoop"
               },
               "category": "Music Creation Software",
               "offers": {

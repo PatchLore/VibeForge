@@ -80,7 +80,7 @@ export default function LivePage() {
               className="text-2xl font-light text-white"
             >
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
-                VibeForge
+                Soundswoop
               </span>
             </motion.a>
             
