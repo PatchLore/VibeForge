@@ -26,6 +26,11 @@ export async function generateMusic(prompt: string) {
   const apiKey = KIE_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
+  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://vibe-forge.vercel.app/api/callback";
+  console.log("🎵 Calling Kie.ai music generation API...");
+  console.log("📡 Callback URL:", callbackUrl);
+  console.log("📝 Prompt:", prompt);
+
   const response = await fetch(`${BASE_URL}/generate`, {
     method: "POST",
     headers: {
@@ -37,15 +42,21 @@ export async function generateMusic(prompt: string) {
       customMode: false,
       instrumental: true,
       model: "V5",
-      callBackUrl: process.env.KIE_CALLBACK_URL || "https://vibe-forge.vercel.app/api/callback",
+      callBackUrl: callbackUrl,
     }),
   });
 
+  console.log("📡 Kie.ai response status:", response.status);
+
   const data = await response.json();
+  console.log("📡 Kie.ai response data:", JSON.stringify(data, null, 2));
+  
   if (!response.ok || data.code !== 200) {
     console.error("🎵 Music generation error:", data);
     throw new Error(`Music generation failed: ${data.msg}`);
   }
+  
+  console.log("✅ Task ID received:", data.data.taskId);
   return data.data.taskId;
 }
 
