@@ -6,6 +6,13 @@ export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   try {
+    // 🔧 CRITICAL FIX: Only respond to exact /api/status path
+    const url = new URL(req.url);
+    if (!url.pathname.endsWith("/api/status")) {
+      console.log("🚫 [ROUTING] /api/status rejecting request to:", url.pathname);
+      return NextResponse.next();
+    }
+
     console.log("🚀 [DEPLOYMENT] /api/status endpoint reached - Vercel deployment successful!");
     console.log("🔍 [DEPLOYMENT] Request URL:", req.url);
 
