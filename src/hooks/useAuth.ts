@@ -93,11 +93,41 @@ export function useAuth() {
     if (error) throw error;
   };
 
+  const signInWithGoogle = async () => {
+    if (!supabase) throw new Error('Supabase not configured');
+    
+    const { data, error } = await supabase!.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const signInWithApple = async () => {
+    if (!supabase) throw new Error('Supabase not configured');
+    
+    const { data, error } = await supabase!.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    
+    if (error) throw error;
+    return data;
+  };
+
   return {
     ...authState,
     signIn,
     signUp,
     signOut,
     resetPassword,
+    signInWithGoogle,
+    signInWithApple,
   };
 }

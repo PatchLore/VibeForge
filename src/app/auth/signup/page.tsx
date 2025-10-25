@@ -15,7 +15,7 @@ export default function SignUpPage() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle, signInWithApple } = useAuth();
   const router = useRouter();
 
   const validateEmail = (email: string) => {
@@ -69,6 +69,32 @@ export default function SignUpPage() {
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await signInWithGoogle();
+      // OAuth redirect will handle the rest
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up with Google');
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignUp = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await signInWithApple();
+      // OAuth redirect will handle the rest
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up with Apple');
       setLoading(false);
     }
   };
@@ -226,9 +252,11 @@ export default function SignUpPage() {
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center px-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+              onClick={handleGoogleSignUp}
+              disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+              className="flex items-center justify-center px-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -236,17 +264,19 @@ export default function SignUpPage() {
                 <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Google
+              {loading ? 'Loading...' : 'Google'}
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center px-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
+              onClick={handleAppleSignUp}
+              disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+              className="flex items-center justify-center px-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2.156-.172-4.436 1.182-5.61 1.182-1.17 0-2.99-1.15-4.91-1.12-2.52.026-4.84 1.47-6.13 3.73-2.67 4.67-.68 11.65 1.92 15.46 1.27 1.88 2.78 3.96 4.78 3.88 1.95-.08 2.69-1.26 5.05-1.26 2.33 0 3.05 1.26 5.1 1.22 2.1-.04 3.45-1.9 4.7-3.8 1.47-2.2 2.08-4.33 2.12-4.45-.05-.02-2.6-1.01-2.63-4.01-.03-2.52 2.05-3.73 2.16-3.84-1.19-1.73-3.04-2.01-3.7-2.04z"/>
               </svg>
-              Apple
+              {loading ? 'Loading...' : 'Apple'}
             </motion.button>
           </div>
         </div>
