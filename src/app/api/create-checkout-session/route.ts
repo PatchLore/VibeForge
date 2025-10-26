@@ -35,13 +35,22 @@ export async function POST(request: NextRequest) {
           get(name: string) {
             return cookieStore.get(name)?.value;
           },
+          set(name: string, value: string, options: any) {
+            cookieStore.set({ name, value, ...options });
+          },
+          remove(name: string, options: any) {
+            cookieStore.set({ name, value: '', ...options });
+          },
         },
       }
     );
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/auth/signup`);
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in to continue' },
+        { status: 401 }
+      );
     }
 
     const { plan } = await request.json();

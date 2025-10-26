@@ -35,18 +35,24 @@ export default function PricingPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Important: Ensures cookies are sent with the request
         body: JSON.stringify({
           plan,
         }),
       });
 
-      if (response.redirected) {
-        // User is not authenticated, redirect to signup
-        window.location.href = response.url;
-        return;
-      }
-
       const data = await response.json();
+      
+      if (!response.ok) {
+        // Handle 401 Unauthorized or other errors
+        if (response.status === 401) {
+          // User is not authenticated, redirect to signup
+          alert('Please sign in to continue with checkout');
+          window.location.href = '/auth/signup';
+          return;
+        }
+        throw new Error(data.error || 'Failed to start checkout');
+      }
       
       if (data.url) {
         window.location.href = data.url;
