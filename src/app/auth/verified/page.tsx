@@ -1,10 +1,29 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 
 export default function VerifiedPage() {
+  const router = useRouter();
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    // Auto-redirect to dashboard after 3 seconds
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          router.push('/dashboard');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [router]);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
       {/* Animated gradient orb backgrounds */}
@@ -25,12 +44,12 @@ export default function VerifiedPage() {
           className="flex justify-center mb-8"
         >
           <div className="relative">
-            <CheckCircle className="w-24 h-24 text-green-400" />
+            <CheckCircle className="w-24 h-24 text-purple-400" />
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.4 }}
-              className="absolute inset-0 bg-green-400/20 rounded-full blur-xl"
+              className="absolute inset-0 bg-purple-400/20 rounded-full blur-xl"
             />
           </div>
         </motion.div>
@@ -42,11 +61,11 @@ export default function VerifiedPage() {
           transition={{ delay: 0.3 }}
         >
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            ✅ Your Soundswoop account has been verified. Welcome aboard!
+            ✅ Email Verified
           </h1>
           
           <p className="text-gray-300 text-lg mb-8">
-            You're all set! Your email has been verified and you can now access all features of Soundswoop.
+            Your Soundswoop account has been verified successfully! You can now explore AI-generated music & art instantly.
           </p>
         </motion.div>
 
@@ -57,29 +76,31 @@ export default function VerifiedPage() {
           transition={{ delay: 0.5 }}
           className="space-y-4"
         >
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Link
-              href="/dashboard"
-              className="cta-button w-full py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-200 inline-block"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              Go to Dashboard
-            </Link>
-          </motion.div>
-          
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Link
-              href="/pricing"
-              className="w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-200 inline-block bg-white/10 backdrop-blur-lg hover:bg-white/20 text-white border border-white/20"
+              <Link
+                href="/dashboard"
+                className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all text-white font-semibold inline-block w-full sm:w-auto"
+              >
+                Go to Dashboard
+              </Link>
+            </motion.div>
+            
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              View Pricing Plans
-            </Link>
-          </motion.div>
+              <Link
+                href="/pricing"
+                className="px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-all text-white font-semibold inline-block w-full sm:w-auto"
+              >
+                Explore Plans
+              </Link>
+            </motion.div>
+          </div>
         </motion.div>
 
         {/* Additional Info */}
@@ -91,6 +112,9 @@ export default function VerifiedPage() {
         >
           <p className="text-gray-400 text-sm">
             Ready to create amazing AI music and art? Let's get started!
+          </p>
+          <p className="text-gray-500 text-xs mt-2">
+            Redirecting to dashboard in {countdown} second{countdown !== 1 ? 's' : ''}...
           </p>
         </motion.div>
       </motion.div>
