@@ -137,6 +137,22 @@ export async function POST(request: NextRequest) {
         const prompt = completedSong.prompt || 'Generated SoundPainting';
         const mood = prompt.split(' ')[0].toLowerCase();
         
+        // Check if track already exists to prevent duplicates
+        const { data: existingTrack } = await supabase
+          .from('tracks')
+          .select('id')
+          .eq('task_id', taskId)
+          .maybeSingle();
+        
+        if (existingTrack) {
+          console.log('⚠️ Track already exists for task_id:', taskId, '- Skipping insert');
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Track already saved',
+            duplicate: true
+          });
+        }
+        
         console.log('💾 Saving track to database...');
         const trackData = {
           task_id: taskId,
