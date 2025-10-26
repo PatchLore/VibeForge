@@ -35,18 +35,73 @@ export async function POST(request: NextRequest) {
     console.log('🎵 ========== CALLBACK RECEIVED ==========');
     console.log('⏰ Timestamp:', new Date().toISOString());
 
-    // Parse API callback format
+    // Parse incoming body safely
     const callbackData = body.data;
     const taskId = callbackData?.task_id;
-    const callbackType = callbackData?.callbackType;
+    const callbackType = callbackData?.callbackType || callbackData?.type;
+    const status = callbackData?.status;
     const songs = callbackData?.data || [];
     
     console.log('📊 Callback Summary:');
     console.log('   - Type:', callbackType);
+    console.log('   - Status:', status);
     console.log('   - Task ID:', taskId);
     console.log('   - Songs Count:', songs.length);
     
-    // Find the first song with audio_url (completed)
+    // Validation: Require task_id
+    if (!taskId) {
+      console.error('❌ Missing task_id in callback');
+      return NextResponse.json(
+        { error: 'Missing task_id' },
+        { status: 400 }
+      );
+    }
+    
+    // Handle processing/queued callbacks - don't save anything yet
+    if (!callbackType || callbackType === "processing" || callbackType === "queued" || status === "processing" || status === "queued") {
+      console.log(`🕒 Audio still processing for task ${taskId}...`);
+      console.log(`   - Type: ${callbackType || 'undefined'}`);
+      console.log(`   - Status: ${status || 'undefined'}`);
+      return NextResponse.json({ 
+        success: true, 
+        received: true, 
+        status: "processing",
+        message: 'Callback received, music still processing' 
+      });
+    }
+    
+    // Handle failed callbacks
+    if (callbackType === 'failed' || status === 'failed' || status === 'error') {
+      console.error('❌ Music generation failed:', callbackData);
+      console.log(`   - Task ID: ${taskId}`);
+      console.log(`   - Type: ${callbackType}`);
+      console.log(`   - Status: ${status}`);
+      
+      // Store failure status (optional)
+      try {
+        await supabase
+          .from('tracks')
+          .insert({
+            task_id: taskId,
+            title: 'Failed Generation',
+            prompt: 'Generation failed',
+            audio_url: null,
+            image_url: null,
+            duration: 0,
+            created_at: new Date().toISOString()
+          });
+      } catch (dbError) {
+        console.error('❌ Database error storing failure:', dbError);
+      }
+      
+      console.log('🎵 ========== END CALLBACK (FAILED) ==========');
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Music generation failed' 
+      }, { status: 400 });
+    }
+    
+    // Handle completed callbacks - find the first song with audio_url
     const completedSong = songs.find((song: any) => song.audio_url && song.audio_url !== '');
     
     if (completedSong) {
@@ -54,6 +109,7 @@ export async function POST(request: NextRequest) {
       console.log('   - Audio URL:', completedSong.audio_url);
       console.log('   - Image URL:', completedSong.image_url);
       console.log('   - Title:', completedSong.title);
+      console.log('   - Duration:', completedSong.duration);
       
       // Store the completed music in Supabase tracks table
       try {
@@ -116,51 +172,27 @@ export async function POST(request: NextRequest) {
         console.error('❌ Database error:', dbError);
       }
       
-      console.log('🎵 ========== END CALLBACK ==========');
+      console.log('🎵 ========== END CALLBACK (SUCCESS) ==========');
       
       return NextResponse.json({ 
         success: true, 
         message: 'Music generation completed successfully' 
       });
-    } else if (callbackType === 'failed') {
-      console.error('❌ Music generation failed:', callbackData);
-      
-      // Store failure status
-      if (supabase) {
-        try {
-          await supabase
-            .from('tracks')
-            .insert({
-              task_id: taskId,
-              title: 'Failed Generation',
-              prompt: 'Generation failed',
-              audio_url: null,
-              image_url: null,
-              duration: 0,
-              created_at: new Date().toISOString()
-            });
-        } catch (dbError) {
-          console.error('❌ Database error:', dbError);
-        }
-      } else {
-        console.warn('⚠️ Supabase client not initialized - skipping failure storage');
-      }
-      
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Music generation failed' 
-      }, { status: 400 });
     } else {
-      // Callback received but no completed song yet (still processing)
-      console.log('⏳ Callback received, but audio still processing. Callback type:', callbackType);
+      // Callback received but no completed song yet (unexpected state)
+      console.log('⏳ Callback received, but no audio_url found in songs.');
+      console.log(`   - Callback type: ${callbackType || 'undefined'}`);
+      console.log(`   - Status: ${status || 'undefined'}`);
+      console.log(`   - Songs array length: ${songs.length}`);
       return NextResponse.json({ 
         success: true, 
-        message: 'Callback received, music still processing' 
+        message: 'Callback received, waiting for audio' 
       });
     }
 
   } catch (error) {
     console.error('❌ Callback error:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { error: 'Callback processing failed' },
       { status: 500 }
