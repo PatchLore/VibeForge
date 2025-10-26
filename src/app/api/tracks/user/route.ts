@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    // Get the current user from session
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,8 +28,21 @@ export async function GET() {
       return NextResponse.json({ tracks: [], error: "Not authenticated" }, { status: 401 });
     }
 
-    // Fetch tracks for the user (including old tracks with null user_id)
-    const { data, error } = await supabase
+    // Use service role client to fetch all tracks (bypassing RLS if needed)
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Fetch tracks for the user
+    // Note: Includes tracks with user_id matching the current user OR null (for backwards compatibility with old tracks)
+    const { data, error } = await supabaseAdmin
       .from("tracks")
       .select("*")
       .or(`user_id.eq.${user.id},user_id.is.null`)

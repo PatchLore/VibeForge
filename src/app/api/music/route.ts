@@ -122,6 +122,21 @@ export async function POST(req: Request) {
     const taskId = await generateMusic(musicPrompt);
     console.log("Task ID:", taskId);
 
+    // Store the task-to-user mapping in generation_tasks table
+    try {
+      const { error: mappingError } = await supabase
+        .from("generation_tasks")
+        .insert([{ task_id: taskId, user_id: user.id }]);
+      
+      if (mappingError) {
+        console.error("❌ Error storing task mapping:", mappingError);
+      } else {
+        console.log("✅ Task mapping stored successfully for task:", taskId, "user:", user.id);
+      }
+    } catch (mappingErr) {
+      console.error("❌ Error storing task mapping:", mappingErr);
+    }
+
     // Deduct credits AFTER successful generation start
     let remainingCredits = userCredits;
     if (creditSystemEnabled) {

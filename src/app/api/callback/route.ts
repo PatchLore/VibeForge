@@ -35,6 +35,21 @@ export async function POST(request: NextRequest) {
       // Store the completed music in Supabase tracks table
       if (supabase) {
         try {
+          // Fetch the user_id from generation_tasks table using task_id
+          let userId = null;
+          const { data: mapping, error: mappingError } = await supabase
+            .from('generation_tasks')
+            .select('user_id')
+            .eq('task_id', taskId)
+            .single();
+          
+          if (!mappingError && mapping) {
+            userId = mapping.user_id;
+            console.log('✅ Found user mapping for task:', taskId, 'user:', userId);
+          } else {
+            console.warn('⚠️ No user mapping found for task:', taskId, 'error:', mappingError);
+          }
+
           // Extract mood from prompt (first word)
           const prompt = completedSong.prompt || 'Generated SoundPainting';
           const mood = prompt.split(' ')[0].toLowerCase();
@@ -43,6 +58,7 @@ export async function POST(request: NextRequest) {
             .from('tracks')
             .insert({
               task_id: taskId,
+              user_id: userId,
               title: completedSong.title || `Soundswoop - ${new Date().toLocaleDateString()}`,
               prompt: prompt,
               audio_url: completedSong.audio_url,
@@ -56,7 +72,16 @@ export async function POST(request: NextRequest) {
           if (error) {
             console.error('❌ Database insert error:', error);
           } else {
-            console.log('✅ Music saved to database:', insertData);
+            console.log('✅ Music saved to database with user_id:', userId);
+            
+            // Optionally delete the mapping after successful insert to keep the table clean
+            if (userId) {
+              await supabase
+                .from('generation_tasks')
+                .delete()
+                .eq('task_id', taskId);
+              console.log('✅ Task mapping deleted for task:', taskId);
+            }
           }
         } catch (dbError) {
           console.error('❌ Database error:', dbError);
