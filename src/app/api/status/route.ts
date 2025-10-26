@@ -38,27 +38,33 @@ export async function GET(req: Request) {
       .from("tracks")
       .select("title,prompt,audio_url,image_url,duration,task_id,created_at")
       .eq("task_id", taskId)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
       console.error("❌ Database error", error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (!data) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       console.log("⏳ Track still pending:", taskId);
       return NextResponse.json({ status: "PENDING" });
     }
 
-    console.log("✅ Track found:", data.task_id);
+    // Handle case where multiple tracks have same task_id (shouldn't happen but be safe)
+    const track = data[0];
+    if (data.length > 1) {
+      console.warn(`⚠️ Multiple tracks found for task_id ${taskId}, using first one`);
+    }
+
+    console.log("✅ Track found:", track.task_id);
     return NextResponse.json({
       status: "SUCCESS",
       track: {
-        title: data.title,
-        prompt: data.prompt,
-        audioUrl: data.audio_url,
-        imageUrl: data.image_url,
-        duration: data.duration,
+        title: track.title,
+        prompt: track.prompt,
+        audioUrl: track.audio_url,
+        imageUrl: track.image_url,
+        duration: track.duration,
       },
     });
   } catch (err: unknown) {
