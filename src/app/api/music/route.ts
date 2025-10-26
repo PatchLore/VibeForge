@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
+import { generateMusic, checkMusicStatus, generateImage, generateTitle } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +66,19 @@ export async function POST(req: Request) {
     console.log("🎵 Expanded Music Prompt:", musicPrompt);
     console.log("🎨 Expanded Art Prompt:", artPrompt);
 
+    // Generate creative title for the track
+    let generatedTitle = 'Generated Track';
+    try {
+      console.log("🎵 Generating creative title...");
+      generatedTitle = await generateTitle(userVibe);
+      console.log("🎵 Generated title:", generatedTitle);
+    } catch (titleError) {
+      console.error("❌ Title generation failed:", titleError);
+      // Fallback to a simple title based on vibe
+      const words = userVibe.split(' ').slice(0, 2);
+      generatedTitle = words.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Generated Track';
+    }
+
     // Step 1: Generate music using the expanded prompt
     console.log("🎵 Starting music generation...");
     const taskId = await generateMusic(musicPrompt);
@@ -94,6 +107,7 @@ export async function POST(req: Request) {
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
+      title: generatedTitle,
       expandedPrompts: {
         music: musicPrompt,
         art: artPrompt

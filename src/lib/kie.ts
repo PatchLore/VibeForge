@@ -75,6 +75,38 @@ export async function checkMusicStatus(taskId: string) {
   return data.data?.response?.sunoData?.[0];
 }
 
+export async function generateTitle(vibe: string): Promise<string> {
+  const apiKey = API_KEYS.image; // Using image API key for text generation
+  if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for title generation");
+
+  const prompt = `Generate a short, creative song name (2-4 words) inspired by this vibe: '${vibe}'. Avoid generic words like Track or Song. Examples: "Midnight Reverie", "Electric Dreams", "Cosmic Drift". Return only the title, no quotes or extra text.`;
+
+  const response = await fetch(`${BASE_URL}/generate/text`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: prompt,
+      model: "GPT-4",
+      maxTokens: 20,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.code !== 200) {
+    console.error("🎵 Title generation error:", data);
+    // Fallback to a simple generated title
+    const words = vibe.split(' ').slice(0, 2);
+    return words.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Generated Track';
+  }
+
+  const generatedTitle = data.data?.response?.text?.trim() || 'Generated Track';
+  console.log("🎵 Generated title:", generatedTitle);
+  return generatedTitle;
+}
+
 export async function generateImage(prompt: string) {
   const apiKey = API_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
@@ -86,10 +118,10 @@ export async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: `Abstract painting inspired by: ${prompt}`,
+      prompt: `Digital painting inspired by: ${prompt}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork`,
       model: "Seedream",
       resolution: "1024x1024",
-      style: "ethereal, abstract, cinematic lighting, calming colors",
+      style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting, painterly texture",
     }),
   });
 

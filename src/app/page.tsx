@@ -95,6 +95,11 @@ export default function Home() {
       if (data.remainingCredits !== undefined) {
         setRemainingCredits(data.remainingCredits);
       }
+
+      // Set the generated title
+      if (data.title) {
+        setCurrentTrackTitle(data.title);
+      }
       
       if (!response.ok) {
         throw new Error('Failed to generate SoundPainting');
@@ -453,9 +458,11 @@ export default function Home() {
                     setVideoUrl(null);
                     setVibe('');
                     setAudioSource(null);
+                    setCurrentTrackTitle('');
                   }}
                   source={audioSource}
                   onCreditsUpdate={(credits) => setRemainingCredits(credits)}
+                  trackTitle={currentTrackTitle}
                 />
               )}
             </div>

@@ -104,7 +104,7 @@ export function generateExpandedPrompt(vibe: string): ExpandedPrompts {
   
   // Generate art prompt
   const visualElements = detectedStyles.visual.slice(0, 4).join(', ');
-  const artPrompt = `abstract digital art inspired by "${vibe}", featuring ${visualElements}, dynamic composition, vibrant yet harmonious colors, atmospheric lighting, ethereal mood, cinematic quality, high detail, evocative and immersive visual narrative`;
+  const artPrompt = `Digital painting inspired by "${vibe}", featuring ${visualElements}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork, professional art quality`;
   
   return {
     musicPrompt,

@@ -10,6 +10,7 @@ interface UnifiedPlayerProps {
   onNewGeneration: () => void;
   source?: 'generated' | 'fallback' | null;
   onCreditsUpdate?: (remainingCredits: number) => void;
+  trackTitle?: string;
 }
 
 export default function UnifiedPlayer({ 
@@ -18,7 +19,8 @@ export default function UnifiedPlayer({
   vibe, 
   onNewGeneration, 
   source,
-  onCreditsUpdate 
+  onCreditsUpdate,
+  trackTitle
 }: UnifiedPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -250,7 +252,9 @@ export default function UnifiedPlayer({
       
       {/* Track Info */}
       <div className="text-center">
-        <h3 className="text-2xl font-light text-white mb-2">Your Emotional Vibe</h3>
+        <h3 className="text-2xl font-light text-white mb-2">
+          {trackTitle || 'Your Emotional Vibe'}
+        </h3>
         <p className="text-gray-300">Forged from your feelings</p>
         
         {/* Source Badge */}
