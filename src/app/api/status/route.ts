@@ -34,10 +34,11 @@ export async function GET(req: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data, error } = await supabase
+    const { data: tracks, error } = await supabase
       .from("tracks")
-      .select("title,prompt,audio_url,image_url,duration,task_id,created_at")
+      .select("*")
       .eq("task_id", taskId)
+      .order("created_at", { ascending: false })
       .limit(1);
 
     if (error) {
@@ -45,28 +46,27 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log("⏳ Track still pending:", taskId);
-      return NextResponse.json({ status: "PENDING" });
+    // Check if track exists and has audio_url (completed)
+    if (tracks?.length && tracks[0].audio_url) {
+      const track = tracks[0];
+      console.log("🎧 [STATUS CHECK]", taskId, "→", "completed");
+      console.log("✅ Track found with audio_url:", track.audio_url);
+      
+      return NextResponse.json({
+        status: "completed",
+        track: {
+          title: track.title,
+          prompt: track.prompt || track.mood,
+          audioUrl: track.audio_url,
+          imageUrl: track.image_url,
+          duration: track.duration,
+        },
+      });
     }
 
-    // Handle case where multiple tracks have same task_id (shouldn't happen but be safe)
-    const track = data[0];
-    if (data.length > 1) {
-      console.warn(`⚠️ Multiple tracks found for task_id ${taskId}, using first one`);
-    }
-
-    console.log("✅ Track found:", track.task_id);
-    return NextResponse.json({
-      status: "SUCCESS",
-      track: {
-        title: track.title,
-        prompt: track.prompt,
-        audioUrl: track.audio_url,
-        imageUrl: track.image_url,
-        duration: track.duration,
-      },
-    });
+    // No track yet or no audio_url
+    console.log("🎧 [STATUS CHECK]", taskId, "→", "pending");
+    return NextResponse.json({ status: "pending" });
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error("💥 Unexpected error in /api/status:", errorMessage);

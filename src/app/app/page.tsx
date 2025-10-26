@@ -188,7 +188,8 @@ export default function AppPage() {
         const response = await fetch(`/api/status?taskId=${taskId}`);
         const json = await response.json();
 
-        if (json.success && json.track) {
+        if (json.status === "completed" && json.track) {
+          console.log('✅ Track completed:', json.track);
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl || null);
           setAudioSource('generated');
@@ -198,6 +199,9 @@ export default function AppPage() {
           
           setIsGenerating(false);
           return;
+        } else if (json.status === "pending") {
+          // Still processing, continue polling
+          console.log('⏳ Track still pending, polling again...');
         } else if (json.error) {
           setError(json.error);
           setIsGenerating(false);
