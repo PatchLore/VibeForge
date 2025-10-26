@@ -45,15 +45,18 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
         ?.from('profiles')
         .select('credits')
         .eq('user_id', user.id)
-        .single() || {};
+        .maybeSingle() || {};
       
       if (error) {
         console.error('Error fetching credits:', error);
         setCredits(0);
-      } else {
+      } else if (profileData) {
         const newCredits = profileData?.credits || 0;
         console.log('💎 Credits fetched from database (direct query):', newCredits);
         setCredits(newCredits);
+      } else {
+        console.warn('No profile found for user, setting credits to 0');
+        setCredits(0);
       }
 
     } catch (err) {
