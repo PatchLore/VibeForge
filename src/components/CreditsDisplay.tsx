@@ -39,15 +39,19 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
 
       setUserId(user.id);
 
-      // Get credits using the RPC function
-      const { data: creditsData, error } = await supabase?.rpc('get_credits') || {};
+      // Get credits directly from profiles table instead of RPC
+      const { data: profileData, error } = await supabase
+        ?.from('profiles')
+        .select('credits')
+        .eq('user_id', user.id)
+        .single() || {};
       
       if (error) {
         console.error('Error fetching credits:', error);
         setCredits(0);
       } else {
-        const newCredits = creditsData?.[0]?.credits || 0;
-        console.log('💎 Credits fetched from database:', newCredits);
+        const newCredits = profileData?.credits || 0;
+        console.log('💎 Credits fetched from database (direct query):', newCredits);
         setCredits(newCredits);
       }
 
