@@ -15,13 +15,13 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
   const [userId, setUserId] = useState<string | null>(null);
   const channelRef = useRef<any>(null);
 
-  // Update credits when external credits change
+  // Update credits when external credits change (but only if we don't have a value yet)
   useEffect(() => {
-    if (externalCredits !== undefined) {
+    if (externalCredits !== undefined && credits === null && !loading) {
       setCredits(externalCredits);
       setLoading(false);
     }
-  }, [externalCredits]);
+  }, [externalCredits, credits, loading]);
 
   // Fetch credits function
   const fetchCredits = useCallback(async () => {
@@ -47,6 +47,7 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
         setCredits(0);
       } else {
         const newCredits = creditsData?.[0]?.credits || 0;
+        console.log('💎 Credits fetched from database:', newCredits);
         setCredits(newCredits);
       }
 
