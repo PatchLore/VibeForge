@@ -24,13 +24,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('🎵 ========== CALLBACK RECEIVED ==========');
-  console.log('⏰ Timestamp:', new Date().toISOString());
-  console.log('🌐 Request URL:', request.url);
+  console.log('🎧 [CALLBACK RECEIVED]', new Date().toISOString());
+  console.log('🎧 [CALLBACK] Request URL:', request.url);
+  console.log('🎧 [CALLBACK] Headers:', Object.fromEntries(request.headers.entries()));
   
   try {
     const body = await request.json();
-    console.log('📦 Callback Body:', JSON.stringify(body, null, 2));
+    console.log('🎧 [CALLBACK] Body:', JSON.stringify(body, null, 2));
+    
+    console.log('🎵 ========== CALLBACK RECEIVED ==========');
+    console.log('⏰ Timestamp:', new Date().toISOString());
 
     // Parse API callback format
     const callbackData = body.data;

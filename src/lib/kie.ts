@@ -26,6 +26,7 @@ export async function generateMusic(prompt: string) {
   const apiKey = API_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
+  console.log("🔍 KIE_CALLBACK_URL env var:", process.env.KIE_CALLBACK_URL);
   const callbackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
   
   const requestBody = {
@@ -38,7 +39,7 @@ export async function generateMusic(prompt: string) {
 
   console.log("🎵 ========== MUSIC GENERATION REQUEST ==========");
   console.log("📡 API Endpoint:", `${BASE_URL}/generate`);
-  console.log("📡 Callback URL:", callbackUrl);
+  console.log("📡 Callback URL (active):", callbackUrl);
   console.log("📝 Prompt:", prompt);
   console.log("📦 Request Body:", JSON.stringify(requestBody, null, 2));
   console.log("⏰ Timestamp:", new Date().toISOString());
