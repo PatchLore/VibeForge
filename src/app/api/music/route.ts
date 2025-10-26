@@ -167,7 +167,7 @@ export async function POST(req: Request) {
         })
         .eq("user_id", user.id)
         .select("credits")
-        .single();
+        .maybeSingle(); // Use maybeSingle() to handle missing profiles gracefully
       
       if (deductError) {
         console.error("❌ Error deducting credits:", deductError);
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
         remainingCredits = updatedProfile.credits;
         console.log(`✅ Credits deducted successfully. Remaining: ${remainingCredits}`);
       } else {
-        console.warn("⚠️ No profile updated, keeping original credits");
+        console.warn("⚠️ No profile updated or profile not found, keeping original credits");
       }
     }
 
