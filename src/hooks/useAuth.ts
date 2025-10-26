@@ -67,13 +67,13 @@ export function useAuth() {
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase!.auth.signUp({
+    const response = await supabase!.auth.signUp({
       email,
       password,
     });
     
-    if (error) throw error;
-    return data;
+    if (response.error) throw response.error;
+    return response;
   };
 
   const signOut = async () => {
