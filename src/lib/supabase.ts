@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr';
 
-// Client-side Supabase client (for browser)
+// Client-side Supabase client (for browser) - Using SSR for cookie support
 export const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-  ? createClient(
+  ? createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL, 
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     )
