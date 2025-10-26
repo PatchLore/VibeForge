@@ -15,13 +15,14 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
   const [userId, setUserId] = useState<string | null>(null);
   const channelRef = useRef<any>(null);
 
-  // Update credits when external credits change (but only if we don't have a value yet)
+  // Update credits when external credits change (from API response - always authoritative)
   useEffect(() => {
-    if (externalCredits !== undefined && credits === null && !loading) {
+    if (externalCredits !== undefined && externalCredits !== null) {
+      console.log('💎 External credits received from API:', externalCredits);
       setCredits(externalCredits);
       setLoading(false);
     }
-  }, [externalCredits, credits, loading]);
+  }, [externalCredits]);
 
   // Fetch credits function
   const fetchCredits = useCallback(async () => {

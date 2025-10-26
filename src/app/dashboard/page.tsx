@@ -21,13 +21,18 @@ export default function Dashboard() {
 
   const fetchCredits = async () => {
     try {
-      const { data, error } = await supabase?.rpc('get_credits') || {};
+      // Query profiles table directly instead of using get_credits RPC
+      const { data, error } = await supabase
+        ?.from('profiles')
+        .select('credits')
+        .eq('user_id', user?.id)
+        .single() || {};
       
       if (error) {
         console.error('Error fetching credits:', error);
         setCredits(0);
       } else {
-        setCredits(data?.[0]?.credits || 0);
+        setCredits(data?.credits || 0);
       }
     } catch (err) {
       console.error('Unexpected error fetching credits:', err);
