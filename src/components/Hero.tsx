@@ -49,26 +49,22 @@ export default function Hero() {
           transition={{ duration: 1.1 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <motion.button
+          <motion.a
+            href="/auth/signup"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() =>
-              document.getElementById("generator")?.scrollIntoView({ behavior: "smooth" })
-            }
             className="bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 text-white font-semibold text-lg px-8 py-6 rounded-full hover:opacity-90 transition-opacity shadow-xl"
           >
-            🎵 Generate My Vibe
-          </motion.button>
-          <motion.button
+            🎵 Start Creating Free
+          </motion.a>
+          <motion.a
+            href="/auth/login"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() =>
-              document.getElementById("presets")?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="text-white/70 hover:text-white transition-colors text-base"
+            className="text-white/70 hover:text-white transition-colors text-base px-6 py-3 rounded-full border border-white/30 hover:border-white/50 hover:bg-white/10"
           >
-            Inspire Me →
-          </motion.button>
+            Sign In →
+          </motion.a>
         </motion.div>
 
         <motion.div
