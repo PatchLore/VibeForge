@@ -53,7 +53,7 @@ export default function Hero() {
             href="/auth/signup"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 text-white font-semibold text-lg px-8 py-6 rounded-full hover:opacity-90 transition-opacity shadow-xl"
+            className="bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 text-white font-semibold text-xl px-10 py-6 rounded-full hover:opacity-90 transition-opacity shadow-xl border-2 border-white/20"
           >
             🎵 Start Creating Free
           </motion.a>
