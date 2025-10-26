@@ -9,7 +9,6 @@ import TrackCard from '@/components/TrackCard';
 import PromptPresets from '@/components/PromptPresets';
 import GenerationProgress from '@/components/GenerationProgress';
 import FeedbackButtons from '@/components/FeedbackButtons';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
@@ -27,7 +26,8 @@ export default function AppPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showTrending, setShowTrending] = useState(false);
-  const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('soundswoop-tracks', []);
+  const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+  const [tracksLoading, setTracksLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
@@ -55,6 +55,37 @@ export default function AppPage() {
       router.push('/auth/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserTracks();
+    }
+  }, [user]);
+
+  const fetchUserTracks = async () => {
+    try {
+      setTracksLoading(true);
+      const response = await fetch('/api/tracks/user');
+      const data = await response.json();
+      
+      if (data.tracks) {
+        // Convert Supabase tracks to SavedTrack format
+        const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => ({
+          id: track.id,
+          audioUrl: track.audio_url,
+          imageUrl: track.image_url,
+          mood: track.prompt || track.title,
+          generatedAt: track.created_at,
+          duration: track.duration || 600,
+        }));
+        setSavedTracks(convertedTracks);
+      }
+    } catch (error) {
+      console.error('Error fetching user tracks:', error);
+    } finally {
+      setTracksLoading(false);
+    }
+  };
 
   // Show loading while checking auth
   if (loading) {
@@ -136,17 +167,8 @@ export default function AppPage() {
           setVideoUrl(data.imageUrl || null);
           setAudioSource(data.provider === 'suno-api' ? 'generated' : 'fallback');
           
-          if (isClient) {
-            const newTrack: SavedTrack = {
-              id: Date.now().toString(),
-              audioUrl: data.audioUrl,
-              imageUrl: data.imageUrl || undefined,
-              mood: vibe,
-              generatedAt: new Date().toISOString(),
-              duration: data.duration || 600,
-            };
-            setSavedTracks(prev => [newTrack, ...prev]);
-          }
+          // Refresh tracks list to include the new track
+          fetchUserTracks();
         }
         setIsGenerating(false);
       }
@@ -171,17 +193,8 @@ export default function AppPage() {
           setVideoUrl(json.track.imageUrl || null);
           setAudioSource('generated');
           
-          if (isClient) {
-            const newTrack: SavedTrack = {
-              id: Date.now().toString(),
-              audioUrl: json.track.audioUrl,
-              imageUrl: json.track.imageUrl || undefined,
-              mood: vibe,
-              generatedAt: new Date().toISOString(),
-              duration: json.track.duration || 600,
-            };
-            setSavedTracks(prev => [newTrack, ...prev]);
-          }
+          // Refresh tracks list to include the new track
+          fetchUserTracks();
           
           setIsGenerating(false);
           return;
@@ -215,7 +228,7 @@ export default function AppPage() {
         <Navigation
           showHistory={showHistory}
           showTrending={showTrending}
-          savedTracksCount={isClient ? savedTracks.length : 0}
+          savedTracksCount={savedTracks.length}
           onShowHistory={() => {
             setShowHistory(true);
             setShowTrending(false);
@@ -253,7 +266,11 @@ export default function AppPage() {
             transition={{ duration: 0.5 }}
             className="space-y-4"
           >
-            {!isClient || savedTracks.length === 0 ? (
+            {tracksLoading ? (
+              <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 text-center">
+                <div className="animate-pulse text-white text-lg">Loading your tracks...</div>
+              </div>
+            ) : savedTracks.length === 0 ? (
               <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 text-center">
                 <p className="text-gray-300 text-lg">No vibes yet. Forge your first emotional soundscape!</p>
               </div>
