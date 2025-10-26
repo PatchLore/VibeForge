@@ -121,7 +121,10 @@ export async function POST(req: Request) {
     // Step 1: Generate music using the expanded prompt
     console.log("🎵 Starting music generation...");
     const taskId = await generateMusic(musicPrompt);
-    console.log("Task ID:", taskId);
+    console.log("✅ Generation request sent to Kie.ai");
+    console.log("📋 Task ID:", taskId);
+    console.log("📋 User ID:", user.id);
+    console.log("📋 Callback will be sent to: https://www.soundswoop.com/api/callback");
 
     // Store the task-to-user mapping in generation_tasks table
     try {

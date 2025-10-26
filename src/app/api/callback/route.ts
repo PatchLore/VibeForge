@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
     const completedSong = songs.find((song: any) => song.audio_url && song.audio_url !== '');
     
     if (completedSong) {
+      console.log('🎧 [CALLBACK COMPLETED] task_id:', taskId);
       console.log('✅ Music generation completed!');
       console.log('   - Audio URL:', completedSong.audio_url);
       console.log('   - Image URL:', completedSong.image_url);
@@ -149,15 +150,17 @@ export async function POST(request: NextRequest) {
         };
         console.log('📦 Track Data:', JSON.stringify(trackData, null, 2));
         
-        const { data: insertData, error } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('tracks')
           .insert(trackData);
 
-        if (error) {
-          console.error('❌ Database insert error:', error);
+        if (insertError) {
+          console.error('❌ Failed to save track:', insertError);
+          console.error('❌ Error details:', JSON.stringify(insertError, null, 2));
         } else {
-          console.log('✅ Track saved to database successfully');
-          console.log('   - Inserted data:', insertData);
+          console.log('✅ Track saved successfully');
+          console.log('   - Track data:', JSON.stringify(trackData, null, 2));
+          console.log('   - User ID:', userId || 'anonymous');
           
           // Optionally delete the mapping after successful insert to keep the table clean
           if (userId) {
@@ -167,16 +170,34 @@ export async function POST(request: NextRequest) {
               .eq('task_id', taskId);
             console.log('✅ Task mapping deleted for task:', taskId);
           }
+          
+          // Fetch updated credits to verify the deduction from /api/music worked
+          if (userId) {
+            const { data: updatedProfile, error: profileError } = await supabase
+              .from('profiles')
+              .select('credits')
+              .eq('user_id', userId)
+              .single();
+            
+            if (profileError) {
+              console.warn('⚠️ Could not fetch updated credits:', profileError);
+            } else {
+              console.log('💎 Updated credits for user:', userId, '→', updatedProfile?.credits);
+            }
+          }
         }
       } catch (dbError) {
         console.error('❌ Database error:', dbError);
       }
       
       console.log('🎵 ========== END CALLBACK (SUCCESS) ==========');
+      console.log('🎉 Generation flow complete.');
       
+      // Return success response
       return NextResponse.json({ 
         success: true, 
-        message: 'Music generation completed successfully' 
+        message: 'Track saved and credits updated',
+        task_id: taskId
       });
     } else {
       // Callback received but no completed song yet (unexpected state)
