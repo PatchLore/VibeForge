@@ -17,6 +17,7 @@ import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -68,11 +69,25 @@ export default function Home() {
     track('Track Generated', { vibe });
     
     try {
+      // Get the current session token for server-side authentication
+      if (!supabase) {
+        setError('Authentication service unavailable');
+        return;
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        setError('Please sign in to generate music');
+        return;
+      }
+
       // Generate SoundPainting (music + image) via the new API
       const response = await fetch('/api/music', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ prompt: vibe, userId: user?.id }),
       });

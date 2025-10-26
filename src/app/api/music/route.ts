@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { generateMusic, checkMusicStatus, generateImage, generateTitle } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
 
@@ -22,9 +23,46 @@ export async function POST(req: Request) {
   console.log("🔍 Request headers:", Object.fromEntries(req.headers.entries()));
   
   try {
+    // Create authenticated Supabase client
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({
+        success: false,
+        message: "Please sign in to generate music"
+      }, { status: 401 });
+    }
+
+    // Set the session token for authentication
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("❌ Authentication error:", authError);
+      return NextResponse.json({
+        success: false,
+        message: "Please sign in to generate music"
+      }, { status: 401 });
+    }
+
+    console.log("✅ User authenticated:", user.id);
+
     const body = await req.json();
     console.log("📝 Request body:", body);
-    const { prompt, userId } = body;
+    const { prompt } = body;
     console.log("📝 Extracted prompt:", prompt);
 
     const userVibe = prompt || "calm";
@@ -33,11 +71,11 @@ export async function POST(req: Request) {
     const creditSystemEnabled = process.env.NEXT_PUBLIC_CREDIT_SYSTEM_ENABLED === 'true';
     let userCredits = 0;
     
-    if (creditSystemEnabled && userId && supabaseAdmin) {
+    if (creditSystemEnabled) {
       console.log("💎 Credit system enabled, checking user credits...");
       
       // Check if user has enough credits (without deducting yet)
-      const { data: creditData, error: creditError } = await supabaseAdmin.rpc("get_credits");
+      const { data: creditData, error: creditError } = await supabase.rpc("get_credits");
       
       if (creditError) {
         console.error("❌ Error checking credits:", creditError);
@@ -50,7 +88,7 @@ export async function POST(req: Request) {
       userCredits = creditData?.[0]?.credits || 0;
       
       if (userCredits < 12) {
-        console.warn('⚠️ Insufficient credits for user:', userId, 'Available:', userCredits);
+        console.warn('⚠️ Insufficient credits for user:', user.id, 'Available:', userCredits);
         return NextResponse.json({
           success: false,
           message: "💎 Not enough credits (need 12)."
@@ -86,9 +124,9 @@ export async function POST(req: Request) {
 
     // Deduct credits AFTER successful generation start
     let remainingCredits = userCredits;
-    if (creditSystemEnabled && userId && supabaseAdmin) {
+    if (creditSystemEnabled) {
       console.log("💎 Deducting credits after successful generation start...");
-      const { data: spendRows, error: deductError } = await supabaseAdmin.rpc("spend_credits", { cost: 12 });
+      const { data: spendRows, error: deductError } = await supabase.rpc("spend_credits", { cost: 12 });
       
       if (deductError) {
         console.error("❌ Error deducting credits:", deductError);
@@ -112,7 +150,7 @@ export async function POST(req: Request) {
         music: musicPrompt,
         art: artPrompt
       },
-      remainingCredits: creditSystemEnabled && userId ? remainingCredits : undefined
+      remainingCredits: creditSystemEnabled ? remainingCredits : undefined
     });
 
   } catch (err: unknown) {
