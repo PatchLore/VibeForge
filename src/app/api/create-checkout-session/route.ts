@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session
+    console.log('Creating Stripe checkout session with:', { priceId, userEmail: user.email });
+    
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -100,6 +102,8 @@ export async function POST(request: NextRequest) {
       },
       customer_email: user.email,
     });
+    
+    console.log('Stripe session created:', session.id);
 
     return NextResponse.json({ 
       url: session.url 
