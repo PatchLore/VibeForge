@@ -17,6 +17,7 @@ import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -28,6 +29,7 @@ const quickVibes = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const [vibe, setVibe] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -73,15 +75,20 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: vibe }),
+        body: JSON.stringify({ prompt: vibe, userId: user?.id }),
       });
 
       const data = await response.json();
       
       // Handle professional error messages
       if (data.success === false) {
-        // Show error message in UI instead of alert
-        setError(data.message);
+        // Handle credit errors specifically
+        if (response.status === 403 && data.message?.includes('credits')) {
+          setError(`💎 ${data.message} Visit the pricing page to get more credits.`);
+        } else {
+          // Show error message in UI instead of alert
+          setError(data.message);
+        }
         return;
       }
       

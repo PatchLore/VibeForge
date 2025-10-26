@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import CreditsDisplay from '@/components/CreditsDisplay';
 
 interface NavigationProps {
   showHistory: boolean;
@@ -109,6 +110,7 @@ export default function Navigation({
         </motion.div>
       ) : user ? (
         <div className="flex items-center gap-3">
+          <CreditsDisplay />
           <div className="text-sm text-gray-300 hidden sm:block">
             {user.email}
           </div>

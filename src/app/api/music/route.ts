@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
-import { deductCredits, getUserCredits, getOrCreateUser, CREDITS_PER_GENERATION } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -30,32 +29,32 @@ export async function POST(req: Request) {
 
     const userVibe = prompt || "calm";
     
-    // Check and deduct credits
-    if (userId) {
-      const userCredits = await getUserCredits(userId);
+    // Check if credit system is enabled and user is authenticated
+    const creditSystemEnabled = process.env.NEXT_PUBLIC_CREDIT_SYSTEM_ENABLED === 'true';
+    
+    if (creditSystemEnabled && userId && supabaseAdmin) {
+      console.log("💎 Credit system enabled, checking user credits...");
       
-      if (!userCredits || userCredits.credits < CREDITS_PER_GENERATION) {
-        console.warn('⚠️ Insufficient credits:', userCredits?.credits);
+      // Check if user has enough credits using the RPC function
+      const { data: spendRows, error } = await supabaseAdmin.rpc("spend_credits", { cost: 12 });
+      
+      if (error) {
+        console.error("❌ Error checking credits:", error);
         return NextResponse.json({
           success: false,
-          error: 'INSUFFICIENT_CREDITS',
-          message: `Not enough credits. You need ${CREDITS_PER_GENERATION} credits to generate music. You have ${userCredits?.credits || 0} credits.`,
-          credits: userCredits?.credits || 0
+          message: "❌ Unable to verify credits. Please try again."
+        }, { status: 400 });
+      }
+      
+      if (!spendRows || spendRows.length === 0) {
+        console.warn('⚠️ Insufficient credits for user:', userId);
+        return NextResponse.json({
+          success: false,
+          message: "💎 Not enough credits (need 12)."
         }, { status: 403 });
       }
-
-      // Deduct credits
-      const deducted = await deductCredits(userId, CREDITS_PER_GENERATION);
-      if (!deducted) {
-        console.error('❌ Failed to deduct credits');
-        return NextResponse.json({
-          success: false,
-          error: 'CREDIT_DEDUCTION_FAILED',
-          message: 'Failed to process credits. Please try again.'
-        }, { status: 500 });
-      }
-
-      console.log(`✅ Deducted ${CREDITS_PER_GENERATION} credits from user ${userId}`);
+      
+      console.log(`✅ Credits deducted successfully. Remaining: ${spendRows[0]?.credits || 0}`);
     }
     
     // Expand the user's vibe into detailed prompts
@@ -80,7 +79,8 @@ export async function POST(req: Request) {
       expandedPrompts: {
         music: musicPrompt,
         art: artPrompt
-      }
+      },
+      remainingCredits: creditSystemEnabled && userId ? await getRemainingCredits(userId) : undefined
     });
 
   } catch (err: unknown) {
@@ -91,5 +91,22 @@ export async function POST(req: Request) {
       success: false,
       message: "🎵 SoundPainting generation is temporarily unavailable. Please try again in a few moments.",
     }, { status: 503 });
+  }
+}
+
+// Helper function to get remaining credits
+async function getRemainingCredits(userId: string) {
+  if (!supabaseAdmin) return null;
+  
+  try {
+    const { data, error } = await supabaseAdmin.rpc("get_credits");
+    if (error) {
+      console.error("Error getting remaining credits:", error);
+      return null;
+    }
+    return data?.[0]?.credits || 0;
+  } catch (err) {
+    console.error("Error in getRemainingCredits:", err);
+    return null;
   }
 }
