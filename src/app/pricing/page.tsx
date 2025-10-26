@@ -15,7 +15,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
-  // Get current user on component mount
+  // Get current user on component mount and listen for auth changes
   useEffect(() => {
     if (!supabase) return;
     
@@ -23,10 +23,25 @@ export default function PricingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
     };
+    
     getUser();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    
+    return () => subscription.unsubscribe();
   }, []);
 
   const startCheckout = async (plan: string) => {
+    // Check if user is authenticated before proceeding
+    if (!user) {
+      alert('Please sign in to continue with checkout');
+      window.location.href = '/auth/signup';
+      return;
+    }
+    
     setLoading(plan);
     
     try {
