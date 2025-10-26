@@ -117,18 +117,20 @@ export async function POST(request: NextRequest) {
         // Fetch the user_id from generation_tasks table using task_id
         console.log('🔍 Looking up user mapping for task_id:', taskId);
         let userId = null;
-        const { data: mapping, error: mappingError } = await supabase
+        const { data: mappingData, error: mappingError } = await supabase
           .from('generation_tasks')
           .select('user_id')
           .eq('task_id', taskId)
-          .single();
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows
         
-        if (!mappingError && mapping) {
-          userId = mapping.user_id;
+        if (!mappingError && mappingData) {
+          userId = mappingData.user_id;
           console.log('✅ Found user mapping - user_id:', userId);
         } else {
           console.warn('⚠️ No user mapping found for task_id:', taskId);
-          console.warn('   - Error:', mappingError);
+          if (mappingError) {
+            console.warn('   - Error:', mappingError);
+          }
         }
 
         // Extract mood from prompt (first word)
@@ -177,12 +179,14 @@ export async function POST(request: NextRequest) {
               .from('profiles')
               .select('credits')
               .eq('user_id', userId)
-              .single();
+              .maybeSingle(); // Use maybeSingle() to handle missing profiles gracefully
             
             if (profileError) {
               console.warn('⚠️ Could not fetch updated credits:', profileError);
-            } else {
+            } else if (updatedProfile) {
               console.log('💎 Updated credits for user:', userId, '→', updatedProfile?.credits);
+            } else {
+              console.warn('⚠️ No profile found for user:', userId);
             }
           }
         }
