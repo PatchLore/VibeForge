@@ -16,9 +16,11 @@ import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export default function AppPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [vibe, setVibe] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -47,6 +49,26 @@ export default function AppPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, loading, router]);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="animate-pulse text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render app content if user is not logged in (will redirect)
+  if (!user) {
+    return null;
+  }
 
   const handleGenerate = async () => {
     if (!vibe.trim()) return;
@@ -188,28 +210,30 @@ export default function AppPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900">
-      {/* Navigation */}
-      <Navigation
-        showHistory={showHistory}
-        showTrending={showTrending}
-        savedTracksCount={isClient ? savedTracks.length : 0}
-        onShowHistory={() => {
-          setShowHistory(true);
-          setShowTrending(false);
-        }}
-        onShowTrending={() => {
-          setShowTrending(true);
-          setShowHistory(false);
-        }}
-        onShowGenerate={() => {
-          setShowHistory(false);
-          setShowTrending(false);
-        }}
-        externalCredits={remainingCredits}
-      />
+      {/* Navigation - Full Width */}
+      <div className="w-full">
+        <Navigation
+          showHistory={showHistory}
+          showTrending={showTrending}
+          savedTracksCount={isClient ? savedTracks.length : 0}
+          onShowHistory={() => {
+            setShowHistory(true);
+            setShowTrending(false);
+          }}
+          onShowTrending={() => {
+            setShowTrending(true);
+            setShowHistory(false);
+          }}
+          onShowGenerate={() => {
+            setShowHistory(false);
+            setShowTrending(false);
+          }}
+          externalCredits={remainingCredits}
+        />
+      </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-12">
+      {/* Main Content - Wider Container */}
+      <div className="max-w-5xl mx-auto px-6 py-8 md:py-12 mt-8 md:mt-12">
         {/* Trending Vibes Section */}
         {showTrending && (
           <motion.div

@@ -43,7 +43,9 @@ export default function Navigation({
   };
 
   return (
-    <div className="flex flex-wrap justify-center gap-3 mb-8">
+    <div className="bg-black/20 backdrop-blur-md border-b border-white/10 py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap justify-center gap-3">
       {/* Main Navigation Buttons */}
       <motion.button
         whileHover={{ scale: 1.05 }}
@@ -154,6 +156,8 @@ export default function Navigation({
           </motion.a>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

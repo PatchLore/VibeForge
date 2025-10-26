@@ -2,15 +2,44 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Hero from '@/components/Hero';
 import BenefitsSection from '@/components/BenefitsSection';
 import Footer from '@/components/Footer';
 import FAQ from '@/components/FAQ';
 import FeatureHighlights from '@/components/FeatureHighlights';
 import MarketingNavigation from '@/components/MarketingNavigation';
+import { useAuth } from '@/hooks/useAuth';
 import '@/styles/homepage.css';
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/app');
+    }
+  }, [user, loading, router]);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="animate-pulse text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render marketing content if user is logged in (will redirect)
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="animate-pulse text-white text-xl">Redirecting...</div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900">
       {/* Navigation */}
@@ -49,8 +78,8 @@ export default function Home() {
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               >
                 <Link
                   href="/auth/signup"
@@ -58,8 +87,8 @@ export default function Home() {
                 >
                   🎵 Start Creating Free
                 </Link>
-              </motion.div>
-              
+        </motion.div>
+
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -83,7 +112,7 @@ export default function Home() {
             </div>
           </div>
         </motion.section>
-      </div>
+        </div>
 
       {/* Footer */}
       <Footer />
