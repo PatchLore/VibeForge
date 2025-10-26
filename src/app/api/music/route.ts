@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { generateMusic, checkMusicStatus, generateImage, generateTitle } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
@@ -141,14 +142,39 @@ export async function POST(req: Request) {
     let remainingCredits = userCredits;
     if (creditSystemEnabled) {
       console.log("💎 Deducting credits after successful generation start...");
-      const { data: spendRows, error: deductError } = await supabase.rpc("spend_credits", { cost: 12 });
+      
+      // Use service role client to bypass RLS for credit deduction
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+      
+      // Direct update to profiles table with proper user_id filter
+      const { data: updatedProfile, error: deductError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          credits: userCredits - 12,
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", user.id)
+        .select("credits")
+        .single();
       
       if (deductError) {
         console.error("❌ Error deducting credits:", deductError);
+        console.error("❌ Deduct error details:", JSON.stringify(deductError, null, 2));
         // Don't fail the generation, just log the error
-      } else if (spendRows && spendRows.length > 0) {
-        remainingCredits = spendRows[0]?.credits || userCredits - 12;
+      } else if (updatedProfile) {
+        remainingCredits = updatedProfile.credits;
         console.log(`✅ Credits deducted successfully. Remaining: ${remainingCredits}`);
+      } else {
+        console.warn("⚠️ No profile updated, keeping original credits");
       }
     }
 
