@@ -22,11 +22,21 @@ export async function getUserCredits(userId: string): Promise<UserCredits | null
       .from('users')
       .select('credits, plan, email')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Error fetching credits:', error);
       return null;
+    }
+
+    if (!data) {
+      console.warn('⚠️ No user found for userId:', userId);
+      return null;
+    }
+
+    if (Array.isArray(data)) {
+      console.warn('⚠️ Multiple users returned for userId:', userId);
+      return data[0]; // Return first record
     }
 
     return data;
@@ -101,9 +111,9 @@ export async function getOrCreateUser(email: string): Promise<string | null> {
       .from('users')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (existingUser) {
+    if (existingUser && !Array.isArray(existingUser)) {
       return existingUser.id;
     }
 
@@ -112,11 +122,21 @@ export async function getOrCreateUser(email: string): Promise<string | null> {
       .from('users')
       .insert({ email, credits: 100 }) // Give new users 100 free credits
       .select('id')
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Error creating user:', error);
       return null;
+    }
+
+    if (!newUser) {
+      console.warn('⚠️ User creation returned no data');
+      return null;
+    }
+
+    if (Array.isArray(newUser)) {
+      console.warn('⚠️ Multiple users created, returning first');
+      return newUser[0].id;
     }
 
     return newUser.id;
