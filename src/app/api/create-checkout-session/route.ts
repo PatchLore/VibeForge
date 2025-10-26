@@ -72,10 +72,13 @@ export async function POST(request: NextRequest) {
     };
 
     const priceId = priceMap[plan];
+    console.log('Stripe price mapping:', { plan, priceId, hasPriceEnv: !!priceMap[plan] });
+    
     if (!priceId) {
+      console.error('Missing Stripe price ID for plan:', plan);
       return NextResponse.json(
-        { error: 'Invalid plan selected' },
-        { status: 400 }
+        { error: `Stripe price ID not configured for plan: ${plan}` },
+        { status: 500 }
       );
     }
 
