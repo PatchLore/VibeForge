@@ -26,38 +26,52 @@ export async function generateMusic(prompt: string) {
   const apiKey = API_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
-  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://soundswoop.com/api/callback";
-  console.log("🎵 Calling music generation API...");
+  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
+  
+  const requestBody = {
+    prompt,
+    customMode: false,
+    instrumental: true,
+    model: "V5",
+    callBackUrl: callbackUrl,
+  };
+
+  console.log("🎵 ========== MUSIC GENERATION REQUEST ==========");
+  console.log("📡 API Endpoint:", `${BASE_URL}/generate`);
   console.log("📡 Callback URL:", callbackUrl);
   console.log("📝 Prompt:", prompt);
+  console.log("📦 Request Body:", JSON.stringify(requestBody, null, 2));
+  console.log("⏰ Timestamp:", new Date().toISOString());
 
-  const response = await fetch(`${BASE_URL}/generate`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt,
-      customMode: false,
-      instrumental: true,
-      model: "V5",
-      callBackUrl: callbackUrl,
-    }),
-  });
+  try {
+    const response = await fetch(`${BASE_URL}/generate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  console.log("📡 API response status:", response.status);
+    console.log("📡 API Response Status:", response.status);
 
-  const data = await response.json();
-  console.log("📡 API response data:", JSON.stringify(data, null, 2));
-  
-  if (!response.ok || data.code !== 200) {
-    console.error("🎵 Music generation error:", data);
-    throw new Error(`Music generation failed: ${data.msg}`);
+    const data = await response.json();
+    console.log("📡 API Response Data:", JSON.stringify(data, null, 2));
+    
+    if (!response.ok || data.code !== 200) {
+      console.error("❌ Music generation error:", data);
+      throw new Error(`Music generation failed: ${data.msg}`);
+    }
+    
+    const taskId = data.data.taskId;
+    console.log("✅ Task ID received:", taskId);
+    console.log("🎵 ========== END GENERATION REQUEST ==========");
+    
+    return taskId;
+  } catch (error) {
+    console.error("💥 Error in generateMusic:", error);
+    throw error;
   }
-  
-  console.log("✅ Task ID received:", data.data.taskId);
-  return data.data.taskId;
 }
 
 export async function checkMusicStatus(taskId: string) {
