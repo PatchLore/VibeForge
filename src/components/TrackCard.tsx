@@ -27,7 +27,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
   const [isLiking, setIsLiking] = useState(false);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    setIsPlaying(prev => !prev);
   };
 
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement>) => {
@@ -83,6 +83,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
               alt={track.title} 
               width={400}
               height={256}
+              unoptimized
               className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105" 
             />
           </div>
@@ -193,6 +194,15 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
 
       {/* Hidden Audio Element */}
       <audio
+        ref={(audio) => {
+          if (audio) {
+            if (isPlaying) {
+              audio.play().catch(err => console.error('Play failed:', err));
+            } else {
+              audio.pause();
+            }
+          }
+        }}
         src={track.audio_url}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}

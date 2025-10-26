@@ -72,16 +72,22 @@ export default function AppPage() {
       console.log('🎧 API response:', data.tracks?.length || 0, 'tracks');
       
       if (data.tracks) {
-        // Convert Supabase tracks to SavedTrack format
-        const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => ({
-          id: track.id,
-          audioUrl: track.audio_url,
-          imageUrl: track.image_url,
-          mood: track.prompt || track.title,
-          generatedAt: track.created_at,
-          duration: track.duration || 600,
-        }));
-        console.log('🎧 Converted tracks:', convertedTracks.length, convertedTracks[0]?.audioUrl ? 'with audio' : 'no audio');
+        // Convert Supabase tracks to SavedTrack format and deduplicate
+        const trackMap = new Map<string, SavedTrack>();
+        data.tracks.forEach((track: any) => {
+          if (!trackMap.has(track.id)) {
+            trackMap.set(track.id, {
+              id: track.id,
+              audioUrl: track.audio_url,
+              imageUrl: track.image_url,
+              mood: track.prompt || track.title,
+              generatedAt: track.created_at,
+              duration: track.duration || 600,
+            });
+          }
+        });
+        const convertedTracks = Array.from(trackMap.values());
+        console.log('🎧 Converted tracks (deduplicated):', convertedTracks.length, convertedTracks[0]?.audioUrl ? 'with audio' : 'no audio');
         setSavedTracks(convertedTracks);
       }
     } catch (error) {
