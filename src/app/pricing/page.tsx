@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
+// Create a browser client that uses cookies
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ? createClient(
+  ? createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     )
@@ -14,20 +15,33 @@ const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   // Get current user on component mount and listen for auth changes
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setIsLoadingUser(false);
+      return;
+    }
     
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        console.log('User from pricing page:', user, 'Error:', error);
+        setUser(user);
+      } catch (error) {
+        console.error('Error getting user:', error);
+        setUser(null);
+      } finally {
+        setIsLoadingUser(false);
+      }
     };
     
     getUser();
     
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event, session?.user?.email);
       setUser(session?.user ?? null);
     });
     
@@ -35,6 +49,12 @@ export default function PricingPage() {
   }, []);
 
   const startCheckout = async (plan: string) => {
+    // Wait for user data to load
+    if (isLoadingUser) {
+      alert('Please wait while we check your authentication status...');
+      return;
+    }
+    
     // Check if user is authenticated before proceeding
     if (!user) {
       alert('Please sign in to continue with checkout');
