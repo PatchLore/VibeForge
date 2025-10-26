@@ -18,7 +18,7 @@ export default function PricingPage() {
     
     const getUser = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabase!.auth.getUser();
         console.log('User from pricing page:', user, 'Error:', error);
         setUser(user);
       } catch (error) {
@@ -32,7 +32,7 @@ export default function PricingPage() {
     getUser();
     
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, session) => {
       console.log('Auth state changed:', _event, session?.user?.email);
       setUser(session?.user ?? null);
     });
