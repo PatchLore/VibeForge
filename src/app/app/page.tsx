@@ -65,8 +65,11 @@ export default function AppPage() {
   const fetchUserTracks = async () => {
     try {
       setTracksLoading(true);
+      console.log('🎧 Fetching user tracks...');
       const response = await fetch('/api/tracks/user');
       const data = await response.json();
+      
+      console.log('🎧 API response:', data.tracks?.length || 0, 'tracks');
       
       if (data.tracks) {
         // Convert Supabase tracks to SavedTrack format
@@ -78,10 +81,11 @@ export default function AppPage() {
           generatedAt: track.created_at,
           duration: track.duration || 600,
         }));
+        console.log('🎧 Converted tracks:', convertedTracks.length, convertedTracks[0]?.audioUrl ? 'with audio' : 'no audio');
         setSavedTracks(convertedTracks);
       }
     } catch (error) {
-      console.error('Error fetching user tracks:', error);
+      console.error('❌ Error fetching user tracks:', error);
     } finally {
       setTracksLoading(false);
     }

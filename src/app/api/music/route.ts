@@ -19,6 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   console.log("🎵 POST /api/music endpoint reached");
+  console.log("🎵 ========== MUSIC GENERATION START ==========");
   console.log("🔍 Request method:", req.method);
   console.log("🔍 Request URL:", req.url);
   console.log("🔍 Request headers:", Object.fromEntries(req.headers.entries()));
@@ -144,7 +145,8 @@ export async function POST(req: Request) {
     // Deduct credits AFTER successful generation start
     let remainingCredits = userCredits;
     if (creditSystemEnabled) {
-      console.log("💎 Deducting credits after successful generation start...");
+      console.log("💎 Credits before deduction:", userCredits);
+      console.log("💎 Deducting 12 credits after successful generation start...");
       
       // Use service role client to bypass RLS for credit deduction
       const supabaseAdmin = createClient(
@@ -175,7 +177,8 @@ export async function POST(req: Request) {
         // Don't fail the generation, just log the error
       } else if (updatedProfile) {
         remainingCredits = updatedProfile.credits;
-        console.log(`✅ Credits deducted successfully. Remaining: ${remainingCredits}`);
+        console.log(`💎 Credits after deduction: ${remainingCredits}`);
+        console.log(`✅ Credits deducted successfully. ${userCredits} → ${remainingCredits}`);
       } else {
         console.warn("⚠️ No profile updated or profile not found, keeping original credits");
       }

@@ -24,8 +24,11 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
+      console.log("🎧 MyTracks fetch → Not authenticated");
       return NextResponse.json({ tracks: [], error: "Not authenticated" }, { status: 401 });
     }
+
+    console.log("🎧 MyTracks fetch → User:", user.id);
 
     // Use service role client to fetch all tracks (bypassing RLS if needed)
     const supabaseAdmin = createClient(
@@ -49,8 +52,13 @@ export async function GET() {
       .limit(50);
 
     if (error) {
-      console.error("Error fetching user tracks:", error);
+      console.error("❌ Error fetching user tracks:", error);
       return NextResponse.json({ tracks: [], error: error.message });
+    }
+
+    console.log(`🎧 MyTracks fetch → ${data?.length || 0} results`);
+    if (data && data.length > 0) {
+      console.log("🎧 First track:", data[0].title, data[0].audio_url ? "has audio" : "no audio");
     }
 
     return NextResponse.json({ tracks: data || [] });
