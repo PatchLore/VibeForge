@@ -180,7 +180,7 @@ export default function AppPage() {
   };
 
   const pollForCompletion = async (taskId: string) => {
-    const maxAttempts = 60;
+    const maxAttempts = 30; // Reduced from 60 to 30 (5 minutes total instead of 10)
     let attempts = 0;
 
     const poll = async () => {
