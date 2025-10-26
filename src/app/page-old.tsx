@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import '@/styles/homepage.css';
 import { motion } from 'framer-motion';
 import UnifiedPlayer from '@/components/UnifiedPlayer';
 import Hero from '@/components/Hero';
@@ -40,7 +39,7 @@ export default function Home() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showTrending, setShowTrending] = useState(false);
-  const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('soundswoop-tracks', []);
+  const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('vibe-forge-tracks', []);
   const [isClient, setIsClient] = useState(false);
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
@@ -124,129 +123,162 @@ export default function Home() {
         throw new Error('Failed to generate SoundPainting');
       }
 
-      // Store expanded prompts for display
-      if (data.expandedPrompts) {
-        setExpandedPrompts(data.expandedPrompts);
-      }
-
-      // Start polling for completion
-      const taskId = data.taskId;
-      if (taskId) {
-        pollForCompletion(taskId);
-      } else {
-        // Fallback: set audio URL directly if provided
-        if (data.audioUrl) {
-          setAudioUrl(data.audioUrl);
-          setVideoUrl(data.imageUrl || null);
-          setAudioSource(data.provider === 'suno-api' ? 'generated' : 'fallback');
-          
-          // Save to local storage
-          if (isClient) {
-            const newTrack: SavedTrack = {
-              id: Date.now().toString(),
-              audioUrl: data.audioUrl,
-              imageUrl: data.imageUrl || undefined,
-              mood: vibe,
-              generatedAt: new Date().toISOString(),
-              duration: data.duration || 600,
-            };
-            setSavedTracks(prev => [newTrack, ...prev]);
-          }
+      // Handle the new response format with taskId
+      if (data.taskId) {
+        // Store expanded prompts for display
+        if (data.expandedPrompts) {
+          setExpandedPrompts(data.expandedPrompts);
+          console.log('🎵 Music Prompt:', data.expandedPrompts.music);
+          console.log('🎨 Art Prompt:', data.expandedPrompts.art);
         }
-        setIsGenerating(false);
+        
+        // Show message that generation has started
+        setError(`🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.`);
+        
+        // Start polling for completion
+        pollForCompletion(data.taskId);
+        return;
       }
-    } catch (err) {
-      console.error('Generation error:', err);
-      setError('Something went wrong. Please try again.');
+      
+      setAudioUrl(data.audioUrl);
+      setVideoUrl(data.imageUrl); // Use imageUrl as videoUrl for display
+      setAudioSource(data.provider === 'suno-api' ? 'generated' : 'fallback');
+      
+      // Save to local storage with SoundPainting data
+      const newTrack: SavedTrack = {
+        id: Date.now().toString(),
+        audioUrl: data.audioUrl,
+        imageUrl: data.imageUrl,
+        mood: vibe,
+        generatedAt: new Date().toISOString(),
+        duration: data.duration || 600,
+        isFavorite: false
+      };
+      setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]); // Keep only last 10 tracks
+    } catch (error) {
+      console.error('Error generating SoundPainting:', error);
+      // Don't set any audio URLs or sources on error
+      setAudioUrl(null);
+      setVideoUrl(null);
+      setAudioSource(null);
+    } finally {
       setIsGenerating(false);
     }
   };
 
   const pollForCompletion = async (taskId: string) => {
-    const maxAttempts = 60; // 10 minutes max
+    const maxAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
     let attempts = 0;
 
-    const poll = async () => {
+    const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/status?taskId=${taskId}`);
-        const json = await response.json();
+        const res = await fetch(`/api/status?taskId=${taskId}`);
+        const json = await res.json();
 
-        if (json.success && json.track) {
-          // Generation completed successfully
+        if (json.status === "SUCCESS") {
+          // Generation completed successfully!
+          setError("✅ Your SoundPainting is ready — press play to experience your vibe.");
           setAudioUrl(json.track.audioUrl);
-          setVideoUrl(json.track.imageUrl || null);
+          setVideoUrl(json.track.imageUrl);
           setAudioSource('generated');
           
           // Save to local storage
-          if (isClient) {
-            const newTrack: SavedTrack = {
-              id: Date.now().toString(),
-              audioUrl: json.track.audioUrl,
-              imageUrl: json.track.imageUrl || undefined,
-              mood: vibe,
-              generatedAt: new Date().toISOString(),
-              duration: json.track.duration || 600,
-            };
-            setSavedTracks(prev => [newTrack, ...prev]);
-          }
-          
+          const newTrack: SavedTrack = {
+            id: Date.now().toString(),
+            audioUrl: json.track.audioUrl,
+            imageUrl: json.track.imageUrl,
+            mood: vibe,
+            generatedAt: new Date().toISOString(),
+            duration: json.track.duration || 600,
+            isFavorite: false
+          };
+          setSavedTracks(prev => [newTrack, ...prev.slice(0, 9)]);
           setIsGenerating(false);
           return;
-        } else if (json.error) {
-          // Generation failed
-          setError(json.error);
+        } else if (json.status === "PENDING") {
+          console.log("⏳ Track still pending...");
+        } else {
+          setError('❌ Generation failed. Please try again.');
           setIsGenerating(false);
           return;
         }
 
-        // Still processing, continue polling
+        // Continue polling if still processing
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(poll, 10000); // Poll every 10 seconds
+          setTimeout(checkStatus, 10000); // Poll every 10 seconds
         } else {
-          setError('Generation is taking longer than expected. Please try again.');
+          setError('⏰ Generation is taking longer than expected. Please try again.');
           setIsGenerating(false);
         }
       } catch (err) {
-        console.error('Polling error:', err);
-        setError('Something went wrong while checking generation status.');
-        setIsGenerating(false);
+        console.error("💥 Error checking status:", err);
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(checkStatus, 10000);
+        } else {
+          setError('❌ Unable to check generation status. Please try again.');
+          setIsGenerating(false);
+        }
       }
     };
 
-    // Start polling after a short delay
-    setTimeout(poll, 5000);
+    // Start polling after 30 seconds
+    setTimeout(checkStatus, 30000);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900">
-      {/* Hero Section */}
-      <Hero />
-
-      {/* Benefits Section */}
-      <BenefitsSection />
-
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-12">
-        {/* Navigation */}
-        <Navigation
-          showHistory={showHistory}
-          showTrending={showTrending}
-          savedTracksCount={isClient ? savedTracks.length : 0}
-          onShowHistory={() => {
-            setShowHistory(true);
-            setShowTrending(false);
-          }}
-          onShowTrending={() => {
-            setShowTrending(true);
-            setShowHistory(false);
-          }}
-          onShowGenerate={() => {
-            setShowHistory(false);
-            setShowTrending(false);
-          }}
-          externalCredits={remainingCredits}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated gradient orb backgrounds */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      
+      <div className="max-w-4xl w-full relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-12"
+        >
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-5xl md:text-6xl font-bold text-white mb-4"
+          >
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
+              Create art that matches your music.
+            </span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-xl md:text-2xl text-gray-400 mt-4"
+          >
+            Describe a vibe, and let AI compose your soundtrack.
+          </motion.p>
+          
+          {/* Navigation */}
+          <Navigation
+            showHistory={showHistory}
+            showTrending={showTrending}
+            savedTracksCount={isClient ? savedTracks.length : 0}
+            onShowHistory={() => {
+              setShowHistory(true);
+              setShowTrending(false);
+            }}
+            onShowTrending={() => {
+              setShowTrending(true);
+              setShowHistory(false);
+            }}
+            onShowGenerate={() => {
+              setShowHistory(false);
+              setShowTrending(false);
+            }}
+            externalCredits={remainingCredits}
+          />
+        </motion.div>
 
         {/* Trending Vibes Section */}
         {showTrending && (
@@ -255,7 +287,6 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="mb-12"
-            id="presets"
           >
             <TrendingVibes onVibeSelect={handleVibeSelect} />
           </motion.div>
@@ -306,7 +337,6 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
-            id="generator"
           >
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -364,41 +394,73 @@ export default function Home() {
                   ? 'bg-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600'
               } text-white ${isGenerating ? 'animate-pulse-glow' : ''}`}
+              animate={isGenerating ? {
+                boxShadow: [
+                  '0 0 20px rgba(236, 72, 153, 0.3)',
+                  '0 0 40px rgba(236, 72, 153, 0.6)',
+                  '0 0 20px rgba(236, 72, 153, 0.3)'
+                ]
+              } : {}}
+              transition={{
+                duration: 2,
+                repeat: isGenerating ? Infinity : 0,
+                ease: "easeInOut"
+              }}
             >
               {isGenerating ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Composing your SoundPainting...</span>
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                  Forging your vibe...
                 </div>
               ) : (
-                '🎵 Forge My Vibe'
+                'Generate My Vibe'
               )}
             </motion.button>
 
-            {/* Error Display */}
+            {/* V5 Model Note */}
+            <p className="text-xs text-zinc-400 mt-2 text-center">
+              Uses advanced AI for faster, high-quality generation.
+            </p>
+
+            {/* Error Message Display */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-center"
+                className="mt-6 p-4 bg-red-500/20 border border-red-400/30 rounded-xl text-center"
               >
-                <div className="flex items-center justify-center space-x-2 text-red-400">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">{error}</span>
-                </div>
+                <p className="text-red-200 text-sm mb-2">{error}</p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleGenerate}
+                  className="px-4 py-2 bg-red-500/30 hover:bg-red-500/40 rounded-lg text-red-100 text-sm transition-colors"
+                >
+                  🔁 Try Again
+                </motion.button>
               </motion.div>
             )}
-
-            {/* Generation Progress */}
-            {isGenerating && (
-              <GenerationProgress />
-            )}
+          </motion.div>
+        ) : isGenerating ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-12"
+          >
+            <GenerationProgress />
+          </motion.div>
+        ) : showTrending ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-8"
+          >
+            <TrendingVibes onVibeSelect={handleVibeSelect} />
           </motion.div>
         ) : (
           <motion.div
-            initial={{ opacity: 0, scale: 1.1 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
             className="space-y-8"
@@ -429,15 +491,10 @@ export default function Home() {
                 <Visualizer />
               </div>
             )}
-
-            {/* Feedback Buttons */}
-            <FeedbackButtons 
-              trackId={Date.now().toString()}
-            />
           </motion.div>
         )}
-
-        {/* Feature Highlights */}
+        
+        {/* SEO Content - Only show when not generating or playing */}
         {!isGenerating && !audioUrl && !showHistory && !showTrending && (
           <>
             <FeatureHighlights />
@@ -447,9 +504,6 @@ export default function Home() {
         
         {/* No MiniPlayer needed - using UnifiedPlayer */}
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }
