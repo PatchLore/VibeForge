@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
-import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { generateMusic, checkMusicStatus, generateImage, generateTitle } from "@/lib/kie";
 import { generateExpandedPrompt } from "@/lib/promptExpansion";
-import { deductCredits, getUserCredits, getOrCreateUser, CREDITS_PER_GENERATION } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -23,43 +23,79 @@ export async function POST(req: Request) {
   console.log("🔍 Request headers:", Object.fromEntries(req.headers.entries()));
   
   try {
+    // Create authenticated Supabase client
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({
+        success: false,
+        message: "Please sign in to generate music"
+      }, { status: 401 });
+    }
+
+    // Set the session token for authentication
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("❌ Authentication error:", authError);
+      return NextResponse.json({
+        success: false,
+        message: "Please sign in to generate music"
+      }, { status: 401 });
+    }
+
+    console.log("✅ User authenticated:", user.id);
+
     const body = await req.json();
     console.log("📝 Request body:", body);
-    const { prompt, userId } = body;
+    const { prompt } = body;
     console.log("📝 Extracted prompt:", prompt);
 
     const userVibe = prompt || "calm";
     
-    // Check and deduct credits
-    if (userId) {
-      const userCredits = await getUserCredits(userId);
+    // Check if credit system is enabled and user is authenticated
+    const creditSystemEnabled = process.env.NEXT_PUBLIC_CREDIT_SYSTEM_ENABLED === 'true';
+    let userCredits = 0;
+    
+    if (creditSystemEnabled) {
+      console.log("💎 Credit system enabled, checking user credits...");
       
-      if (!userCredits || userCredits.credits < CREDITS_PER_GENERATION) {
-        console.warn('⚠️ Insufficient credits:', userCredits?.credits);
-        const errorResponse = NextResponse.json({
+      // Check if user has enough credits (without deducting yet)
+      const { data: creditData, error: creditError } = await supabase.rpc("get_credits");
+      
+      if (creditError) {
+        console.error("❌ Error checking credits:", creditError);
+        return NextResponse.json({
           success: false,
-          error: 'INSUFFICIENT_CREDITS',
-          message: `Not enough credits. You need ${CREDITS_PER_GENERATION} credits to generate music. You have ${userCredits?.credits || 0} credits.`,
-          credits: userCredits?.credits || 0
+          message: "❌ Unable to verify credits. Please try again."
+        }, { status: 400 });
+      }
+      
+      userCredits = creditData?.[0]?.credits || 0;
+      
+      if (userCredits < 12) {
+        console.warn('⚠️ Insufficient credits for user:', user.id, 'Available:', userCredits);
+        return NextResponse.json({
+          success: false,
+          message: "💎 Not enough credits (need 12)."
         }, { status: 403 });
-        errorResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-        return errorResponse;
       }
-
-      // Deduct credits
-      const deducted = await deductCredits(userId, CREDITS_PER_GENERATION);
-      if (!deducted) {
-        console.error('❌ Failed to deduct credits');
-        const errorResponse = NextResponse.json({
-          success: false,
-          error: 'CREDIT_DEDUCTION_FAILED',
-          message: 'Failed to process credits. Please try again.'
-        }, { status: 500 });
-        errorResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-        return errorResponse;
-      }
-
-      console.log(`✅ Deducted ${CREDITS_PER_GENERATION} credits from user ${userId}`);
+      
+      console.log(`✅ Credits check passed. Available: ${userCredits}`);
     }
     
     // Expand the user's vibe into detailed prompts
@@ -68,17 +104,52 @@ export async function POST(req: Request) {
     console.log("🎵 Expanded Music Prompt:", musicPrompt);
     console.log("🎨 Expanded Art Prompt:", artPrompt);
 
+    // Generate creative title for the track
+    let generatedTitle = 'Generated Track';
+    try {
+      console.log("🎵 Generating creative title...");
+      generatedTitle = await generateTitle(userVibe);
+      console.log("🎵 Generated title:", generatedTitle);
+    } catch (titleError) {
+      console.error("❌ Title generation failed:", titleError);
+      // Fallback to a simple title based on vibe
+      const words = userVibe.split(' ').slice(0, 2);
+      generatedTitle = words.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Generated Track';
+    }
+
     // Step 1: Generate music using the expanded prompt
     console.log("🎵 Starting music generation...");
     const taskId = await generateMusic(musicPrompt);
     console.log("Task ID:", taskId);
 
-    // Fetch remaining credits after deduction
-    let remainingCredits = 0;
-    if (userId) {
-      const updatedCredits = await getUserCredits(userId);
-      remainingCredits = updatedCredits?.credits || 0;
-      console.log(`💎 Remaining credits after deduction: ${remainingCredits}`);
+    // Store the task-to-user mapping in generation_tasks table
+    try {
+      const { error: mappingError } = await supabase
+        .from("generation_tasks")
+        .insert([{ task_id: taskId, user_id: user.id }]);
+      
+      if (mappingError) {
+        console.error("❌ Error storing task mapping:", mappingError);
+      } else {
+        console.log("✅ Task mapping stored successfully for task:", taskId, "user:", user.id);
+      }
+    } catch (mappingErr) {
+      console.error("❌ Error storing task mapping:", mappingErr);
+    }
+
+    // Deduct credits AFTER successful generation start
+    let remainingCredits = userCredits;
+    if (creditSystemEnabled) {
+      console.log("💎 Deducting credits after successful generation start...");
+      const { data: spendRows, error: deductError } = await supabase.rpc("spend_credits", { cost: 12 });
+      
+      if (deductError) {
+        console.error("❌ Error deducting credits:", deductError);
+        // Don't fail the generation, just log the error
+      } else if (spendRows && spendRows.length > 0) {
+        remainingCredits = spendRows[0]?.credits || userCredits - 12;
+        console.log(`✅ Credits deducted successfully. Remaining: ${remainingCredits}`);
+      }
     }
 
     // Return immediately with task ID - Vercel has 5-minute timeout limit
@@ -89,11 +160,12 @@ export async function POST(req: Request) {
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
+      title: generatedTitle,
       expandedPrompts: {
         music: musicPrompt,
         art: artPrompt
       },
-      remainingCredits: remainingCredits
+      remainingCredits: creditSystemEnabled ? remainingCredits : undefined
     });
 
     // Prevent caching of credit balance
