@@ -31,30 +31,33 @@ export async function POST(req: Request) {
     
     // Check if credit system is enabled and user is authenticated
     const creditSystemEnabled = process.env.NEXT_PUBLIC_CREDIT_SYSTEM_ENABLED === 'true';
+    let userCredits = 0;
     
     if (creditSystemEnabled && userId && supabaseAdmin) {
       console.log("💎 Credit system enabled, checking user credits...");
       
-      // Check if user has enough credits using the RPC function
-      const { data: spendRows, error } = await supabaseAdmin.rpc("spend_credits", { cost: 12 });
+      // Check if user has enough credits (without deducting yet)
+      const { data: creditData, error: creditError } = await supabaseAdmin.rpc("get_credits");
       
-      if (error) {
-        console.error("❌ Error checking credits:", error);
+      if (creditError) {
+        console.error("❌ Error checking credits:", creditError);
         return NextResponse.json({
           success: false,
           message: "❌ Unable to verify credits. Please try again."
         }, { status: 400 });
       }
       
-      if (!spendRows || spendRows.length === 0) {
-        console.warn('⚠️ Insufficient credits for user:', userId);
+      userCredits = creditData?.[0]?.credits || 0;
+      
+      if (userCredits < 12) {
+        console.warn('⚠️ Insufficient credits for user:', userId, 'Available:', userCredits);
         return NextResponse.json({
           success: false,
           message: "💎 Not enough credits (need 12)."
         }, { status: 403 });
       }
       
-      console.log(`✅ Credits deducted successfully. Remaining: ${spendRows[0]?.credits || 0}`);
+      console.log(`✅ Credits check passed. Available: ${userCredits}`);
     }
     
     // Expand the user's vibe into detailed prompts
@@ -68,6 +71,21 @@ export async function POST(req: Request) {
     const taskId = await generateMusic(musicPrompt);
     console.log("Task ID:", taskId);
 
+    // Deduct credits AFTER successful generation start
+    let remainingCredits = userCredits;
+    if (creditSystemEnabled && userId && supabaseAdmin) {
+      console.log("💎 Deducting credits after successful generation start...");
+      const { data: spendRows, error: deductError } = await supabaseAdmin.rpc("spend_credits", { cost: 12 });
+      
+      if (deductError) {
+        console.error("❌ Error deducting credits:", deductError);
+        // Don't fail the generation, just log the error
+      } else if (spendRows && spendRows.length > 0) {
+        remainingCredits = spendRows[0]?.credits || userCredits - 12;
+        console.log(`✅ Credits deducted successfully. Remaining: ${remainingCredits}`);
+      }
+    }
+
     // Return immediately with task ID - Vercel has 5-minute timeout limit
     // The generation happens in the background via the API's callback system
     return NextResponse.json({
@@ -80,7 +98,7 @@ export async function POST(req: Request) {
         music: musicPrompt,
         art: artPrompt
       },
-      remainingCredits: creditSystemEnabled && userId ? await getRemainingCredits(userId) : undefined
+      remainingCredits: creditSystemEnabled && userId ? remainingCredits : undefined
     });
 
   } catch (err: unknown) {
@@ -91,22 +109,5 @@ export async function POST(req: Request) {
       success: false,
       message: "🎵 SoundPainting generation is temporarily unavailable. Please try again in a few moments.",
     }, { status: 503 });
-  }
-}
-
-// Helper function to get remaining credits
-async function getRemainingCredits(userId: string) {
-  if (!supabaseAdmin) return null;
-  
-  try {
-    const { data, error } = await supabaseAdmin.rpc("get_credits");
-    if (error) {
-      console.error("Error getting remaining credits:", error);
-      return null;
-    }
-    return data?.[0]?.credits || 0;
-  } catch (err) {
-    console.error("Error in getRemainingCredits:", err);
-    return null;
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Player from '@/components/Player';
+import UnifiedPlayer from '@/components/UnifiedPlayer';
 import Visualizer from '@/components/Visualizer';
 import TrendingVibes from '@/components/TrendingVibes';
 import TrackCard from '@/components/TrackCard';
@@ -11,7 +11,6 @@ import FeatureHighlights from '@/components/FeatureHighlights';
 import PromptPresets from '@/components/PromptPresets';
 import GenerationProgress from '@/components/GenerationProgress';
 import FeedbackButtons from '@/components/FeedbackButtons';
-import MiniPlayer from '@/components/MiniPlayer';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedTrack } from '@/types';
 import { getRandomVibe } from '@/lib/promptExpansion';
@@ -34,12 +33,12 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showTrending, setShowTrending] = useState(false);
   const [savedTracks, setSavedTracks] = useLocalStorage<SavedTrack[]>('vibe-forge-tracks', []);
   const [isClient, setIsClient] = useState(false);
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
@@ -90,6 +89,11 @@ export default function Home() {
           setError(data.message);
         }
         return;
+      }
+
+      // Update credits if provided
+      if (data.remainingCredits !== undefined) {
+        setRemainingCredits(data.remainingCredits);
       }
       
       if (!response.ok) {
@@ -249,6 +253,7 @@ export default function Home() {
               setShowHistory(false);
               setShowTrending(false);
             }}
+            externalCredits={remainingCredits}
           />
         </motion.div>
 
@@ -439,12 +444,10 @@ export default function Home() {
           >
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
               {audioUrl && (
-                <Player
+                <UnifiedPlayer
                   audioUrl={audioUrl}
                   videoUrl={videoUrl}
                   vibe={vibe}
-                  isPlaying={isPlaying}
-                  setIsPlaying={setIsPlaying}
                   onNewGeneration={() => {
                     setAudioUrl(null);
                     setVideoUrl(null);
@@ -452,6 +455,7 @@ export default function Home() {
                     setAudioSource(null);
                   }}
                   source={audioSource}
+                  onCreditsUpdate={(credits) => setRemainingCredits(credits)}
                 />
               )}
             </div>
@@ -459,7 +463,7 @@ export default function Home() {
             {/* Only show Visualizer if no image was generated */}
             {!videoUrl && (
               <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
-                <Visualizer isPlaying={isPlaying} />
+                <Visualizer />
               </div>
             )}
           </motion.div>
@@ -473,8 +477,7 @@ export default function Home() {
           </>
         )}
         
-        {/* Mini Player */}
-        <MiniPlayer audioUrl={audioUrl} trackTitle={currentTrackTitle || vibe} />
+        {/* No MiniPlayer needed - using UnifiedPlayer */}
       </div>
     </div>
   );

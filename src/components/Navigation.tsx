@@ -14,6 +14,7 @@ interface NavigationProps {
   onShowHistory: () => void;
   onShowTrending: () => void;
   onShowGenerate: () => void;
+  externalCredits?: number | null;
 }
 
 export default function Navigation({
@@ -22,7 +23,8 @@ export default function Navigation({
   savedTracksCount,
   onShowHistory,
   onShowTrending,
-  onShowGenerate
+  onShowGenerate,
+  externalCredits
 }: NavigationProps) {
   const { user, signOut, loading } = useAuth();
   const router = useRouter();
@@ -110,7 +112,7 @@ export default function Navigation({
         </motion.div>
       ) : user ? (
         <div className="flex items-center gap-3">
-          <CreditsDisplay />
+          <CreditsDisplay externalCredits={externalCredits} />
           <div className="text-sm text-gray-300 hidden sm:block">
             {user.email}
           </div>

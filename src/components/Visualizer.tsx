@@ -4,10 +4,10 @@ import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface VisualizerProps {
-  isPlaying: boolean;
+  isPlaying?: boolean;
 }
 
-export default function Visualizer({ isPlaying }: VisualizerProps) {
+export default function Visualizer({ isPlaying = false }: VisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
   const particlesRef = useRef<Array<{

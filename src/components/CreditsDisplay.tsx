@@ -5,11 +5,20 @@ import { supabase } from '@/lib/supabase';
 
 interface CreditsDisplayProps {
   className?: string;
+  externalCredits?: number | null;
 }
 
-export default function CreditsDisplay({ className = '' }: CreditsDisplayProps) {
+export default function CreditsDisplay({ className = '', externalCredits }: CreditsDisplayProps) {
   const [credits, setCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Update credits when external credits change
+  useEffect(() => {
+    if (externalCredits !== undefined) {
+      setCredits(externalCredits);
+      setLoading(false);
+    }
+  }, [externalCredits]);
 
   useEffect(() => {
     const fetchCredits = async () => {
