@@ -5,6 +5,7 @@ import { generateExpandedPrompt } from "@/lib/promptExpansion";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET() {
   console.log("🎵 GET /api/music endpoint reached");

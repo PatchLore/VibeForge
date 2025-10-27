@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   try {
     const userId = "38caaf3e-5735-4622-bc39-d72a7ba37fb6";

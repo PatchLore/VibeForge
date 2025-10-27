@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 // Only create Supabase client if environment variables are available
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY 
