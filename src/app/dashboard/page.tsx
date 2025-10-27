@@ -19,6 +19,12 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth/login');
+    }
+  }, [loading, user, router]);
+
   const fetchCredits = async () => {
     try {
       // Query profiles table directly instead of using get_credits RPC
@@ -63,8 +69,11 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    router.push('/auth/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="animate-pulse text-white text-xl">Redirecting...</div>
+      </div>
+    );
   }
 
   return (
