@@ -101,3 +101,4 @@ export async function addCredits(userId: string, amount: number): Promise<boolea
 }
 
 export { CREDITS_PER_GENERATION };
+

@@ -13,3 +13,4 @@ export const supabaseServer = process.env.NEXT_PUBLIC_SUPABASE_URL && process.en
       }
     )
   : null;
+

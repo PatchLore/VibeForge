@@ -87,7 +87,7 @@ export function useAuth() {
     if (!supabase) throw new Error('Supabase not configured');
     
     const { error } = await supabase!.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/verified`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/reset-password`,
     });
     
     if (error) throw error;

@@ -1,3 +1,4 @@
 export const STARTING_CREDITS = Number(process.env.NEXT_PUBLIC_STARTING_CREDITS ?? 36);
 export const CREDITS_PER_GENERATION = Number(process.env.NEXT_PUBLIC_CREDITS_PER_GENERATION ?? 12);
 
+
