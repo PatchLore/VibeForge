@@ -26,6 +26,13 @@ export async function generateMusic(prompt: string) {
   const apiKey = KIE_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
+  const callBackUrl = process.env.KIE_CALLBACK_URL;
+  console.log("🔔 [KieAI] callback:", callBackUrl);
+  
+  if (!callBackUrl) {
+    throw new Error("Missing KIE_CALLBACK_URL environment variable");
+  }
+
   const response = await fetch(`${BASE_URL}/generate`, {
     method: "POST",
     headers: {
@@ -37,7 +44,7 @@ export async function generateMusic(prompt: string) {
       customMode: false,
       instrumental: true,
       model: "V5",
-      callBackUrl: process.env.KIE_CALLBACK_URL || "https://soothe-ai.vercel.app/api/callback",
+      callBackUrl: callBackUrl,
     }),
   });
 
@@ -64,9 +71,20 @@ export async function checkMusicStatus(taskId: string) {
   return data.data?.response?.sunoData?.[0];
 }
 
-export async function generateImage(prompt: string) {
+export async function generateImage(prompt: string, styleSuffix: string = "") {
   const apiKey = KIE_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
+
+  const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
+  const model = "bytedance/seedream-v4-text-to-image";
+  const input = {
+    prompt: finalPrompt,
+    image_size: "landscape_16_9",
+    image_resolution: "2K",
+    max_images: 1,
+  };
+  
+  console.log("🎨 [KieAI] model:", model, "size:", input.image_size, "res:", input.image_resolution);
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
@@ -75,10 +93,8 @@ export async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: `Abstract painting inspired by: ${prompt}`,
-      model: "Seedream",
-      resolution: "1024x1024",
-      style: "ethereal, abstract, cinematic lighting, calming colors",
+      ...input,
+      model,
     }),
   });
 

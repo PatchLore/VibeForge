@@ -52,7 +52,7 @@ export default function AppPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login');
+      router.push('/');
     }
   }, [user, loading, router]);
 
@@ -129,7 +129,7 @@ export default function AppPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: vibe, userId: user?.id }),
+        body: JSON.stringify({ prompt: vibe }),
       });
 
       const data = await response.json();

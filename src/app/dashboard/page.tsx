@@ -1,20 +1,54 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
+import CreditsDisplay from '@/components/CreditsDisplay';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [userTracks, setUserTracks] = useState<any[]>([]);
+  const [tracksLoading, setTracksLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login');
+      router.push('/');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserTracks();
+    }
+  }, [user]);
+
+  const fetchUserTracks = async () => {
+    try {
+      if (!user?.id || !supabase) return;
+      
+      setTracksLoading(true);
+      const { data, error } = await supabase
+        .from('tracks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching tracks:', error);
+      } else {
+        setUserTracks(data || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserTracks:', error);
+    } finally {
+      setTracksLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -42,6 +76,9 @@ export default function DashboardPage() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
+          <div className="flex justify-center mb-4">
+            <CreditsDisplay />
+          </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
               Welcome to your Dashboard
@@ -86,7 +123,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
             <div className="space-y-3">
               <Link
-                href="/"
+                href="/app"
                 className="block w-full py-3 px-4 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white text-center hover:from-pink-600 hover:to-cyan-600 transition-all"
               >
                 🎵 Generate New Music
@@ -95,7 +132,7 @@ export default function DashboardPage() {
                 href="/pricing"
                 className="block w-full py-3 px-4 rounded-xl bg-white/20 text-white text-center hover:bg-white/30 transition-all"
               >
-                💎 Upgrade Plan
+                💎 Top Up Credits
               </Link>
               <Link
                 href="/live"
@@ -116,20 +153,58 @@ export default function DashboardPage() {
             <h3 className="text-xl font-semibold text-white mb-4">Your Stats</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-300">Credits Used</span>
-                <span className="text-white">0</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-300">Tracks Created</span>
-                <span className="text-white">0</span>
+                <span className="text-white">{userTracks.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-300">Current Plan</span>
-                <span className="text-pink-400">Free</span>
+                <span className="text-gray-300">Latest Track</span>
+                <span className="text-white">
+                  {userTracks.length > 0 
+                    ? new Date(userTracks[0].created_at).toLocaleDateString()
+                    : 'None'
+                  }
+                </span>
               </div>
             </div>
           </motion.div>
         </div>
+
+        {/* Recent Tracks */}
+        {userTracks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12"
+          >
+            <h2 className="text-2xl font-bold text-white mb-6">Your Recent Tracks</h2>
+            <div className="grid gap-4">
+              {userTracks.map((track, index) => (
+                <motion.div
+                  key={track.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="auth-form-container"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-white font-medium">{track.title || 'Untitled Track'}</h4>
+                      <p className="text-gray-400 text-sm">
+                        {new Date(track.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    {track.audio_url && (
+                      <audio controls className="max-w-xs">
+                        <source src={track.audio_url} type="audio/mpeg" />
+                      </audio>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Back to Home */}
         <motion.div

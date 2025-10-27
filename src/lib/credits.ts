@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
+import { CREDITS_PER_GENERATION } from './config';
 
-const CREDITS_PER_GENERATION = 12;
+export { CREDITS_PER_GENERATION };
 
 export interface UserCredits {
   credits: number;
@@ -19,10 +20,10 @@ export async function getUserCredits(userId: string): Promise<UserCredits | null
 
   try {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('credits, plan, email')
-      .eq('id', userId)
-      .single();
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (error) {
       console.error('❌ Error fetching credits:', error);
@@ -98,20 +99,20 @@ export async function getOrCreateUser(email: string): Promise<string | null> {
   try {
     // Try to find existing user
     const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
+      .from('profiles')
+      .select('user_id')
       .eq('email', email)
       .single();
 
     if (existingUser) {
-      return existingUser.id;
+      return existingUser.user_id;
     }
 
-    // Create new user
+    // Create new user profile
     const { data: newUser, error } = await supabase
-      .from('users')
-      .insert({ email, credits: 100 }) // Give new users 100 free credits
-      .select('id')
+      .from('profiles')
+      .insert({ email, credits: 100, user_id: userId }) // Give new users 100 free credits
+      .select('user_id')
       .single();
 
     if (error) {
@@ -119,7 +120,7 @@ export async function getOrCreateUser(email: string): Promise<string | null> {
       return null;
     }
 
-    return newUser.id;
+    return newUser.user_id;
   } catch (error) {
     console.error('❌ Error getting/creating user:', error);
     return null;
@@ -147,7 +148,4 @@ export async function updateUserPlan(userId: string, plan: string): Promise<bool
     return false;
   }
 }
-
-export { CREDITS_PER_GENERATION };
-
 
