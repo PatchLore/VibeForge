@@ -21,7 +21,7 @@ import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },

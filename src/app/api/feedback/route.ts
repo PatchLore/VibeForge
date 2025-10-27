@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +10,13 @@ export async function POST(request: NextRequest) {
 
     console.log('📊 Feedback received:', { trackId, vote, timestamp });
 
-    if (!supabase) {
-      console.warn('⚠️ Supabase client not initialized');
+    if (!supabaseServer) {
+      console.warn('⚠️ Supabase server client not initialized');
       return NextResponse.json({ error: 'Database not available' }, { status: 500 });
     }
 
     // Insert feedback into Supabase
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('feedback')
       .insert({
         track_id: trackId,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserCredits } from '@/lib/credits';
+import { getUserCredits } from '@/lib/creditsServer';
 
 export const dynamic = "force-dynamic";
 
