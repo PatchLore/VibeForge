@@ -147,6 +147,7 @@ export default function Home() {
       // Save to local storage with SoundPainting data
       const newTrack: SavedTrack = {
         id: Date.now().toString(),
+        title: data.title || 'Generated Track',
         audioUrl: data.audioUrl,
         imageUrl: data.imageUrl,
         mood: vibe,
@@ -185,6 +186,7 @@ export default function Home() {
           // Save to local storage
           const newTrack: SavedTrack = {
             id: Date.now().toString(),
+            title: json.track.title || 'Generated Track',
             audioUrl: json.track.audioUrl,
             imageUrl: json.track.imageUrl,
             mood: vibe,

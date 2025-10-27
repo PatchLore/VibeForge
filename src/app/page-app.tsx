@@ -144,6 +144,7 @@ export default function Home() {
           if (isClient) {
             const newTrack: SavedTrack = {
               id: Date.now().toString(),
+              title: data.title || 'Generated Track',
               audioUrl: data.audioUrl,
               imageUrl: data.imageUrl || undefined,
               mood: vibe,
@@ -181,6 +182,7 @@ export default function Home() {
           if (isClient) {
             const newTrack: SavedTrack = {
               id: Date.now().toString(),
+              title: json.track.title || 'Generated Track',
               audioUrl: json.track.audioUrl,
               imageUrl: json.track.imageUrl || undefined,
               mood: vibe,
