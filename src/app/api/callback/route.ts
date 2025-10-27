@@ -17,10 +17,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('⚠️ [CALLBACK INFO] Legacy callback hit — we now use polling instead');
     console.log('🔔 [CALLBACK] POST request received at:', new Date().toISOString());
     console.log('🔔 [CALLBACK] Request method:', request.method);
     console.log('🔔 [CALLBACK] Request URL:', request.url);
-    console.log('🔔 [CALLBACK] Request headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
     
     const body = await request.json();
     console.log('🎵 [CALLBACK RECEIVED] Full payload:', JSON.stringify(body, null, 2));

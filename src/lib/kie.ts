@@ -35,27 +35,46 @@ export async function generateMusic(prompt: string) {
 
   console.log("🔔 [KieAI] Using callback URL:", callBackUrl);
 
-  const response = await fetch(`${BASE_URL}/generate`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt,
-      customMode: false,
-      instrumental: true,
-      model: "V5",
-      callBackUrl: callBackUrl,
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.code !== 200) {
-    console.error("🎵 Music generation error:", data);
-    throw new Error(`Music generation failed: ${data.msg}`);
+  console.log("🎵 [KieAI] Calling music generation API...");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+  
+  try {
+    const response = await fetch(`${BASE_URL}/generate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt,
+        customMode: false,
+        instrumental: true,
+        model: "V5",
+        callBackUrl: callBackUrl,
+      }),
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    console.log("🎵 [KieAI] Response status:", response.status);
+    
+    const data = await response.json();
+    if (!response.ok || data.code !== 200) {
+      console.error("🎵 Music generation error:", data);
+      throw new Error(`Music generation failed: ${data.msg}`);
+    }
+    console.log("✅ [KieAI] Task ID received:", data.data?.taskId);
+    return data.data.taskId;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error("❌ [KieAI] Request timeout after 30s");
+      throw new Error("Connection timeout - Kie.ai API took too long to respond");
+    }
+    console.error("❌ [KieAI] Fetch error:", error);
+    throw error;
   }
-  return data.data.taskId;
 }
 
 export async function checkMusicStatus(taskId: string) {
