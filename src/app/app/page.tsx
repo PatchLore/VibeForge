@@ -11,7 +11,7 @@ import GenerationProgress from '@/components/GenerationProgress';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import InputModeToggle from '@/components/InputModeToggle';
 import { SavedTrack } from '@/types';
-import { getRandomVibe } from '@/lib/promptExpansion';
+import { getRandomVibe, generateExpandedPrompt } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -154,13 +154,28 @@ export default function AppPage() {
         return;
       }
 
+      // Expand the user's vibe into detailed prompts
+      const { musicPrompt, artPrompt } = generateExpandedPrompt(vibe);
+      
+      console.log("🎵 Frontend - Original vibe:", vibe);
+      console.log("🎵 Frontend - Expanded music prompt:", musicPrompt);
+      console.log("🎨 Frontend - Expanded art prompt:", artPrompt);
+      
+      // Store expanded prompts for display
+      setExpandedPrompts({ music: musicPrompt, art: artPrompt });
+
       const response = await fetch('/api/music', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: vibe, userId: user?.id }),
+        body: JSON.stringify({ 
+          prompt: vibe, 
+          expandedMusicPrompt: musicPrompt,
+          expandedArtPrompt: artPrompt,
+          userId: user?.id 
+        }),
       });
 
       const data = await response.json();

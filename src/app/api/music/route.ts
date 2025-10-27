@@ -65,8 +65,10 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     console.log("📝 Request body:", body);
-    const { prompt } = body;
+    const { prompt, expandedMusicPrompt, expandedArtPrompt } = body;
     console.log("📝 Extracted prompt:", prompt);
+    console.log("📝 Frontend expanded music prompt:", expandedMusicPrompt);
+    console.log("📝 Frontend expanded art prompt:", expandedArtPrompt);
 
     const userVibe = prompt || "calm";
     
@@ -101,11 +103,21 @@ export async function POST(req: Request) {
       console.log(`✅ Credits check passed. Available: ${userCredits}`);
     }
     
-    // Expand the user's vibe into detailed prompts
-    const { musicPrompt, artPrompt } = generateExpandedPrompt(userVibe);
+    // Use frontend expanded prompts if available, otherwise expand on server
+    let musicPrompt, artPrompt;
+    if (expandedMusicPrompt && expandedArtPrompt) {
+      console.log("🎵 Using frontend expanded prompts");
+      musicPrompt = expandedMusicPrompt;
+      artPrompt = expandedArtPrompt;
+    } else {
+      console.log("🎵 Expanding prompts on server side");
+      const expanded = generateExpandedPrompt(userVibe);
+      musicPrompt = expanded.musicPrompt;
+      artPrompt = expanded.artPrompt;
+    }
     
-    console.log("🎵 Expanded Music Prompt:", musicPrompt);
-    console.log("🎨 Expanded Art Prompt:", artPrompt);
+    console.log("🎵 Final Music Prompt:", musicPrompt);
+    console.log("🎨 Final Art Prompt:", artPrompt);
 
     // Generate creative title for the track
     let generatedTitle = 'Generated Track';
@@ -127,6 +139,18 @@ export async function POST(req: Request) {
     console.log("📋 Task ID:", taskId);
     console.log("📋 User ID:", user.id);
     console.log("📋 Callback will be sent to: https://www.soundswoop.com/api/callback");
+
+    // Step 2: Generate image using the expanded art prompt
+    console.log("🎨 Starting image generation...");
+    let imageTaskId = null;
+    try {
+      imageTaskId = await generateImage(artPrompt);
+      console.log("✅ Image generation request sent to Kie.ai");
+      console.log("📋 Image Task ID:", imageTaskId);
+    } catch (imageError) {
+      console.error("❌ Image generation failed:", imageError);
+      // Don't fail the music generation if image generation fails
+    }
 
     // Store the task-to-user mapping in generation_tasks table
     try {
