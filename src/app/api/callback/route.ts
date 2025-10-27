@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { CREDITS_PER_GENERATION } from '@/lib/config';
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔔 [CALLBACK] POST request received at:', new Date().toISOString());
+    console.log('🔔 [CALLBACK] Request headers:', Object.fromEntries(request.headers.entries()));
+    
     const body = await request.json();
     console.log('🎵 [CALLBACK RECEIVED] Full payload:', JSON.stringify(body, null, 2));
 
@@ -63,15 +67,15 @@ export async function POST(request: NextRequest) {
               .eq('user_id', userId)
               .maybeSingle();
             
-            if (profile && profile.credits >= 12) {
+            if (profile && profile.credits >= CREDITS_PER_GENERATION) {
               await supabaseServer
                 .from('profiles')
                 .update({ 
-                  credits: profile.credits - 12,
+                  credits: profile.credits - CREDITS_PER_GENERATION,
                   updated_at: new Date().toISOString() 
                 })
                 .eq('user_id', userId);
-              console.log('✅ [CALLBACK SUCCESS] Credits deducted. Remaining:', profile.credits - 12);
+              console.log('✅ [CALLBACK SUCCESS] Credits deducted. Remaining:', profile.credits - CREDITS_PER_GENERATION);
             } else {
               console.log('⚠️ [CALLBACK] Cannot deduct credits - insufficient or no profile');
             }
