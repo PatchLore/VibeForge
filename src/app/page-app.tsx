@@ -170,9 +170,24 @@ export default function Home() {
     const poll = async () => {
       try {
         const response = await fetch(`/api/status?taskId=${taskId}`);
+        
+        // Check if response is ok
+        if (!response.ok) {
+          console.error('Status check failed:', response.status, response.statusText);
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 10000);
+          } else {
+            setError(`Generation check failed (${response.status}). Please try again.`);
+            setIsGenerating(false);
+          }
+          return;
+        }
+        
         const json = await response.json();
+        console.log('Poll response:', json);
 
-        if (json.success && json.track) {
+        if (json.status === 'SUCCESS' && json.track) {
           // Generation completed successfully
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl || null);

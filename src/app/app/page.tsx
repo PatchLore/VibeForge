@@ -187,7 +187,22 @@ export default function AppPage() {
     const poll = async () => {
       try {
         const response = await fetch(`/api/status?taskId=${taskId}`);
+        
+        // Check if response is ok
+        if (!response.ok) {
+          console.error('Status check failed:', response.status, response.statusText);
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 10000);
+          } else {
+            setError(`Generation check failed (${response.status}). Please try again.`);
+            setIsGenerating(false);
+          }
+          return;
+        }
+        
         const json = await response.json();
+        console.log('Poll response:', json);
 
         if (json.status === 'SUCCESS' && json.track) {
           setAudioUrl(json.track.audioUrl);
@@ -200,6 +215,7 @@ export default function AppPage() {
           setIsGenerating(false);
           return;
         } else if (json.error) {
+          console.error('Status error:', json.error);
           setError(json.error);
           setIsGenerating(false);
           return;
