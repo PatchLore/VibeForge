@@ -108,14 +108,9 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
 
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
   const model = "bytedance/seedream-v4-text-to-image";
-  const input = {
-    prompt: finalPrompt,
-    image_size: "landscape_16_9",
-    image_resolution: "2K",
-    max_images: 1,
-  };
   
-  console.log("🎨 [KieAI] model:", model, "size:", input.image_size, "res:", input.image_resolution);
+  console.log("🎨 [KieAI] model:", model);
+  console.log("🎨 [KieAI] prompt:", finalPrompt);
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
@@ -124,8 +119,11 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      ...input,
-      model,
+      model: "bytedance/seedream-v4-text-to-image",
+      prompt: finalPrompt,
+      resolution: "1920x1080",
+      aspect_ratio: "16:9",
+      quality: "ultra",
     }),
   });
 
@@ -135,5 +133,6 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     throw new Error(`Image generation failed: ${data.msg}`);
   }
 
+  console.log("✅ [KieAI] Image generated successfully");
   return data.data?.response?.imageUrl;
 }
