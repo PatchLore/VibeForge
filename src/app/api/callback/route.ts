@@ -3,6 +3,9 @@ import { supabaseServer } from '@/lib/supabaseServer';
 
 export const dynamic = "force-dynamic";
 
+// Allow this endpoint to be public (no auth required)
+export const runtime = "nodejs";
+
 export async function GET() {
   return NextResponse.json({ 
     message: 'Callback endpoint is active and ready to receive API callbacks',
