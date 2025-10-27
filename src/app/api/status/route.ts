@@ -34,39 +34,33 @@ export async function GET(req: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: tracks, error } = await supabase
+    const { data, error } = await supabase
       .from("tracks")
-      .select("*")
+      .select("title,prompt,audio_url,image_url,duration,task_id,created_at")
       .eq("task_id", taskId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .maybeSingle();
 
     if (error) {
       console.error("❌ Database error", error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Check if track exists and has audio_url (completed)
-    if (tracks?.length && tracks[0].audio_url) {
-      const track = tracks[0];
-      console.log("🎧 [STATUS CHECK]", taskId, "→", "completed");
-      console.log("✅ Track found with audio_url:", track.audio_url);
-      
-      return NextResponse.json({
-        status: "completed",
-        track: {
-          title: track.title,
-          prompt: track.prompt || track.mood,
-          audioUrl: track.audio_url,
-          imageUrl: track.image_url,
-          duration: track.duration,
-        },
-      });
+    if (!data) {
+      console.log("⏳ Track still pending:", taskId);
+      return NextResponse.json({ status: "PENDING" });
     }
 
-    // No track yet or no audio_url
-    console.log("🎧 [STATUS CHECK]", taskId, "→", "pending");
-    return NextResponse.json({ status: "pending" });
+    console.log("✅ Track found:", data.task_id);
+    return NextResponse.json({
+      status: "SUCCESS",
+      track: {
+        title: data.title,
+        prompt: data.prompt,
+        audioUrl: data.audio_url,
+        imageUrl: data.image_url,
+        duration: data.duration,
+      },
+    });
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error("💥 Unexpected error in /api/status:", errorMessage);

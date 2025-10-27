@@ -1,93 +1,57 @@
 // Removed unused NextResponse import
 
 // 🎯 API Key Manager - Clear separation of concerns
-const API_KEYS = {
-  music: process.env.VIBEFORGE_API_KEY,
-  image: process.env.KIE_IMAGE_API_KEY,
+const KIE_KEYS = {
+  music: process.env.VibeForge,
+  image: process.env.KIE_API_KEY,
 };
 
 // ⚠️ Runtime validation with clear warnings
-if (!API_KEYS.music) {
-  console.warn("⚠️ Missing VIBEFORGE_API_KEY (Music Generation) API key! Please add it to Vercel.");
+if (!KIE_KEYS.music) {
+  console.warn("⚠️ Missing VibeForge (Music Generation) API key! Please add it to Vercel.");
 }
 
-if (!API_KEYS.image) {
-  console.warn("⚠️ Missing KIE_IMAGE_API_KEY (Image Generation) API key! Please add it to Vercel.");
+if (!KIE_KEYS.image) {
+  console.warn("⚠️ Missing KIE_API_KEY (Image Generation) API key! Please add it to Vercel.");
 }
 
 // ✅ Startup confirmation
-console.log("✅ API keys loaded:");
-console.log("🎵 Music Key:", API_KEYS.music ? "Loaded ✅" : "Missing ❌");
-console.log("🖼️ Image Key:", API_KEYS.image ? "Loaded ✅" : "Missing ❌");
+console.log("✅ Kie.ai API keys loaded:");
+console.log("🎵 Music Key:", KIE_KEYS.music ? "Loaded ✅" : "Missing ❌");
+console.log("🖼️ Image Key:", KIE_KEYS.image ? "Loaded ✅" : "Missing ❌");
 
 const BASE_URL = "https://api.kie.ai/api/v1";
 
 export async function generateMusic(prompt: string) {
-  const apiKey = API_KEYS.music;
-  if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
+  const apiKey = KIE_KEYS.music;
+  if (!apiKey) throw new Error("Missing VibeForge music generation API key");
 
-  console.log("🔍 KIE_CALLBACK_URL env var:", process.env.KIE_CALLBACK_URL);
-  const callbackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
-  
-  const requestBody = {
-    prompt,
-    customMode: false,
-    instrumental: true,
-    model: "V5",
-    callBackUrl: callbackUrl,
-  };
+  const response = await fetch(`${BASE_URL}/generate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt,
+      customMode: false,
+      instrumental: true,
+      model: "V5",
+      callBackUrl: process.env.KIE_CALLBACK_URL || "https://soothe-ai.vercel.app/api/callback",
+    }),
+  });
 
-  console.log("🎵 ========== MUSIC GENERATION REQUEST ==========");
-  console.log("📡 API Endpoint:", `${BASE_URL}/generate`);
-  console.log("📡 Callback URL (active):", callbackUrl);
-  console.log("📝 Prompt:", prompt);
-  console.log("📦 Request Body:", JSON.stringify(requestBody, null, 2));
-  console.log("⏰ Timestamp:", new Date().toISOString());
-
-  try {
-    // Add timeout to prevent hanging requests
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
-    
-    const response = await fetch(`${BASE_URL}/generate`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeout); // Clear timeout on success
-    
-    console.log("📡 API Response Status:", response.status);
-
-    const data = await response.json();
-    console.log("📡 API Response Data:", JSON.stringify(data, null, 2));
-    
-    if (!response.ok || data.code !== 200) {
-      console.error("❌ Music generation error:", data);
-      throw new Error(`Music generation failed: ${data.msg}`);
-    }
-    
-    const taskId = data.data.taskId;
-    console.log("✅ Task ID received:", taskId);
-    console.log("🎵 ========== END GENERATION REQUEST ==========");
-    
-    return taskId;
-  } catch (error) {
-    console.error("💥 Error in generateMusic:", error);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out after 2 minutes');
-    }
-    throw error;
+  const data = await response.json();
+  if (!response.ok || data.code !== 200) {
+    console.error("🎵 Music generation error:", data);
+    throw new Error(`Music generation failed: ${data.msg}`);
   }
+  return data.data.taskId;
 }
 
 export async function checkMusicStatus(taskId: string) {
-  const apiKey = API_KEYS.music;
-  if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
+  const apiKey = KIE_KEYS.music;
+  if (!apiKey) throw new Error("Missing VibeForge music generation API key");
 
   const response = await fetch(`${BASE_URL}/generate/record-info?taskId=${taskId}`, {
     headers: { "Authorization": `Bearer ${apiKey}` },
@@ -100,53 +64,9 @@ export async function checkMusicStatus(taskId: string) {
   return data.data?.response?.sunoData?.[0];
 }
 
-export async function generateTitle(vibe: string): Promise<string> {
-  const apiKey = API_KEYS.image; // Using image API key for text generation
-  if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for title generation");
-
-  const prompt = `Generate a short, creative song name (2-4 words) inspired by this vibe: '${vibe}'. Avoid generic words like Track or Song. Examples: "Midnight Reverie", "Electric Dreams", "Cosmic Drift". Return only the title, no quotes or extra text.`;
-
-  const response = await fetch(`${BASE_URL}/generate/text`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt: prompt,
-      model: "GPT-4",
-      maxTokens: 20,
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.code !== 200) {
-    console.error("🎵 Title generation error:", data);
-    // Fallback to a simple generated title
-    const words = vibe.split(' ').slice(0, 2);
-    return words.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Generated Track';
-  }
-
-  const generatedTitle = data.data?.response?.text?.trim() || 'Generated Track';
-  console.log("🎵 Generated title:", generatedTitle);
-  return generatedTitle;
-}
-
 export async function generateImage(prompt: string) {
-  const apiKey = API_KEYS.image;
-  if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
-
-  // Using Seedream 4.0 model for highest quality image generation
-  const model = "bytedance/seedream-v4-text-to-image";
-  
-  // Add visual style bias for better album cover artwork
-  const visualStyle = ", digital painting, album cover artwork, cinematic lighting, expressive brush textures, vivid atmosphere";
-  const finalPrompt = prompt + visualStyle;
-  
-  console.log("🎨 [IMAGE GENERATION] Using enhanced prompt for Seedream 4.0");
-  console.log("🎨 [KieAI] Using model:", model);
-  console.log("✨ [PromptEnhancer] Expanded prompt:", prompt);
-  console.log("🎨 [Final Prompt for Kie.ai]:", finalPrompt);
+  const apiKey = KIE_KEYS.image;
+  if (!apiKey) throw new Error("Missing KIE_API_KEY for image generation");
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
@@ -155,10 +75,10 @@ export async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: finalPrompt,
-      model: model,
-      resolution: "landscape_16_9",
-      style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting",
+      prompt: `Abstract painting inspired by: ${prompt}`,
+      model: "Seedream",
+      resolution: "1024x1024",
+      style: "ethereal, abstract, cinematic lighting, calming colors",
     }),
   });
 
@@ -168,6 +88,5 @@ export async function generateImage(prompt: string) {
     throw new Error(`Image generation failed: ${data.msg}`);
   }
 
-  console.log("✅ Image generated successfully with Seedream 4.0");
   return data.data?.response?.imageUrl;
 }

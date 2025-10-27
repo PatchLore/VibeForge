@@ -27,7 +27,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
   const [isLiking, setIsLiking] = useState(false);
 
   const handlePlayPause = () => {
-    setIsPlaying(prev => !prev);
+    setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement>) => {
@@ -83,7 +83,6 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
               alt={track.title} 
               width={400}
               height={256}
-              unoptimized
               className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105" 
             />
           </div>
@@ -114,27 +113,15 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
         </div>
       )}
 
-      {/* Track Title */}
-      {track.title && (
-        <h3 className="text-xl font-bold text-white mb-4 text-center">
-          {track.title}
-        </h3>
-      )}
-
       {/* Audio Player */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <motion.button
-              whileHover={{ scale: track.audio_url ? 1.05 : 1 }}
-              whileTap={{ scale: track.audio_url ? 0.95 : 1 }}
-              onClick={track.audio_url ? handlePlayPause : undefined}
-              disabled={!track.audio_url}
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all ${
-                track.audio_url 
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600' 
-                  : 'bg-gray-500 cursor-not-allowed'
-              }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handlePlayPause}
+              className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white hover:from-purple-600 hover:to-pink-600 transition-all"
             >
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -205,31 +192,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       </div>
 
       {/* Hidden Audio Element */}
-      {track.audio_url && (
-        <audio
-          ref={(audio) => {
-            if (audio) {
-              if (isPlaying) {
-                audio.play().catch(err => console.error('Play failed:', err));
-              } else {
-                audio.pause();
-              }
-            }
-          }}
-          src={track.audio_url}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleTimeUpdate}
-          onEnded={() => setIsPlaying(false)}
-          preload="metadata"
-        />
-      )}
-      
-      {/* No Audio Message */}
-      {!track.audio_url && (
-        <div className="text-center py-4">
-          <p className="text-gray-400 text-sm">🎵 Audio not available</p>
-        </div>
-      )}
+      <audio
+        src={track.audio_url}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleTimeUpdate}
+        onEnded={() => setIsPlaying(false)}
+        preload="metadata"
+      />
     </motion.div>
   );
 }

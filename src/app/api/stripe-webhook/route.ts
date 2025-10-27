@@ -123,20 +123,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       .from('profiles')
       .select('id, email, plan, credits')
       .eq('email', customerEmail)
-      .maybeSingle();
+      .single();
 
-    if (userError) {
-      console.error(`❌ Error querying user for email: ${customerEmail}`, userError);
+    if (userError || !user) {
+      console.error(`❌ User not found for email: ${customerEmail}`, userError);
       return;
-    }
-
-    if (!user) {
-      console.error(`❌ User not found for email: ${customerEmail}`);
-      return;
-    }
-
-    if (Array.isArray(user)) {
-      console.warn(`⚠️ Multiple users found for email: ${customerEmail}, using first`);
     }
 
     // Update user's plan and add credits
@@ -190,20 +181,11 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       .from('profiles')
       .select('id, email, plan, credits')
       .eq('email', customerEmail)
-      .maybeSingle();
+      .single();
 
-    if (userError) {
-      console.error(`❌ Error querying user for email: ${customerEmail}`, userError);
+    if (userError || !user) {
+      console.error(`❌ User not found for email: ${customerEmail}`, userError);
       return;
-    }
-
-    if (!user) {
-      console.error(`❌ User not found for email: ${customerEmail}`);
-      return;
-    }
-
-    if (Array.isArray(user)) {
-      console.warn(`⚠️ Multiple users found for email: ${customerEmail}, using first`);
     }
 
     // Define credit amounts for each plan

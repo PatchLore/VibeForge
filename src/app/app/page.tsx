@@ -9,13 +9,12 @@ import TrackCard from '@/components/TrackCard';
 import PromptPresets from '@/components/PromptPresets';
 import GenerationProgress from '@/components/GenerationProgress';
 import FeedbackButtons from '@/components/FeedbackButtons';
-import InputModeToggle from '@/components/InputModeToggle';
 import { SavedTrack } from '@/types';
-import { expandPrompt, getRandomVibe } from '@/lib/prompt';
+import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export default function AppPage() {
@@ -35,9 +34,6 @@ export default function AppPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
-  const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
-  const [imageDescription, setImageDescription] = useState<string>('');
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -48,23 +44,6 @@ export default function AppPage() {
     const randomVibe = getRandomVibe();
     setVibe(randomVibe);
     track('Inspire Me Clicked');
-  };
-
-  const handleImageUpload = (file: File) => {
-    setUploadedImage(file);
-  };
-
-  const handleImageDescription = (description: string) => {
-    setImageDescription(description);
-    setVibe(description); // Use the description as the vibe for generation
-  };
-
-  const handleModeChange = (mode: 'text' | 'image') => {
-    setInputMode(mode);
-    if (mode === 'text') {
-      setImageDescription('');
-      setUploadedImage(null);
-    }
   };
 
   useEffect(() => {
@@ -86,34 +65,23 @@ export default function AppPage() {
   const fetchUserTracks = async () => {
     try {
       setTracksLoading(true);
-      console.log('🎧 Fetching user tracks...');
       const response = await fetch('/api/tracks/user');
       const data = await response.json();
       
-      console.log('🎧 API response:', data.tracks?.length || 0, 'tracks');
-      
       if (data.tracks) {
-        // Convert Supabase tracks to SavedTrack format and deduplicate
-        const trackMap = new Map<string, SavedTrack>();
-        data.tracks.forEach((track: any) => {
-          if (!trackMap.has(track.id)) {
-            trackMap.set(track.id, {
-              id: track.id,
-              title: track.title || 'Untitled Track',
-              audioUrl: track.audio_url,
-              imageUrl: track.image_url,
-              mood: track.prompt || track.title,
-              generatedAt: track.created_at,
-              duration: track.duration || 600,
-            });
-          }
-        });
-        const convertedTracks = Array.from(trackMap.values());
-        console.log('🎧 Converted tracks (deduplicated):', convertedTracks.length, convertedTracks[0]?.audioUrl ? 'with audio' : 'no audio');
+        // Convert Supabase tracks to SavedTrack format
+        const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => ({
+          id: track.id,
+          audioUrl: track.audio_url,
+          imageUrl: track.image_url,
+          mood: track.prompt || track.title,
+          generatedAt: track.created_at,
+          duration: track.duration || 600,
+        }));
         setSavedTracks(convertedTracks);
       }
     } catch (error) {
-      console.error('❌ Error fetching user tracks:', error);
+      console.error('Error fetching user tracks:', error);
     } finally {
       setTracksLoading(false);
     }
@@ -154,27 +122,13 @@ export default function AppPage() {
         return;
       }
 
-      // Expand the user's vibe into detailed prompts
-      const expandedPrompt = expandPrompt(vibe);
-      
-      console.log("🧠 Expanded Prompt:", expandedPrompt);
-      console.log("🎵 Frontend - Original vibe:", vibe);
-      console.log("🎵 Frontend - Expanded prompt:", expandedPrompt);
-      
-      // Store expanded prompt for display
-      setExpandedPrompts({ music: expandedPrompt, art: expandedPrompt });
-
       const response = await fetch('/api/music', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ 
-          prompt: vibe, 
-          expandedPrompt: expandedPrompt,
-          userId: user?.id 
-        }),
+        body: JSON.stringify({ prompt: vibe, userId: user?.id }),
       });
 
       const data = await response.json();
@@ -234,8 +188,7 @@ export default function AppPage() {
         const response = await fetch(`/api/status?taskId=${taskId}`);
         const json = await response.json();
 
-        if (json.status === "completed" && json.track) {
-          console.log('✅ Track completed:', json.track);
+        if (json.success && json.track) {
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl || null);
           setAudioSource('generated');
@@ -245,9 +198,6 @@ export default function AppPage() {
           
           setIsGenerating(false);
           return;
-        } else if (json.status === "pending") {
-          // Still processing, continue polling
-          console.log('⏳ Track still pending, polling again...');
         } else if (json.error) {
           setError(json.error);
           setIsGenerating(false);
@@ -336,7 +286,7 @@ export default function AppPage() {
                     <TrackCard
                       track={{
                         id: track.id,
-                        title: track.title,
+                        title: track.mood,
                         prompt: track.mood,
                         audio_url: track.audioUrl,
                         image_url: track.imageUrl,
@@ -359,90 +309,58 @@ export default function AppPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
           >
-            {/* Input Mode Toggle */}
             <div className="mb-8">
-              <InputModeToggle
-                mode={inputMode}
-                onModeChange={handleModeChange}
-                onImageUpload={handleImageUpload}
-                onImageDescription={handleImageDescription}
-                isGenerating={isGenerating}
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-white text-lg">
+                  Describe your current vibe or feeling…
+                </label>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleInspireMe}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
+                >
+                  🎲 Inspire Me
+                </motion.button>
+              </div>
+              <textarea
+                value={vibe}
+                onChange={(e) => setVibe(e.target.value)}
+                placeholder="Express your emotional state... (e.g., 'heartbroken in the city', 'feeling infinite and boundless')"
+                className="w-full p-4 rounded-2xl bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
+                rows={3}
               />
+              
+              {isGenerating && expandedPrompts && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 space-y-2 text-sm"
+                >
+                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                    <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
+                    <div className="text-gray-300 italic">{expandedPrompts.music}</div>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                    <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
+                    <div className="text-gray-300 italic">{expandedPrompts.art}</div>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
-            {/* Text Input Section - Only show for text mode */}
-            {inputMode === 'text' && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-white text-lg">
-                    Describe your current vibe or feeling…
-                  </label>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleInspireMe}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
-                  >
-                    🎲 Inspire Me
-                  </motion.button>
-                </div>
-                <textarea
-                  value={vibe}
-                  onChange={(e) => setVibe(e.target.value)}
-                  placeholder="Express your emotional state... (e.g., 'heartbroken in the city', 'feeling infinite and boundless')"
-                  className="w-full p-4 rounded-2xl bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
-                  rows={3}
-                />
-              </div>
-            )}
-
-            {/* Image Description Display */}
-            {inputMode === 'image' && imageDescription && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
-              >
-                <div className="bg-white/10 rounded-xl p-4 border border-white/20">
-                  <div className="text-cyan-400 font-medium mb-2">🖼️ Generated from image:</div>
-                  <div className="text-white text-lg italic">"{imageDescription}"</div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Presets Section - Only show for text mode */}
-            {inputMode === 'text' && (
-              <div className="mb-8">
-                <p className="text-white text-lg mb-4">Or choose a preset:</p>
-                <PromptPresets onPresetSelect={handleVibeSelect} />
-              </div>
-            )}
-
-            {/* Expanded Prompts Display */}
-            {isGenerating && expandedPrompts && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 space-y-2 text-sm"
-              >
-                <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                  <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
-                  <div className="text-gray-300 italic">{expandedPrompts.music}</div>
-                </div>
-                <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                  <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
-                  <div className="text-gray-300 italic">{expandedPrompts.art}</div>
-                </div>
-              </motion.div>
-            )}
+            <div className="mb-8">
+              <p className="text-white text-lg mb-4">Or choose a preset:</p>
+              <PromptPresets onPresetSelect={handleVibeSelect} />
+            </div>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleGenerate}
-              disabled={(!vibe.trim() && inputMode === 'text') || (inputMode === 'image' && !imageDescription) || isGenerating}
+              disabled={!vibe.trim() || isGenerating}
               className={`w-full py-4 px-8 rounded-2xl font-semibold text-lg transition-all duration-200 ${
-                ((!vibe.trim() && inputMode === 'text') || (inputMode === 'image' && !imageDescription) || isGenerating)
+                !vibe.trim() || isGenerating
                   ? 'bg-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600'
               } text-white ${isGenerating ? 'animate-pulse-glow' : ''}`}
@@ -453,7 +371,7 @@ export default function AppPage() {
                   <span>Composing your SoundPainting...</span>
                 </div>
               ) : (
-                inputMode === 'image' ? '🎵 Generate from Image' : '🎵 Forge My Vibe'
+                '🎵 Forge My Vibe'
               )}
             </motion.button>
 

@@ -1,6 +1,5 @@
 export interface SavedTrack {
   id: string;
-  title: string;
   audioUrl: string;
   imageUrl?: string;
   mood: string;
