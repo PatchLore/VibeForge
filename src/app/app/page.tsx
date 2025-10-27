@@ -189,7 +189,7 @@ export default function AppPage() {
         const response = await fetch(`/api/status?taskId=${taskId}`);
         const json = await response.json();
 
-        if (json.success && json.track) {
+        if (json.status === 'SUCCESS' && json.track) {
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl || null);
           setAudioSource('generated');
