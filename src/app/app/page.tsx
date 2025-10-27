@@ -78,6 +78,7 @@ export default function AppPage() {
           if (!trackMap.has(track.id)) {
             trackMap.set(track.id, {
               id: track.id,
+              title: track.title || 'Untitled Track',
               audioUrl: track.audio_url,
               imageUrl: track.image_url,
               mood: track.prompt || track.title,
@@ -300,7 +301,7 @@ export default function AppPage() {
                     <TrackCard
                       track={{
                         id: track.id,
-                        title: track.mood,
+                        title: track.title,
                         prompt: track.mood,
                         audio_url: track.audioUrl,
                         image_url: track.imageUrl,

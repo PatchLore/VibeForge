@@ -114,6 +114,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
         </div>
       )}
 
+      {/* Track Title */}
+      {track.title && (
+        <h3 className="text-xl font-bold text-white mb-4 text-center">
+          {track.title}
+        </h3>
+      )}
+
       {/* Audio Player */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
