@@ -17,70 +17,70 @@ interface TrendingVibe {
 }
 
 // Fallback static vibes for when no community data is available
-const fallbackVibes: TrendingVibe[] = [
+const FALLBACK_VIBES: TrendingVibe[] = [
   {
-    id: 'heartbroken-city',
-    title: 'Heartbroken in the City',
-    description: 'Urban melancholy with rain-soaked streets',
-    emoji: '🌧️',
+    id: 'ambient-chill',
+    title: 'Ambient Chill',
+    description: 'Soothing pads and dreamy atmospheres',
+    emoji: '🌌',
     color: 'from-blue-500 to-purple-500',
-    popularity: 95
-  },
-  {
-    id: 'feeling-infinite',
-    title: 'Feeling Infinite',
-    description: 'Boundless energy and cosmic wonder',
-    emoji: '✨',
-    color: 'from-cyan-500 to-pink-500',
-    popularity: 88
-  },
-  {
-    id: 'midnight-drive',
-    title: 'Midnight Drive',
-    description: 'Neon-lit highways and late-night thoughts',
-    emoji: '🌃',
-    color: 'from-purple-500 to-pink-500',
     popularity: 92
   },
   {
-    id: 'nostalgic-summer',
-    title: 'Nostalgic Summer',
-    description: 'Warm memories of endless golden days',
-    emoji: '☀️',
-    color: 'from-yellow-500 to-orange-500',
-    popularity: 87
-  },
-  {
-    id: 'rebellious-spirit',
-    title: 'Rebellious Spirit',
-    description: 'Defiant energy and breaking free',
+    id: 'drum-bass-energy',
+    title: 'Drum & Bass Energy',
+    description: 'Fast-paced liquid DnB and adrenaline rushes',
     emoji: '🔥',
-    color: 'from-red-500 to-pink-500',
-    popularity: 83
+    color: 'from-orange-500 to-red-500',
+    popularity: 88
   },
   {
-    id: 'melancholy-dreams',
-    title: 'Melancholy Dreams',
-    description: 'Soft sadness with ethereal beauty',
-    emoji: '🌙',
-    color: 'from-indigo-500 to-purple-500',
+    id: 'cinematic-score',
+    title: 'Cinematic Score',
+    description: 'Epic emotional soundtracks and orchestral depth',
+    emoji: '🎬',
+    color: 'from-purple-500 to-pink-500',
+    popularity: 95
+  },
+  {
+    id: 'lofi-daydream',
+    title: 'Lo-Fi Daydream',
+    description: 'Soft beats, warm tones, nostalgic vibes',
+    emoji: '💭',
+    color: 'from-yellow-500 to-orange-500',
     popularity: 90
   },
   {
-    id: 'euphoric-dance',
-    title: 'Euphoric Dance',
-    description: 'Ecstatic joy and rhythmic celebration',
-    emoji: '💃',
-    color: 'from-pink-500 to-cyan-500',
-    popularity: 85
+    id: 'dark-synthwave',
+    title: 'Dark Synthwave',
+    description: 'Retro 80s neon shadows and electric moods',
+    emoji: '🩶',
+    color: 'from-gray-600 to-purple-600',
+    popularity: 87
   },
   {
-    id: 'introspective-night',
-    title: 'Introspective Night',
-    description: 'Deep thoughts under starlit skies',
-    emoji: '🌌',
-    color: 'from-slate-500 to-blue-500',
-    popularity: 89
+    id: 'sunrise-trance',
+    title: 'Sunrise Trance',
+    description: 'Euphoric melodic trance and glowing synths',
+    emoji: '🌅',
+    color: 'from-pink-500 to-purple-500',
+    popularity: 91
+  },
+  {
+    id: 'organic-flow',
+    title: 'Organic Flow',
+    description: 'Natural acoustic textures and gentle rhythms',
+    emoji: '🌿',
+    color: 'from-green-500 to-teal-500',
+    popularity: 86
+  },
+  {
+    id: 'space-odyssey',
+    title: 'Space Odyssey',
+    description: 'Cosmic ambient soundscapes and starlit journeys',
+    emoji: '🌠',
+    color: 'from-indigo-500 to-purple-500',
+    popularity: 94
   }
 ];
 
@@ -139,16 +139,16 @@ const moodColors: Record<string, string> = {
 };
 
 export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
-  const [trendingVibes, setTrendingVibes] = useState<TrendingVibe[]>(fallbackVibes);
+  const [trendingVibes, setTrendingVibes] = useState<TrendingVibe[]>(FALLBACK_VIBES);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchTrendingVibes = async () => {
+  const fetchTrendingVibes = async () => {
       try {
         const response = await fetch('/api/tracks/popular');
         const data = await response.json();
         
         if (data.moods && data.moods.length > 0) {
+          console.log(`✅ [TrendingVibes] Found ${data.moods.length} community moods`);
           // Convert API data to TrendingVibe format
           const dynamicVibes: TrendingVibe[] = data.moods.map((mood: any, index: number) => {
             // Format title properly (capitalize first letter of each word)
@@ -178,6 +178,9 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
           });
           
           setTrendingVibes(dynamicVibes);
+        } else {
+          console.warn("⚠️ [TrendingVibes] No moods found. Using fallback vibes...");
+          setTrendingVibes(FALLBACK_VIBES);
         }
       } catch (error) {
         console.error('Failed to fetch trending vibes:', error);
@@ -187,6 +190,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
       }
     };
 
+  useEffect(() => {
     fetchTrendingVibes();
   }, []);
 
@@ -254,7 +258,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
         </div>
       )}
 
-      {/* View More Button */}
+      {/* Refresh Button */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -264,9 +268,14 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-cyan-500/20 border border-pink-500/30 text-pink-300 hover:from-pink-500/30 hover:to-cyan-500/30 transition-all"
+          onClick={() => {
+            setIsLoading(true);
+            fetchTrendingVibes();
+          }}
+          disabled={isLoading}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-cyan-500/20 border border-pink-500/30 text-pink-300 hover:from-pink-500/30 hover:to-cyan-500/30 transition-all disabled:opacity-50"
         >
-          View All Trending Vibes
+          {isLoading ? '🔄 Refreshing...' : '🎲 Refresh Vibes'}
         </motion.button>
       </motion.div>
     </div>
