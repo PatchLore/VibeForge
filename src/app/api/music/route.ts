@@ -20,6 +20,7 @@ export async function GET() {
 export async function POST(req: Request) {
   console.log("🎵 POST /api/music endpoint reached");
   console.log("🎵 ========== MUSIC GENERATION START ==========");
+  // ⚠️ Credits are deducted ONLY on generation, not playback.
   console.log("🔍 Request method:", req.method);
   console.log("🔍 Request URL:", req.url);
   console.log("🔍 Request headers:", Object.fromEntries(req.headers.entries()));

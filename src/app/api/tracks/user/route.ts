@@ -6,6 +6,7 @@ import { createServerClient } from "@supabase/ssr";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  console.log("🪙 No credits deducted for playback.");
   try {
     // Get the current user from session
     const cookieStore = await cookies();

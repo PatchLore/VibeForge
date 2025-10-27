@@ -8,6 +8,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY
   : null;
 
 export async function GET() {
+  console.log("🪙 No credits deducted for playback.");
   try {
     if (!supabase) {
       return NextResponse.json({ moods: [], error: "Database not configured" });
