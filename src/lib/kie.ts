@@ -139,9 +139,14 @@ export async function generateImage(prompt: string) {
   // Using Seedream 4.0 model for highest quality image generation
   const model = "bytedance/seedream-v4-text-to-image";
   
+  // Add visual style bias for better album cover artwork
+  const visualStyle = ", digital painting, album cover artwork, cinematic lighting, expressive brush textures, vivid atmosphere";
+  const finalPrompt = prompt + visualStyle;
+  
   console.log("🎨 [IMAGE GENERATION] Using enhanced prompt for Seedream 4.0");
   console.log("🎨 [KieAI] Using model:", model);
-  console.log("🎨 Prompt:", prompt);
+  console.log("✨ [PromptEnhancer] Expanded prompt:", prompt);
+  console.log("🎨 [Final Prompt for Kie.ai]:", finalPrompt);
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
@@ -150,7 +155,7 @@ export async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: prompt,
+      prompt: finalPrompt,
       model: model,
       resolution: "landscape_16_9",
       style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting",
