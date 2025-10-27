@@ -94,4 +94,4 @@ export function expandPrompt(prompt: string): string {
 }
 
 // Re-export the existing function for backward compatibility
-export { generateExpandedPrompt } from './promptExpansion';
+export { generateExpandedPrompt, getRandomVibe } from './promptExpansion';
