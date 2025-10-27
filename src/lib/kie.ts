@@ -126,6 +126,9 @@ export async function generateImage(prompt: string) {
   const apiKey = API_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
+  console.log("🎨 [IMAGE GENERATION] using bytedance/seedream-v4-text-to-image");
+  console.log("🎨 Enhanced prompt:", prompt);
+
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
     headers: {
@@ -134,8 +137,14 @@ export async function generateImage(prompt: string) {
     },
     body: JSON.stringify({
       prompt: `Digital painting inspired by: ${prompt}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork`,
-      model: "Seedream",
-      resolution: "1024x1024",
+      model: "bytedance/seedream-v4-text-to-image",
+      input: {
+        prompt: `Digital painting inspired by: ${prompt}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork`,
+        image_size: "landscape_16_9",
+        image_resolution: "2K",
+        max_images: 1
+      },
+      resolution: "landscape_16_9",
       style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting, painterly texture",
     }),
   });
@@ -146,5 +155,6 @@ export async function generateImage(prompt: string) {
     throw new Error(`Image generation failed: ${data.msg}`);
   }
 
+  console.log("✅ Image generated successfully with Seedream 4.0");
   return data.data?.response?.imageUrl;
 }
