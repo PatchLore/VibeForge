@@ -9,6 +9,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_KEY
 
 export async function GET() {
   console.log("🪙 No credits deducted for playback.");
+  console.log("🔍 [Popular Tracks] Starting fetch...");
   try {
     if (!supabase) {
       return NextResponse.json({ tracks: [], error: "Database not configured" });
@@ -20,6 +21,7 @@ export async function GET() {
       .select("id, title, audio_url, image_url, prompt, likes, created_at, user_id")
       .not("audio_url", "is", null)
       .neq("audio_url", "")
+      .not("audio_url", "eq", "")
       .order("likes", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(8);
@@ -30,8 +32,43 @@ export async function GET() {
     }
 
     if (!tracks || tracks.length === 0) {
-      console.log("ℹ️ [Popular Tracks] No tracks with audio found");
-      return NextResponse.json({ tracks: [] });
+      console.log("ℹ️ [Popular Tracks] No tracks with audio found, trying without audio filter...");
+      
+      // Fallback: get any tracks without audio filter
+      const { data: fallbackTracks, error: fallbackError } = await supabase
+        .from("tracks")
+        .select("id, title, audio_url, image_url, prompt, likes, created_at, user_id")
+        .order("created_at", { ascending: false })
+        .limit(8);
+        
+      if (fallbackError) {
+        console.error("❌ [Popular Tracks] Fallback error:", fallbackError);
+        return NextResponse.json({ tracks: [], error: fallbackError.message });
+      }
+      
+      console.log(`ℹ️ [Popular Tracks] Fallback found ${fallbackTracks?.length || 0} tracks`);
+      console.log("🔍 [Popular Tracks] Fallback tracks sample:", fallbackTracks?.[0]);
+      
+      if (!fallbackTracks || fallbackTracks.length === 0) {
+        console.log("❌ [Popular Tracks] No tracks found in database at all");
+        return NextResponse.json({ tracks: [] });
+      }
+      
+      // Use fallback tracks
+      const formattedTracks = fallbackTracks.map(track => ({
+        id: track.id,
+        title: track.title || 'Untitled Track',
+        audioUrl: track.audio_url || '',
+        imageUrl: track.image_url,
+        mood: track.prompt || 'Unknown mood',
+        generatedAt: track.created_at,
+        duration: 600, // Default duration
+        likes: track.likes || 0,
+        userId: track.user_id
+      }));
+
+      console.log(`✅ [Popular Tracks] Returning ${formattedTracks.length} fallback tracks`);
+      return NextResponse.json({ tracks: formattedTracks });
     }
 
     // Format tracks for TrendingVibes component

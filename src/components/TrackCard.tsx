@@ -126,10 +126,15 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handlePlayPause}
-              className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white hover:from-purple-600 hover:to-pink-600 transition-all"
+              whileHover={{ scale: track.audio_url ? 1.05 : 1 }}
+              whileTap={{ scale: track.audio_url ? 0.95 : 1 }}
+              onClick={track.audio_url ? handlePlayPause : undefined}
+              disabled={!track.audio_url}
+              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all ${
+                track.audio_url 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600' 
+                  : 'bg-gray-500 cursor-not-allowed'
+              }`}
             >
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -200,22 +205,31 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       </div>
 
       {/* Hidden Audio Element */}
-      <audio
-        ref={(audio) => {
-          if (audio) {
-            if (isPlaying) {
-              audio.play().catch(err => console.error('Play failed:', err));
-            } else {
-              audio.pause();
+      {track.audio_url && (
+        <audio
+          ref={(audio) => {
+            if (audio) {
+              if (isPlaying) {
+                audio.play().catch(err => console.error('Play failed:', err));
+              } else {
+                audio.pause();
+              }
             }
-          }
-        }}
-        src={track.audio_url}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-        preload="metadata"
-      />
+          }}
+          src={track.audio_url}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleTimeUpdate}
+          onEnded={() => setIsPlaying(false)}
+          preload="metadata"
+        />
+      )}
+      
+      {/* No Audio Message */}
+      {!track.audio_url && (
+        <div className="text-center py-4">
+          <p className="text-gray-400 text-sm">🎵 Audio not available</p>
+        </div>
+      )}
     </motion.div>
   );
 }
