@@ -2,17 +2,17 @@
 
 // 🎯 API Key Manager - Clear separation of concerns
 const KIE_KEYS = {
-  music: process.env.VibeForge,
-  image: process.env.KIE_API_KEY,
+  music: process.env.VIBEFORGE_API_KEY,
+  image: process.env.KIE_IMAGE_API_KEY,
 };
 
 // ⚠️ Runtime validation with clear warnings
 if (!KIE_KEYS.music) {
-  console.warn("⚠️ Missing VibeForge (Music Generation) API key! Please add it to Vercel.");
+  console.warn("⚠️ Missing VIBEFORGE_API_KEY (Music Generation) API key! Please add it to Vercel.");
 }
 
 if (!KIE_KEYS.image) {
-  console.warn("⚠️ Missing KIE_API_KEY (Image Generation) API key! Please add it to Vercel.");
+  console.warn("⚠️ Missing KIE_IMAGE_API_KEY (Image Generation) API key! Please add it to Vercel.");
 }
 
 // ✅ Startup confirmation
@@ -24,7 +24,7 @@ const BASE_URL = "https://api.kie.ai/api/v1";
 
 export async function generateMusic(prompt: string) {
   const apiKey = KIE_KEYS.music;
-  if (!apiKey) throw new Error("Missing VibeForge music generation API key");
+  if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
   const response = await fetch(`${BASE_URL}/generate`, {
     method: "POST",
@@ -51,7 +51,7 @@ export async function generateMusic(prompt: string) {
 
 export async function checkMusicStatus(taskId: string) {
   const apiKey = KIE_KEYS.music;
-  if (!apiKey) throw new Error("Missing VibeForge music generation API key");
+  if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
   const response = await fetch(`${BASE_URL}/generate/record-info?taskId=${taskId}`, {
     headers: { "Authorization": `Bearer ${apiKey}` },
@@ -66,7 +66,7 @@ export async function checkMusicStatus(taskId: string) {
 
 export async function generateImage(prompt: string) {
   const apiKey = KIE_KEYS.image;
-  if (!apiKey) throw new Error("Missing KIE_API_KEY for image generation");
+  if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",

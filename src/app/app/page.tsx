@@ -10,7 +10,7 @@ import PromptPresets from '@/components/PromptPresets';
 import GenerationProgress from '@/components/GenerationProgress';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import { SavedTrack } from '@/types';
-import { getRandomVibe } from '@/lib/promptExpansion';
+import { expandPrompt, getRandomVibe } from '@/lib/prompt';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -72,6 +72,7 @@ export default function AppPage() {
         // Convert Supabase tracks to SavedTrack format
         const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => ({
           id: track.id,
+          title: track.title || 'Generated Track',
           audioUrl: track.audio_url,
           imageUrl: track.image_url,
           mood: track.prompt || track.title,
