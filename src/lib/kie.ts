@@ -45,6 +45,10 @@ export async function generateMusic(prompt: string) {
   console.log("⏰ Timestamp:", new Date().toISOString());
 
   try {
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    
     const response = await fetch(`${BASE_URL}/generate`, {
       method: "POST",
       headers: {
@@ -52,8 +56,11 @@ export async function generateMusic(prompt: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
-
+    
+    clearTimeout(timeout); // Clear timeout on success
+    
     console.log("📡 API Response Status:", response.status);
 
     const data = await response.json();
@@ -71,6 +78,9 @@ export async function generateMusic(prompt: string) {
     return taskId;
   } catch (error) {
     console.error("💥 Error in generateMusic:", error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out after 2 minutes');
+    }
     throw error;
   }
 }
@@ -126,8 +136,8 @@ export async function generateImage(prompt: string) {
   const apiKey = API_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
-  console.log("🎨 [IMAGE GENERATION] using bytedance/seedream-v4-text-to-image");
-  console.log("🎨 Enhanced prompt:", prompt);
+  console.log("🎨 [IMAGE GENERATION] Using enhanced prompt for Seedream");
+  console.log("🎨 Prompt:", prompt);
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
     method: "POST",
@@ -136,16 +146,10 @@ export async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: `Digital painting inspired by: ${prompt}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork`,
-      model: "bytedance/seedream-v4-text-to-image",
-      input: {
-        prompt: `Digital painting inspired by: ${prompt}, expressive brushstrokes, artstation style, oil painting aesthetic, cinematic lighting, painterly texture, artistic composition, vibrant yet harmonious colors, atmospheric mood, high detail artwork`,
-        image_size: "landscape_16_9",
-        image_resolution: "2K",
-        max_images: 1
-      },
-      resolution: "landscape_16_9",
-      style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting, painterly texture",
+      prompt: prompt,
+      model: "Seedream",
+      resolution: "1024x1024",
+      style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting",
     }),
   });
 
@@ -155,6 +159,6 @@ export async function generateImage(prompt: string) {
     throw new Error(`Image generation failed: ${data.msg}`);
   }
 
-  console.log("✅ Image generated successfully with Seedream 4.0");
+  console.log("✅ Image generated successfully");
   return data.data?.response?.imageUrl;
 }
