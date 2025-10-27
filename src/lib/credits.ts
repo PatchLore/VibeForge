@@ -111,7 +111,7 @@ export async function getOrCreateUser(email: string): Promise<string | null> {
     // Create new user profile
     const { data: newUser, error } = await supabase
       .from('profiles')
-      .insert({ email, credits: 100, user_id: userId }) // Give new users 100 free credits
+      .insert({ email, credits: 100 }) // Give new users 100 free credits
       .select('user_id')
       .single();
 
