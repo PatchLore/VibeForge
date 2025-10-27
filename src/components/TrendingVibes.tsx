@@ -150,14 +150,32 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
         
         if (data.moods && data.moods.length > 0) {
           // Convert API data to TrendingVibe format
-          const dynamicVibes: TrendingVibe[] = data.moods.map((mood: any, index: number) => ({
-            id: mood.mood,
-            title: mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1),
-            description: `Community-generated ${mood.mood} vibes`,
-            emoji: moodEmojis[mood.mood] || '🎵',
-            color: moodColors[mood.mood] || 'from-pink-500 to-cyan-500',
-            popularity: mood.popularity
-          }));
+          const dynamicVibes: TrendingVibe[] = data.moods.map((mood: any, index: number) => {
+            // Format title properly (capitalize first letter of each word)
+            const formattedTitle = mood.mood
+              .split(' ')
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+            
+            // Find emoji by matching against keywords
+            let emoji = '🎵';
+            const moodLower = mood.mood.toLowerCase();
+            for (const [key, val] of Object.entries(moodEmojis)) {
+              if (moodLower.includes(key)) {
+                emoji = val as string;
+                break;
+              }
+            }
+            
+            return {
+              id: mood.mood,
+              title: formattedTitle,
+              description: `${mood.count} community-generated tracks`,
+              emoji: emoji,
+              color: moodColors[mood.mood.split(' ')[0]] || 'from-pink-500 to-cyan-500',
+              popularity: mood.popularity
+            };
+          });
           
           setTrendingVibes(dynamicVibes);
         }
