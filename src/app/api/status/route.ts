@@ -71,8 +71,14 @@ export async function GET(req: Request) {
       
       if (kieData && kieData.audio_url) {
         console.log("✅ [POLL] Completed on Kie.ai → Saving to database");
+        console.log("📦 [POLL] Data received:", {
+          audio_url: kieData.audio_url ? "✅ exists" : "❌ missing",
+          image_url: kieData.image_url ? "✅ exists" : "❌ missing",
+          title: kieData.title,
+          duration: kieData.duration
+        });
         
-        // Update or insert the track
+        // Update or insert the track with both audio and image
         const trackData: any = {
           task_id: taskId,
           title: kieData.title || `Generated Track`,
@@ -87,6 +93,8 @@ export async function GET(req: Request) {
         if (data?.user_id) {
           trackData.user_id = data.user_id;
         }
+
+        console.log("💾 [POLL] Updating track in database:", trackData);
 
         const { data: updated, error: updateError } = await supabase
           .from("tracks")

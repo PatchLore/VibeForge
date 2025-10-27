@@ -81,6 +81,7 @@ export async function checkMusicStatus(taskId: string) {
   const apiKey = KIE_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
+  console.log("🔄 [KieAI] Checking status for task:", taskId);
   const response = await fetch(`${BASE_URL}/generate/record-info?taskId=${taskId}`, {
     headers: { "Authorization": `Bearer ${apiKey}` },
   });
@@ -89,7 +90,16 @@ export async function checkMusicStatus(taskId: string) {
     console.error("🎵 Status check error:", data);
     throw new Error(`Status check failed: ${data.msg}`);
   }
-  return data.data?.response?.sunoData?.[0];
+  
+  const result = data.data?.response?.sunoData?.[0];
+  console.log("📊 [KieAI] Status check result:", result ? {
+    audio_url: result.audio_url ? "exists" : "missing",
+    image_url: result.image_url ? "exists" : "missing",
+    title: result.title,
+    duration: result.duration
+  } : "no data");
+  
+  return result;
 }
 
 export async function generateImage(prompt: string, styleSuffix: string = "") {
