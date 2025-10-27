@@ -65,10 +65,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     console.log("📝 Request body:", body);
-    const { prompt, expandedMusicPrompt, expandedArtPrompt } = body;
+    const { prompt, expandedPrompt } = body;
     console.log("📝 Extracted prompt:", prompt);
-    console.log("📝 Frontend expanded music prompt:", expandedMusicPrompt);
-    console.log("📝 Frontend expanded art prompt:", expandedArtPrompt);
+    console.log("📝 Frontend expanded prompt:", expandedPrompt);
 
     const userVibe = prompt || "calm";
     
@@ -103,21 +102,18 @@ export async function POST(req: Request) {
       console.log(`✅ Credits check passed. Available: ${userCredits}`);
     }
     
-    // Use frontend expanded prompts if available, otherwise expand on server
-    let musicPrompt, artPrompt;
-    if (expandedMusicPrompt && expandedArtPrompt) {
-      console.log("🎵 Using frontend expanded prompts");
-      musicPrompt = expandedMusicPrompt;
-      artPrompt = expandedArtPrompt;
+    // Use frontend expanded prompt if available, otherwise expand on server
+    let finalPrompt;
+    if (expandedPrompt) {
+      console.log("🎵 Using frontend expanded prompt");
+      finalPrompt = expandedPrompt;
     } else {
-      console.log("🎵 Expanding prompts on server side");
+      console.log("🎵 Expanding prompt on server side");
       const expanded = generateExpandedPrompt(userVibe);
-      musicPrompt = expanded.musicPrompt;
-      artPrompt = expanded.artPrompt;
+      finalPrompt = expanded.musicPrompt;
     }
     
-    console.log("🎵 Final Music Prompt:", musicPrompt);
-    console.log("🎨 Final Art Prompt:", artPrompt);
+    console.log("🎵 Final Prompt:", finalPrompt);
 
     // Generate creative title for the track
     let generatedTitle = 'Generated Track';
@@ -134,17 +130,17 @@ export async function POST(req: Request) {
 
     // Step 1: Generate music using the expanded prompt
     console.log("🎵 Starting music generation...");
-    const taskId = await generateMusic(musicPrompt);
+    const taskId = await generateMusic(finalPrompt);
     console.log("✅ Generation request sent to Kie.ai");
     console.log("📋 Task ID:", taskId);
     console.log("📋 User ID:", user.id);
     console.log("📋 Callback will be sent to: https://www.soundswoop.com/api/callback");
 
-    // Step 2: Generate image using the expanded art prompt
+    // Step 2: Generate image using the expanded prompt
     console.log("🎨 Starting image generation...");
     let imageTaskId = null;
     try {
-      imageTaskId = await generateImage(artPrompt);
+      imageTaskId = await generateImage(finalPrompt);
       console.log("✅ Image generation request sent to Kie.ai");
       console.log("📋 Image Task ID:", imageTaskId);
     } catch (imageError) {
@@ -219,8 +215,8 @@ export async function POST(req: Request) {
       prompt: userVibe,
       title: generatedTitle,
       expandedPrompts: {
-        music: musicPrompt,
-        art: artPrompt
+        music: finalPrompt,
+        art: finalPrompt
       },
       remainingCredits: creditSystemEnabled ? remainingCredits : undefined
     });
