@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import TrackCard from './TrackCard';
 
 interface TrendingVibesProps {
   onVibeSelect: (vibe: string) => void;
@@ -14,6 +15,18 @@ interface TrendingVibe {
   emoji: string;
   color: string;
   popularity: number;
+}
+
+interface RealTrack {
+  id: string;
+  title: string;
+  audioUrl: string;
+  imageUrl?: string;
+  mood: string;
+  generatedAt: string;
+  duration: number;
+  likes: number;
+  userId?: string;
 }
 
 // Fallback static vibes for when no community data is available
@@ -139,56 +152,41 @@ const moodColors: Record<string, string> = {
 };
 
 export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
-  const [trendingVibes, setTrendingVibes] = useState<TrendingVibe[]>(FALLBACK_VIBES);
+  const [realTracks, setRealTracks] = useState<RealTrack[]>([]);
+  const [fallbackVibes, setFallbackVibes] = useState<TrendingVibe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchTrendingVibes = async () => {
-      try {
-        const response = await fetch('/api/tracks/popular');
-        const data = await response.json();
+    try {
+      const response = await fetch('/api/tracks/popular');
+      const data = await response.json();
+      
+      if (data.tracks && data.tracks.length > 0) {
+        console.log(`✅ [TrendingVibes] Found ${data.tracks.length} real tracks`);
+        setRealTracks(data.tracks);
         
-        if (data.moods && data.moods.length > 0) {
-          console.log(`✅ [TrendingVibes] Found ${data.moods.length} community moods`);
-          // Convert API data to TrendingVibe format
-          const dynamicVibes: TrendingVibe[] = data.moods.map((mood: any, index: number) => {
-            // Format title properly (capitalize first letter of each word)
-            const formattedTitle = mood.mood
-              .split(' ')
-              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-            
-            // Find emoji by matching against keywords
-            let emoji = '🎵';
-            const moodLower = mood.mood.toLowerCase();
-            for (const [key, val] of Object.entries(moodEmojis)) {
-              if (moodLower.includes(key)) {
-                emoji = val as string;
-                break;
-              }
-            }
-            
-            return {
-              id: mood.mood,
-              title: formattedTitle,
-              description: `${mood.count} community-generated tracks`,
-              emoji: emoji,
-              color: moodColors[mood.mood.split(' ')[0]] || 'from-pink-500 to-cyan-500',
-              popularity: mood.popularity
-            };
-          });
-          
-          setTrendingVibes(dynamicVibes);
+        // Fill remaining slots with fallback vibes if we have fewer than 8 tracks
+        const remainingSlots = Math.max(0, 8 - data.tracks.length);
+        if (remainingSlots > 0) {
+          console.log(`📝 [TrendingVibes] Adding ${remainingSlots} fallback vibes`);
+          setFallbackVibes(FALLBACK_VIBES.slice(0, remainingSlots));
         } else {
-          console.warn("⚠️ [TrendingVibes] No moods found. Using fallback vibes...");
-          setTrendingVibes(FALLBACK_VIBES);
+          setFallbackVibes([]);
         }
-      } catch (error) {
-        console.error('Failed to fetch trending vibes:', error);
-        // Keep fallback vibes
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.warn("⚠️ [TrendingVibes] No real tracks found. Using all fallback vibes...");
+        setRealTracks([]);
+        setFallbackVibes(FALLBACK_VIBES);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch trending vibes:', error);
+      // Keep fallback vibes
+      setRealTracks([]);
+      setFallbackVibes(FALLBACK_VIBES);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTrendingVibes();
@@ -217,43 +215,69 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {trendingVibes.map((vibe, index) => (
+          {/* Render real tracks first */}
+          {realTracks.map((track, index) => (
             <motion.div
-            key={vibe.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onVibeSelect(vibe.title.toLowerCase())}
-            className="group cursor-pointer"
-          >
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 h-full">
-              {/* Popularity Badge */}
-              <div className="flex justify-between items-start mb-3">
-                <div className="text-2xl">{vibe.emoji}</div>
-                <div className="flex items-center space-x-1 text-xs text-gray-300">
-                  <svg className="w-3 h-3 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  <span>{vibe.popularity}%</span>
+              key={`track-${track.id}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="group"
+            >
+              <TrackCard 
+                track={{
+                  id: track.id,
+                  title: track.title,
+                  audio_url: track.audioUrl,
+                  image_url: track.imageUrl,
+                  prompt: track.mood,
+                  created_at: track.generatedAt,
+                  duration: track.duration,
+                  likes: track.likes
+                }}
+                onDelete={() => {}} // No delete functionality in trending
+              />
+            </motion.div>
+          ))}
+          
+          {/* Render fallback vibes for remaining slots */}
+          {fallbackVibes.map((vibe, index) => (
+            <motion.div
+              key={`fallback-${vibe.id}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: (realTracks.length + index) * 0.1 }}
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onVibeSelect(vibe.title.toLowerCase())}
+              className="group cursor-pointer"
+            >
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 h-full">
+                {/* Popularity Badge */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="text-2xl">{vibe.emoji}</div>
+                  <div className="flex items-center space-x-1 text-xs text-gray-300">
+                    <svg className="w-3 h-3 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span>{vibe.popularity}%</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Vibe Content */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-white text-sm group-hover:text-pink-300 transition-colors">
-                  {vibe.title}
-                </h4>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  {vibe.description}
-                </p>
-              </div>
+                {/* Vibe Content */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-white text-sm group-hover:text-pink-300 transition-colors">
+                    {vibe.title}
+                  </h4>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    {vibe.description}
+                  </p>
+                </div>
 
-              {/* Gradient Accent */}
-              <div className={`mt-3 h-1 rounded-full bg-gradient-to-r ${vibe.color} opacity-60 group-hover:opacity-100 transition-opacity`} />
-            </div>
-          </motion.div>
+                {/* Gradient Accent */}
+                <div className={`mt-3 h-1 rounded-full bg-gradient-to-r ${vibe.color} opacity-60 group-hover:opacity-100 transition-opacity`} />
+              </div>
+            </motion.div>
           ))}
         </div>
       )}
