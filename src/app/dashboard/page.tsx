@@ -28,23 +28,12 @@ export default function DashboardPage() {
 
   const fetchUserTracks = async () => {
     try {
-      if (!user?.id || !supabase) return;
-      
       setTracksLoading(true);
-      const { data, error } = await supabase
-        .from('tracks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error('Error fetching tracks:', error);
-      } else {
-        setUserTracks(data || []);
-      }
+      const response = await fetch('/api/tracks/user');
+      const json = await response.json();
+      setUserTracks(json.tracks || []);
     } catch (error) {
-      console.error('Error in fetchUserTracks:', error);
+      console.error('Error fetching tracks:', error);
     } finally {
       setTracksLoading(false);
     }
@@ -178,28 +167,57 @@ export default function DashboardPage() {
             className="mt-12"
           >
             <h2 className="text-2xl font-bold text-white mb-6">Your Recent Tracks</h2>
-            <div className="grid gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {userTracks.map((track, index) => (
                 <motion.div
                   key={track.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="auth-form-container"
+                  className="bg-neutral-900 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-white font-medium">{track.title || 'Untitled Track'}</h4>
-                      <p className="text-gray-400 text-sm">
-                        {new Date(track.created_at).toLocaleString()}
-                      </p>
+                  {/* Image */}
+                  {track.image_url ? (
+                    <img
+                      src={track.image_url}
+                      alt={track.title || "Generated art"}
+                      className="w-full rounded-xl object-cover aspect-video mb-3"
+                    />
+                  ) : (
+                    <div className="aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3">
+                      {track.status === "pending" ? "Generating..." : "No image"}
                     </div>
-                    {track.audio_url && (
-                      <audio controls className="max-w-xs">
-                        <source src={track.audio_url} type="audio/mpeg" />
-                      </audio>
-                    )}
-                  </div>
+                  )}
+
+                  {/* Title */}
+                  <h4 className="text-white font-semibold text-lg mb-1">
+                    {track.title || 'Untitled Track'}
+                  </h4>
+
+                  {/* Date */}
+                  <p className="text-gray-400 text-xs mb-3">
+                    {new Date(track.created_at).toLocaleString()}
+                  </p>
+
+                  {/* Audio Player */}
+                  {track.audio_url ? (
+                    <audio
+                      controls
+                      src={track.audio_url}
+                      className="w-full h-10"
+                    />
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      {track.status === "pending" ? "Generating audio..." : "No audio available"}
+                    </div>
+                  )}
+
+                  {/* Status */}
+                  {track.status && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Status: <span className={track.status === 'completed' ? 'text-green-400' : track.status === 'failed' ? 'text-red-400' : 'text-yellow-400'}>{track.status}</span>
+                    </p>
+                  )}
                 </motion.div>
               ))}
             </div>
