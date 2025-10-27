@@ -29,9 +29,9 @@ export async function GET() {
       return NextResponse.json({ tracks: [], error: "Not authenticated" }, { status: 401 });
     }
 
-    console.log("🎧 MyTracks fetch → User:", user.id);
+    console.log("🧠 Fetching tracks for user:", user.id);
 
-    // Use service role client to fetch all tracks (bypassing RLS if needed)
+    // Use service role client to fetch user's tracks only
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -43,12 +43,11 @@ export async function GET() {
       }
     );
 
-    // Fetch tracks for the user
-    // Note: Includes tracks with user_id matching the current user OR null (for backwards compatibility with old tracks)
+    // Fetch ONLY tracks belonging to the current user
     const { data, error } = await supabaseAdmin
       .from("tracks")
       .select("*")
-      .or(`user_id.eq.${user.id},user_id.is.null`)
+      .eq('user_id', user.id)
       .order("created_at", { ascending: false })
       .limit(50);
 
