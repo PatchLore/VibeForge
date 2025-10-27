@@ -136,7 +136,11 @@ export async function generateImage(prompt: string) {
   const apiKey = API_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
-  console.log("🎨 [IMAGE GENERATION] Using enhanced prompt for Seedream");
+  // Using Seedream 4.0 model for highest quality image generation
+  const model = "bytedance/seedream-v4-text-to-image";
+  
+  console.log("🎨 [IMAGE GENERATION] Using enhanced prompt for Seedream 4.0");
+  console.log("🎨 [KieAI] Using model:", model);
   console.log("🎨 Prompt:", prompt);
 
   const response = await fetch(`${BASE_URL}/generate/image`, {
@@ -147,8 +151,8 @@ export async function generateImage(prompt: string) {
     },
     body: JSON.stringify({
       prompt: prompt,
-      model: "Seedream",
-      resolution: "1024x1024",
+      model: model,
+      resolution: "landscape_16_9",
       style: "digital painting, expressive brushstrokes, artstation, oil painting style, cinematic lighting",
     }),
   });
@@ -159,6 +163,6 @@ export async function generateImage(prompt: string) {
     throw new Error(`Image generation failed: ${data.msg}`);
   }
 
-  console.log("✅ Image generated successfully");
+  console.log("✅ Image generated successfully with Seedream 4.0");
   return data.data?.response?.imageUrl;
 }
