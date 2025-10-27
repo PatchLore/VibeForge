@@ -26,12 +26,14 @@ export async function generateMusic(prompt: string) {
   const apiKey = KIE_KEYS.music;
   if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
 
-  const callBackUrl = process.env.KIE_CALLBACK_URL;
+  const callBackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
   console.log("🔔 [KieAI] callback:", callBackUrl);
   
   if (!callBackUrl) {
     throw new Error("Missing KIE_CALLBACK_URL environment variable");
   }
+
+  console.log("🔔 [KieAI] Using callback URL:", callBackUrl);
 
   const response = await fetch(`${BASE_URL}/generate`, {
     method: "POST",

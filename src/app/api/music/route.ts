@@ -115,32 +115,40 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Deduct credits
-    const { data: updated, error: updErr } = await supabaseAdmin
-      .from('profiles')
-      .update({ credits: currentCredits - CREDITS_PER_GENERATION, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .select('credits')
-      .maybeSingle();
-    
-    console.log("[/api/music] credits after spend:", updated, updErr);
-    
-    if (updErr || !updated) {
-      console.error('❌ Failed to deduct credits:', updErr);
-      return NextResponse.json({
-        success: false,
-        error: 'CREDIT_DEDUCTION_FAILED',
-        message: 'Failed to deduct credits'
-      }, { status: 500 });
-    }
-    
-    remainingCredits = updated.credits;
-    
     // Expand the user's vibe into detailed prompts
     const { musicPrompt, artPrompt } = generateExpandedPrompt(userVibe);
 
+    console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
+
     // Generate music using the expanded prompt
     const taskId = await generateMusic(musicPrompt);
+    
+    console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
+
+    // DON'T deduct credits yet - wait for callback confirmation
+    // Credits will be deducted in the callback route when generation succeeds
+    
+    // Store pending generation in tracks table for tracking
+    try {
+      await supabaseAdmin
+        .from('tracks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          title: 'Generating...',
+          prompt: userVibe,
+          audio_url: null,
+          image_url: null,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+      console.log("📝 [GENERATION START] Pending track stored");
+    } catch (trackErr) {
+      console.error("⚠️ [GENERATION START] Failed to store pending track:", trackErr);
+      // Continue anyway - callback will create the final track
+    }
+    
+    remainingCredits = currentCredits; // Return current credits, not deducted yet
 
     // Return immediately with task ID - Vercel has 5-minute timeout limit
     // The generation happens in the background via the API's callback system
