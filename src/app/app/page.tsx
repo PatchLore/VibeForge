@@ -70,15 +70,19 @@ export default function AppPage() {
       
       if (data.tracks) {
         // Convert Supabase tracks to SavedTrack format
-        const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => ({
-          id: track.id,
-          title: track.title || 'Generated Track',
-          audioUrl: track.audio_url,
-          imageUrl: track.image_url,
-          mood: track.prompt || track.title,
-          generatedAt: track.created_at,
-          duration: track.duration || 600,
-        }));
+        const convertedTracks: SavedTrack[] = data.tracks.map((track: any) => {
+          const converted = {
+            id: track.id,
+            title: track.title || 'Generated Track',
+            audioUrl: track.audio_url,
+            imageUrl: track.image_url,
+            mood: track.prompt || track.title,
+            generatedAt: track.created_at,
+            duration: track.duration || 600,
+          };
+          console.log('🎧 [AppPage] Track converted:', { title: converted.title, hasAudio: !!converted.audioUrl, hasImage: !!converted.imageUrl });
+          return converted;
+        });
         setSavedTracks(convertedTracks);
       }
     } catch (error) {

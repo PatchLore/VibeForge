@@ -228,8 +228,8 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
                 track={{
                   id: track.id,
                   title: track.title,
-                  audio_url: track.audioUrl,
-                  image_url: track.imageUrl,
+                  audio_url: track.audioUrl, // Use correct property name
+                  image_url: track.imageUrl, // Use correct property name
                   prompt: track.mood,
                   created_at: track.generatedAt,
                   duration: track.duration,
@@ -237,6 +237,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
                 }}
                 onDelete={() => {}} // No delete functionality in trending
               />
+              {console.log('🎧 [TrendingVibes] Audio source:', track.audioUrl, '| Image:', track.imageUrl)}
             </motion.div>
           ))}
           
