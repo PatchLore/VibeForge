@@ -116,6 +116,19 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
 
       {/* Audio Player */}
       <div className="space-y-3">
+        {/* Native HTML5 Audio Player */}
+        {track.audio_url && (
+          <audio
+            controls
+            preload="none"
+            src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
+            className="w-full mt-2"
+            onError={(e) => {
+              console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
+            }}
+          />
+        )}
+        
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <motion.button
