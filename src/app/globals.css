@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Soundswoop Theme Variables */
+:root {
+  --color-bg: #0a0114;
+  --color-primary: #ff4ff8;
+  --color-accent: #b794f6;
+  --color-card: rgba(255, 255, 255, 0.05);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-text: #f9f7ff;
+  --color-muted: #9b8aa7;
+  --gradient-primary: linear-gradient(135deg, #ff4ff8 0%, #7b2ff7 100%);
+}
+
+.dark {
+  --color-bg: #040008;
+  --color-card: rgba(255, 255, 255, 0.08);
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;

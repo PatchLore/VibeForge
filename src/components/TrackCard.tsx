@@ -49,9 +49,8 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl bg-gradient-to-b from-[#1a0b2e]/60 to-[#2a0942]/60
-                 backdrop-blur-xl border border-white/10 shadow-lg p-4
-                 hover:scale-[1.02] transition-transform duration-300"
+      className="rounded-xl bg-card backdrop-blur-lg border border-border shadow-glow p-4
+                 hover:scale-[1.02] transition-all duration-300 ease-out"
     >
       {/* Artwork */}
       {track.image_url ? (
@@ -85,19 +84,19 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
                 document.body.removeChild(link);
               }
             }}
-            className="mt-3 px-4 py-2 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            className="mt-3 px-4 py-2 bg-gradient-primary text-white text-sm font-medium rounded-lg transition-all duration-300 ease-out shadow-glow hover:opacity-90"
           >
             📥 Download
           </motion.button>
           
           {/* Attribution */}
-          <p className="text-xs text-gray-400 text-center mt-2">
+          <p className="text-xs text-muted text-center mt-2">
             Generated with Soundswoop AI
           </p>
         </div>
       ) : (
-        <div className="h-64 w-full rounded-xl bg-gradient-to-tr from-[#4c1d95] to-[#7e22ce]
-                        flex items-center justify-center text-white/50 text-sm italic mb-4">
+        <div className="h-64 w-full rounded-xl bg-gradient-to-tr from-accent/20 to-primary/20
+                        flex items-center justify-center text-muted text-sm italic mb-4">
           No Image
         </div>
       )}
@@ -106,12 +105,12 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       <div className="space-y-3">
         {/* Native HTML5 Audio Player */}
         {track.audio_url && (
-          <div className="bg-gradient-to-r from-[#2b0043] to-[#45006e] rounded-xl p-1 mt-3">
+          <div className="bg-card rounded-xl p-2 mt-3">
             <audio
               controls
               preload="none"
               src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
-              className="w-full accent-[#ec4899] dark:accent-[#ec4899]"
+              className="w-full bg-card rounded-xl shadow-glow accent-primary"
               onError={(e) => {
                 console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
               }}
@@ -120,11 +119,11 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
         )}
 
         {/* Track Info */}
-        <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="flex items-center justify-between text-sm text-muted">
           <div className="flex items-center space-x-2">
             <span>🎵🎨 Soundswoop</span>
             {track.mood && (
-              <span className="px-2 py-1 bg-white/10 rounded-full text-xs">
+              <span className="px-2 py-1 bg-card rounded-full text-xs">
                 {track.mood}
               </span>
             )}
@@ -139,10 +138,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             whileTap={{ scale: 0.95 }}
             onClick={handleLike}
             disabled={isLiking}
-            className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 disabled:opacity-50"
+            className="flex items-center space-x-2 px-4 py-2 bg-card hover:bg-gradient-primary rounded-lg transition-all duration-300 ease-out disabled:opacity-50"
           >
             <span className="text-lg">{isLiking ? '⏳' : '❤️'}</span>
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-text">
               {likes} {likes === 1 ? 'like' : 'likes'}
             </span>
           </motion.button>

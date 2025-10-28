@@ -51,21 +51,21 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-2xl font-light text-white mb-2">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">
+        <h3 className="text-2xl font-light text-text mb-2">
+          <span className="text-transparent bg-clip-text bg-gradient-primary">
             🔥 Live Trending Vibes
           </span>
         </h3>
-        <p className="text-gray-300">Popular emotional soundscapes people are forging</p>
+        <p className="text-muted">Popular emotional soundscapes people are forging</p>
       </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(8)].map((_, index) => (
-            <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20 animate-pulse">
-              <div className="h-8 bg-white/20 rounded mb-3"></div>
-              <div className="h-4 bg-white/20 rounded mb-2"></div>
-              <div className="h-4 bg-white/20 rounded w-3/4"></div>
+            <div key={index} className="bg-card backdrop-blur-lg rounded-xl p-4 border border-border animate-pulse">
+              <div className="h-8 bg-border rounded mb-3"></div>
+              <div className="h-4 bg-border rounded mb-2"></div>
+              <div className="h-4 bg-border rounded w-3/4"></div>
             </div>
           ))}
         </div>
@@ -99,7 +99,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-400">No trending tracks yet. Be the first to generate one!</p>
+              <p className="text-muted">No trending tracks yet. Be the first to generate one!</p>
             </div>
           )}
         </>
@@ -120,7 +120,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
             fetchTrendingVibes();
           }}
           disabled={isLoading}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-cyan-500/20 border border-pink-500/30 text-pink-300 hover:from-pink-500/30 hover:to-cyan-500/30 transition-all disabled:opacity-50"
+          className="px-6 py-3 rounded-xl bg-card border border-border text-accent hover:bg-gradient-primary transition-all duration-300 ease-out disabled:opacity-50"
         >
           {isLoading ? '🔄 Refreshing...' : '🎲 Refresh Vibes'}
         </motion.button>
