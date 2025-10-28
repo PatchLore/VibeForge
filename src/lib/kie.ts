@@ -128,6 +128,9 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   console.log("🎨 [IMAGE GEN] Steps:", imageParams.steps);
 
   try {
+    console.log("🧠 [DEBUG IMAGE] Sending imagePrompt:", finalPrompt);
+    console.log("🧠 [DEBUG IMAGE] Request params:", imageParams);
+    
     const response = await fetch(`${BASE_URL}/generate/image`, {
       method: "POST",
       headers: {
@@ -136,6 +139,9 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       },
       body: JSON.stringify(imageParams),
     });
+
+    console.log("🧠 [DEBUG IMAGE] Kie.ai response status:", response.status);
+    console.log("🧠 [DEBUG IMAGE] Kie.ai response headers:", Object.fromEntries(response.headers.entries()));
 
     const data = await response.json();
     if (!response.ok || data.code !== 200) {
@@ -150,6 +156,8 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
           quality: "high"
         };
         
+        console.log("🧠 [DEBUG IMAGE] Sending fallback request with params:", fallbackParams);
+        
         const fallbackResponse = await fetch(`${BASE_URL}/generate/image`, {
           method: "POST",
           headers: {
@@ -159,6 +167,8 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
           body: JSON.stringify(fallbackParams),
         });
         
+        console.log("🧠 [DEBUG IMAGE] Fallback response status:", fallbackResponse.status);
+        
         const fallbackData = await fallbackResponse.json();
         if (!fallbackResponse.ok || fallbackData.code !== 200) {
           console.error("🖼️ [IMAGE GEN] Fallback also failed:", fallbackData);
@@ -166,6 +176,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         }
         
         console.log("✅ [IMAGE GEN] Image generated successfully (fallback resolution)");
+        console.log("🖼️ [DEBUG IMAGE SAVED] Fallback Image URL received:", fallbackData.data?.response?.imageUrl);
         return fallbackData.data?.response?.imageUrl;
       }
       
@@ -174,6 +185,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
 
     console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
     console.log("🎨 [IMAGE GEN] Image URL:", data.data?.response?.imageUrl);
+    console.log("🖼️ [DEBUG IMAGE SAVED] Image URL received:", data.data?.response?.imageUrl);
     return data.data?.response?.imageUrl;
     
   } catch (error) {
