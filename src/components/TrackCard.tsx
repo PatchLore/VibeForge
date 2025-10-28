@@ -79,11 +79,14 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
             
             <Image 
-              src={track.image_url} 
+              src={`/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`}
               alt={track.title} 
               width={400}
               height={256}
-              className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105" 
+              className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+              onError={(e) => {
+                console.error('❌ [TrackCard] Image failed to load:', track.image_url);
+              }}
             />
           </div>
           
