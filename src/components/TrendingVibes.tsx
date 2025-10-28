@@ -163,6 +163,18 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
       
       if (data.tracks && data.tracks.length > 0) {
         console.log(`✅ [TrendingVibes] Found ${data.tracks.length} real tracks`);
+        
+        // Log audio/image sources for debugging
+        data.tracks.forEach((track: any) => {
+          console.log('🎧 [TrendingVibes] Track:', { 
+            title: track.title, 
+            hasAudio: !!track.audioUrl, 
+            hasImage: !!track.imageUrl,
+            audioUrl: track.audioUrl?.substring(0, 50) || 'missing',
+            imageUrl: track.imageUrl?.substring(0, 50) || 'missing'
+          });
+        });
+        
         setRealTracks(data.tracks);
         
         // Fill remaining slots with fallback vibes if we have fewer than 8 tracks
@@ -237,7 +249,7 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
                 }}
                 onDelete={() => {}} // No delete functionality in trending
               />
-              {console.log('🎧 [TrendingVibes] Audio source:', track.audioUrl, '| Image:', track.imageUrl)}
+              {/* Logging done via useEffect to avoid JSX issues */}
             </motion.div>
           ))}
           
