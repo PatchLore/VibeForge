@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
 import { generateImage } from '@/lib/kie';
 import { enrichPrompt } from '@/lib/enrichPrompt';
+import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
 export const dynamic = "force-dynamic";
 
@@ -110,9 +111,12 @@ export async function POST(request: NextRequest) {
     // --- Update track with results ---
     const safeTitle =
       completed.title ||
+      generateTrackTitle(pending.prompt) ||
       `Soundswoop ${new Date().toISOString().slice(0, 10)}`;
     const safePrompt =
       completed.prompt || payload?.prompt || 'Generated Vibe';
+
+    console.log("🎵 [TITLE AUTO] Generated unique title:", safeTitle);
 
     const updateFields: any = {
       title: safeTitle,

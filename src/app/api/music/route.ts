@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { enrichPrompt } from "@/lib/enrichPrompt";
+import { generateTrackTitle } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -134,12 +135,15 @@ export async function POST(req: Request) {
     
     // Store pending generation in tracks table for tracking
     try {
+      const generatedTitle = generateTrackTitle(userVibe);
+      console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
+      
       await supabaseAdmin
         .from('tracks')
         .insert({
           task_id: taskId,
           user_id: user.id,
-          title: 'Generating...',
+          title: generatedTitle,
           prompt: userVibe,
           extended_prompt: combinedPrompt,
           audio_url: null,
@@ -147,7 +151,7 @@ export async function POST(req: Request) {
           status: 'pending',
           created_at: new Date().toISOString()
         });
-      console.log("📝 [GENERATION START] Pending track stored with extended prompt");
+      console.log("📝 [GENERATION START] Pending track stored with extended prompt and generated title");
     } catch (trackErr) {
       console.error("⚠️ [GENERATION START] Failed to store pending track:", trackErr);
       // Continue anyway - callback will create the final track
