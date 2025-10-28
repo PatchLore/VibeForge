@@ -49,7 +49,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900 rounded-2xl p-6 shadow-lg border border-white/10 hover:border-white/20 transition-all duration-300"
+      className="rounded-2xl bg-gradient-to-b from-[#1b002b] to-[#2a003b] shadow-xl p-4 border border-white/10 hover:border-white/20 transition-all duration-300"
     >
       {/* Artwork */}
       {track.image_url && (
@@ -99,15 +99,17 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       <div className="space-y-3">
         {/* Native HTML5 Audio Player */}
         {track.audio_url && (
-          <audio
-            controls
-            preload="none"
-            src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
-            className="w-full mt-2"
-            onError={(e) => {
-              console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
-            }}
-          />
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-1 mt-2">
+            <audio
+              controls
+              preload="none"
+              src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
+              className="w-full accent-pink-500"
+              onError={(e) => {
+                console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
+              }}
+            />
+          </div>
         )}
 
         {/* Track Info */}
