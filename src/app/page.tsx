@@ -36,7 +36,7 @@ export default function Home() {
       <nav className="bg-black/20 backdrop-blur-md border-b border-white/10 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
-            VibeForge
+            SoundSwoop
           </div>
           <div className="flex gap-4">
             <Link 
@@ -212,7 +212,7 @@ export default function Home() {
       <footer className="bg-black/20 backdrop-blur-md border-t border-white/10 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-white/60">
-            <p>© 2024 VibeForge. Create emotional soundscapes with AI.</p>
+            <p>© 2024 SoundSwoop. Create emotional soundscapes with AI.</p>
           </div>
         </div>
       </footer>
