@@ -92,6 +92,45 @@ function getStyleKeywords(styleKey: string): string[] {
 }
 
 /**
+ * Build structured music prompt without ambient bias
+ */
+export function buildMusicPrompt(userPrompt: string) {
+  const prompt = userPrompt.trim();
+
+  return `
+Generate professional, structured music inspired by "${prompt}".
+Match the exact context and energy of the prompt — avoid ambient, soundscape, or relaxation tones unless explicitly mentioned.
+
+If the prompt suggests:
+- gaming or energetic → create fast electronic EDM/synthwave (120–150 BPM), clear beat, high energy
+- cinematic or emotional → orchestral / film score with strong structure
+- trap or hiphop → rhythmic 808s, percussion, bass-driven groove
+- lofi or chill → relaxed 70–90 BPM, warm analog texture
+
+Always include melody, rhythm, and arrangement.
+Do not describe as "ambient generative soundscape."
+`.trim();
+}
+
+/**
+ * Build literal image prompt based on user's theme
+ */
+export function buildImagePrompt(userPrompt: string) {
+  const prompt = userPrompt.trim();
+
+  return `
+Create an image directly representing "${prompt}".
+Use literal interpretation where possible.
+If it refers to a game, scene, or brand (e.g. "Roblox", "Minecraft", "Geometry Dash"), 
+depict the visual world of that theme — characters, environments, or atmosphere in that style.
+
+Visual style: realistic or stylized according to context,
+high-detail, cinematic lighting, 16:9 composition, 2K resolution.
+Avoid generic terms like "vibrant colors", "artstation", or "oil painting" unless the user mentions them.
+`.trim();
+}
+
+/**
  * Enriches a user prompt with detailed descriptions for music and image generation
  */
 export function enrichPrompt(userPrompt: string): EnrichedPrompts {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
-import { enrichPrompt } from "@/lib/enrichPrompt";
+import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
 import { generateTrackTitle } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
@@ -117,16 +117,24 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Enrich the user's vibe into detailed prompts for both music and image generation
-    const enrichedPrompts = enrichPrompt(userVibe);
-    const { musicPrompt, imagePrompt, combinedPrompt, detectedIntent } = enrichedPrompts;
+    // Build structured prompts without ambient bias
+    const musicPrompt = buildMusicPrompt(userVibe);
+    const imagePrompt = buildImagePrompt(userVibe);
+    
+    // Clean music prompt to remove any remaining bias phrases
+    const cleanedMusicPrompt = musicPrompt
+      .replace(/ambient generative soundscape/gi, "")
+      .replace(/focus and relaxation/gi, "")
+      .trim();
 
     console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
-    console.log("🎯 [GENERATION START] detected intent:", detectedIntent);
-    console.log("🎵 [GENERATION START] enriched music prompt:", musicPrompt);
+    console.log("🎯 [GENERATION START] detected intent:", "structured");
+    console.log("🎵 [GENERATION START] structured music prompt:", cleanedMusicPrompt);
+    console.log("🖼️ [GENERATION START] literal image prompt:", imagePrompt);
+    console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
-    // Generate music using the expanded prompt
-    const taskId = await generateMusic(musicPrompt);
+    // Generate music using the cleaned prompt
+    const taskId = await generateMusic(cleanedMusicPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 
@@ -145,7 +153,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           title: generatedTitle,
           prompt: userVibe,
-          extended_prompt: combinedPrompt,
+          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           audio_url: null,
           image_url: null,
           status: 'pending',
@@ -169,10 +177,10 @@ export async function POST(req: Request) {
       prompt: userVibe,
       remainingCredits: remainingCredits,
       expandedPrompts: {
-        music: musicPrompt,
+        music: cleanedMusicPrompt,
         image: imagePrompt,
-        combined: combinedPrompt,
-        intent: detectedIntent
+        combined: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+        intent: "structured"
       }
     });
 

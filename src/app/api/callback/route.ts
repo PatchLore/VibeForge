@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
 import { generateImage } from '@/lib/kie';
-import { enrichPrompt } from '@/lib/enrichPrompt';
+import { buildImagePrompt } from '@/lib/enrichPrompt';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
 export const dynamic = "force-dynamic";
@@ -148,13 +148,12 @@ export async function POST(request: NextRequest) {
       try {
         console.log('🎨 [IMAGE CALLBACK] Generating image for track:', taskId);
         
-        // Use the original prompt to enrich and get image prompt
-        const enrichedPrompts = enrichPrompt(pending.prompt);
-        const imagePrompt = enrichedPrompts.imagePrompt;
+        // Use literal image prompt based on user's theme
+        const imagePrompt = buildImagePrompt(pending.prompt);
         
         console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
         console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
-        console.log('🎨 [IMAGE CALLBACK] Prompt:', imagePrompt);
+        console.log('🎨 [IMAGE CALLBACK] Literal image prompt:', imagePrompt);
         
         // Generate image
         generatedImageUrl = await generateImage(imagePrompt);

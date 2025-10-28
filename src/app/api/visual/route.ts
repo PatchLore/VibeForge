@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateImage } from "@/lib/kie";
-import { enrichPrompt } from "@/lib/enrichPrompt";
+import { buildImagePrompt } from "@/lib/enrichPrompt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,12 +30,10 @@ export async function POST(req: Request) {
 
     console.log("🎨 [VISUAL] Generating image for prompt:", prompt);
 
-    // Enrich the prompt to get detailed image description
-    const enrichedPrompts = enrichPrompt(prompt);
-    const { imagePrompt, detectedIntent } = enrichedPrompts;
+    // Use literal image prompt based on user's theme
+    const imagePrompt = buildImagePrompt(prompt);
 
-    console.log("🎯 [VISUAL] Detected intent:", detectedIntent);
-    console.log("🎨 [VISUAL] Enriched image prompt:", imagePrompt);
+    console.log("🎨 [VISUAL] Literal image prompt:", imagePrompt);
 
     // Generate image using enriched prompt
     const imageUrl = await generateImage(imagePrompt);
@@ -50,8 +48,7 @@ export async function POST(req: Request) {
       success: true,
       imageUrl: imageUrl,
       prompt: prompt,
-      enrichedPrompt: imagePrompt,
-      detectedIntent: detectedIntent,
+      literalPrompt: imagePrompt,
       timestamp: new Date().toISOString()
     });
 
