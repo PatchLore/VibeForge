@@ -45,7 +45,7 @@ export default function Home() {
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
+  const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
 
   const handleVibeSelect = (vibeValue: string) => {
@@ -127,6 +127,10 @@ export default function Home() {
       // Store expanded prompts for display
       if (data.expandedPrompts) {
         setExpandedPrompts(data.expandedPrompts);
+        
+        // Log prompts to console for debugging
+        console.log("🎵 Generating:", data.expandedPrompts.music || "Unknown");
+        console.log("🎨 Creating:", data.expandedPrompts.image || data.expandedPrompts.art || "Unknown");
       }
 
       // Start polling for completion
@@ -358,10 +362,12 @@ export default function Home() {
                     <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
                     <div className="text-gray-300 italic">{expandedPrompts.music}</div>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                    <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
-                    <div className="text-gray-300 italic">{expandedPrompts.art}</div>
-                  </div>
+                  {(expandedPrompts.image || expandedPrompts.art) && (
+                    <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                      <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
+                      <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </div>

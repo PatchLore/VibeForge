@@ -32,7 +32,7 @@ export default function AppPage() {
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art: string } | null>(null);
+  const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
 
   const handleVibeSelect = (vibeValue: string) => {
