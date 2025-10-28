@@ -49,10 +49,12 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl bg-gradient-to-b from-[#1b002b] to-[#2a003b] shadow-xl p-4 border border-white/10 hover:border-white/20 transition-all duration-300"
+      className="rounded-2xl bg-gradient-to-b from-[#22003e] via-[#350057] to-[#4c007d]
+                 border border-pink-500/10 shadow-xl p-4 backdrop-blur-xl
+                 hover:scale-[1.02] transition-transform duration-300"
     >
       {/* Artwork */}
-      {track.image_url && (
+      {track.image_url ? (
         <div className="relative mb-4">
           {/* Artwork Container with Neon Glow */}
           <div className="relative rounded-xl overflow-hidden bg-gradient-to-r from-pink-500/20 to-cyan-500/20 p-1 shadow-lg">
@@ -93,18 +95,23 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             Generated with Soundswoop AI
           </p>
         </div>
+      ) : (
+        <div className="h-64 w-full rounded-xl bg-gradient-to-tr from-[#4c1d95] to-[#7e22ce]
+                        flex items-center justify-center text-white/50 text-sm italic mb-4">
+          No Image
+        </div>
       )}
 
       {/* Audio Player */}
       <div className="space-y-3">
         {/* Native HTML5 Audio Player */}
         {track.audio_url && (
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-1 mt-2">
+          <div className="bg-gradient-to-r from-[#2b0043] to-[#45006e] rounded-xl p-1 mt-3">
             <audio
               controls
               preload="none"
               src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
-              className="w-full accent-pink-500"
+              className="w-full accent-[#ec4899] dark:accent-[#ec4899]"
               onError={(e) => {
                 console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
               }}
