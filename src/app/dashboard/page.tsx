@@ -192,12 +192,19 @@ export default function DashboardPage() {
                       src={track.image_url}
                       alt={track.title || "Generated art"}
                       className="w-full rounded-xl object-cover aspect-video mb-3"
+                      onError={(e) => {
+                        console.error('❌ [MyTracks] Image failed to load:', track.image_url);
+                        e.currentTarget.style.display = 'none';
+                        const placeholder = e.currentTarget.nextElementSibling;
+                        if (placeholder) placeholder.classList.remove('hidden');
+                      }}
                     />
-                  ) : (
-                    <div className="aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3">
+                  ) : null}
+                  {!track.image_url || track.status === "pending" ? (
+                    <div className={`aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3 ${track.image_url ? 'hidden' : ''}`}>
                       {track.status === "pending" ? "Generating..." : "No image"}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Title */}
                   <h4 className="text-white font-semibold text-lg mb-1">
