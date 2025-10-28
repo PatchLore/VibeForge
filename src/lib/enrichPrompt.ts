@@ -93,23 +93,34 @@ function getStyleKeywords(styleKey: string): string[] {
 
 /**
  * Build structured music prompt without ambient bias
+ * Compressed to stay under Kie.ai's 500 character limit
  */
 export function buildMusicPrompt(userPrompt: string) {
-  const prompt = userPrompt.trim();
-
-  return `
-Generate professional, structured music inspired by "${prompt}".
-Match the exact context and energy of the prompt — avoid ambient, soundscape, or relaxation tones unless explicitly mentioned.
-
-If the prompt suggests:
-- gaming or energetic → create fast electronic EDM/synthwave (120–150 BPM), clear beat, high energy
-- cinematic or emotional → orchestral / film score with strong structure
-- trap or hiphop → rhythmic 808s, percussion, bass-driven groove
-- lofi or chill → relaxed 70–90 BPM, warm analog texture
-
-Always include melody, rhythm, and arrangement.
-Do not describe as "ambient generative soundscape."
+  const basePrompt = `
+Generate professional, structured music inspired by "${userPrompt}".
+Focus on rhythm, energy, and arrangement matching the requested genre and mood.
+Avoid using terms like "ambient" or "soundscape" unless explicitly mentioned.
 `.trim();
+
+  // Enrichment context (genre logic, style cues)
+  const enrichment = `
+If the style implies energy (gaming, edm, dnb, trap, pop, rock, metal): energetic structure, BPM 120–150.
+If cinematic: orchestral progression, emotional intensity.
+If lofi or chill: 70–90 BPM, soft analog textures.
+`.trim();
+
+  // Combine and compress
+  let finalPrompt = `${basePrompt}\n${enrichment}`.replace(/\s+/g, " ").trim();
+
+  // Enforce max length (Kie.ai limit ≈ 500 chars)
+  if (finalPrompt.length > 490) {
+    console.warn("⚠️ [PROMPT TRUNCATED] Exceeded 500-char limit. Length:", finalPrompt.length);
+    finalPrompt = finalPrompt.slice(0, 490);
+  }
+
+  console.log("[PROMPT LENGTH]", finalPrompt.length, "chars");
+  
+  return finalPrompt;
 }
 
 /**
@@ -197,9 +208,9 @@ export function getAvailableIntents(): string[] {
 }
 
 /**
- * Test function to validate structured prompt enrichment
+ * Test function to validate compressed prompt system
  */
-export function testEnrichPrompt(): void {
+export function testCompressedPrompts(): void {
   const testCases = [
     'Roblox gaming music',
     'lofi study vibes',
@@ -218,14 +229,16 @@ export function testEnrichPrompt(): void {
     'futuristic technology'
   ];
 
-  console.log('🧪 Testing structured prompt enrichment system:');
+  console.log('🧪 Testing compressed prompt system:');
   testCases.forEach(testCase => {
-    const result = enrichPrompt(testCase);
+    const musicPrompt = buildMusicPrompt(testCase);
+    const imagePrompt = buildImagePrompt(testCase);
+    
     console.log(`\n📝 Input: "${testCase}"`);
-    console.log(`🎯 Intent: ${result.detectedIntent} (${result.confidence})`);
-    console.log(`🎵 Structured Music Prompt:`);
-    console.log(result.musicPrompt);
-    console.log(`🖼️ Image Prompt: ${result.imagePrompt}`);
+    console.log(`🎵 Music Prompt (${musicPrompt.length} chars):`);
+    console.log(musicPrompt);
+    console.log(`🖼️ Image Prompt (${imagePrompt.length} chars):`);
+    console.log(imagePrompt);
     console.log('─'.repeat(80));
   });
 }
