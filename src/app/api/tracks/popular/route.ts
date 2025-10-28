@@ -18,15 +18,13 @@ export async function GET() {
       return NextResponse.json({ tracks: [], error: "Database not configured" });
     }
 
-    // Get only completed tracks with playable audio, sorted by recency
+    // Get all completed tracks across all users, sorted by recency
     const { data: tracks, error } = await supabase
       .from("tracks")
-      .select("id, title, audio_url, image_url, prompt, likes, created_at, user_id, status")
+      .select("id, title, prompt, audio_url, image_url, likes, created_at, user_id")
       .eq('status', 'completed')
-      .not('audio_url', 'is', null)
-      .neq('audio_url', '')
       .order('created_at', { ascending: false })
-      .limit(12);
+      .limit(20);
 
     if (error) {
       console.error("❌ [Popular Tracks] Error:", error);

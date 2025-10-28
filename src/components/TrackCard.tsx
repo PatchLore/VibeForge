@@ -49,8 +49,8 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl bg-gradient-to-b from-[#22003e] via-[#350057] to-[#4c007d]
-                 border border-pink-500/10 shadow-xl p-4 backdrop-blur-xl
+      className="rounded-2xl bg-gradient-to-b from-[#1a0b2e]/60 to-[#2a0942]/60
+                 backdrop-blur-xl border border-white/10 shadow-lg p-4
                  hover:scale-[1.02] transition-transform duration-300"
     >
       {/* Artwork */}
