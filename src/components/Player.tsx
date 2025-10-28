@@ -178,27 +178,27 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
         >
           {/* Artwork Container with Neon Glow */}
           <div className="relative max-w-4xl w-full">
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-pink-500/20 to-cyan-500/20 p-1 shadow-2xl">
+            <div className="relative w-full aspect-video bg-card rounded-2xl overflow-hidden">
               {/* Neon Glow Border */}
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
               
               {videoUrl.endsWith('.html') ? (
                 <iframe
                   src={videoUrl}
-                  className="w-full h-96 border-0 rounded-xl"
+                  className="w-full h-full border-0"
                   allow="autoplay"
                 />
               ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                 <img
                   src={videoUrl}
                   alt="AI Generated Artwork"
-                  className="w-full h-auto max-h-[600px] object-contain rounded-xl"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="w-full h-auto max-h-[600px] object-contain rounded-xl"
+                  className="w-full h-full object-cover"
                   loop
                   muted
                   playsInline
