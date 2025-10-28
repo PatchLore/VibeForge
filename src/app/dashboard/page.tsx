@@ -31,9 +31,19 @@ export default function DashboardPage() {
       setTracksLoading(true);
       const response = await fetch('/api/tracks/user');
       const json = await response.json();
+      console.log('📊 [MyTracks] Fetched tracks:', json.tracks?.length || 0);
+      console.log('📊 [MyTracks] Track data:', json.tracks?.[0] ? {
+        id: json.tracks[0].id,
+        title: json.tracks[0].title,
+        status: json.tracks[0].status,
+        hasAudio: !!json.tracks[0].audio_url,
+        hasImage: !!json.tracks[0].image_url,
+        audioUrl: json.tracks[0].audio_url?.substring(0, 50),
+        imageUrl: json.tracks[0].image_url?.substring(0, 50),
+      } : 'No tracks');
       setUserTracks(json.tracks || []);
     } catch (error) {
-      console.error('Error fetching tracks:', error);
+      console.error('❌ [MyTracks] Error fetching tracks:', error);
     } finally {
       setTracksLoading(false);
     }
