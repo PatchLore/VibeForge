@@ -219,15 +219,18 @@ export default function DashboardPage() {
                   </p>
 
                   {/* Audio Player */}
-                  {track.audio_url ? (
+                  {track.audio_url && track.audio_url.startsWith('http') ? (
                     <audio
                       controls
-                      src={track.audio_url}
+                      src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
                       className="w-full h-10"
+                      onError={(e) => {
+                        console.error('❌ [MyTracks] Audio playback error for:', track.audio_url);
+                      }}
                     />
                   ) : (
                     <div className="text-sm text-gray-500">
-                      {track.status === "pending" ? "Generating audio..." : "No audio available"}
+                      {track.status === "pending" ? "Generating audio..." : track.audio_url ? "Invalid audio URL" : "No audio available"}
                     </div>
                   )}
 

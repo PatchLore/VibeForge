@@ -193,10 +193,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
 
       {/* Hidden Audio Element */}
       <audio
-        src={track.audio_url}
+        src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         onEnded={() => setIsPlaying(false)}
+        onError={(e) => {
+          console.error('❌ [TrackCard] Audio playback error for:', track.audio_url);
+        }}
         preload="metadata"
       />
     </motion.div>
