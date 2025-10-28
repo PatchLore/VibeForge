@@ -49,8 +49,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl bg-card backdrop-blur-lg border border-border shadow-glow p-4
-                 hover:scale-[1.02] transition-all duration-300 ease-out"
+      className="relative bg-card backdrop-blur-lg border border-border rounded-2xl p-6 
+                 transition-all duration-300 ease-out hover:border-primary 
+                 hover:shadow-glow-lg hover:-translate-y-2 cursor-pointer 
+                 overflow-hidden card-shine"
     >
       {/* Artwork */}
       {track.image_url ? (
@@ -84,7 +86,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
                 document.body.removeChild(link);
               }
             }}
-            className="mt-3 px-4 py-2 bg-gradient-primary text-white text-sm font-medium rounded-lg transition-all duration-300 ease-out shadow-glow hover:opacity-90"
+            className="mt-3 px-8 py-3 bg-gradient-primary text-white rounded-full 
+                       shadow-glow hover:opacity-90 hover:shadow-glow-hover 
+                       transition-all duration-300 font-semibold uppercase 
+                       tracking-wider text-sm"
           >
             📥 Download
           </motion.button>
@@ -105,12 +110,14 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
       <div className="space-y-3">
         {/* Native HTML5 Audio Player */}
         {track.audio_url && (
-          <div className="bg-card rounded-xl p-2 mt-3">
+          <div className="bg-card backdrop-blur-lg border-2 border-border rounded-xl p-2 mt-3">
             <audio
               controls
               preload="none"
               src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
-              className="w-full bg-card rounded-xl shadow-glow accent-primary"
+              className="w-full bg-card rounded-xl shadow-glow accent-primary
+                         [&::-webkit-media-controls-panel]:bg-card
+                         [&::-webkit-media-controls-play-button]:text-primary"
               onError={(e) => {
                 console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
               }}
@@ -138,10 +145,12 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             whileTap={{ scale: 0.95 }}
             onClick={handleLike}
             disabled={isLiking}
-            className="flex items-center space-x-2 px-4 py-2 bg-card hover:bg-gradient-primary rounded-lg transition-all duration-300 ease-out disabled:opacity-50"
+            className="px-6 py-2 bg-card border border-primary rounded-full 
+                       text-primary hover:bg-primary hover:text-white 
+                       transition-all duration-300 font-medium"
           >
             <span className="text-lg">{isLiking ? '⏳' : '❤️'}</span>
-            <span className="text-sm text-text">
+            <span className="text-sm ml-2">
               {likes} {likes === 1 ? 'like' : 'likes'}
             </span>
           </motion.button>

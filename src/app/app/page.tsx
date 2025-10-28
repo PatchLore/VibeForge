@@ -243,7 +243,7 @@ export default function AppPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900">
+    <div className="min-h-screen bg-bg text-text">
       {/* Navigation - Full Width */}
       <div className="w-full">
         <Navigation
@@ -328,18 +328,22 @@ export default function AppPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20"
+            className="bg-card backdrop-blur-lg border-2 border-border rounded-2xl p-8 
+                       transition-all duration-300 ease-out hover:border-primary 
+                       hover:shadow-glow-lg"
           >
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <label className="block text-white text-lg">
+                <label className="block text-text text-lg">
                   Describe your current vibe or feeling…
                 </label>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleInspireMe}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
+                  className="px-6 py-2 bg-card border border-primary rounded-full 
+                             text-primary hover:bg-primary hover:text-white 
+                             transition-all duration-300 font-medium"
                 >
                   🎲 Inspire Me
                 </motion.button>
@@ -348,7 +352,9 @@ export default function AppPage() {
                 value={vibe}
                 onChange={(e) => setVibe(e.target.value)}
                 placeholder="Express your emotional state... (e.g., 'heartbroken in the city', 'feeling infinite and boundless')"
-                className="w-full p-4 rounded-2xl bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
+                className="w-full p-4 rounded-xl bg-card backdrop-blur-lg border-2 border-border 
+                           text-text placeholder:text-muted focus:border-primary focus:shadow-glow 
+                           focus:outline-none transition-all duration-300 resize-none"
                 rows={3}
               />
               
@@ -371,7 +377,7 @@ export default function AppPage() {
             </div>
 
             <div className="mb-8">
-              <p className="text-white text-lg mb-4">Or choose a preset:</p>
+              <p className="text-text text-lg mb-4">Or choose a preset:</p>
               <PromptPresets onPresetSelect={handleVibeSelect} />
             </div>
 
@@ -380,11 +386,11 @@ export default function AppPage() {
               whileTap={{ scale: 0.98 }}
               onClick={handleGenerate}
               disabled={!vibe.trim() || isGenerating}
-              className={`w-full py-4 px-8 rounded-2xl font-semibold text-lg transition-all duration-200 ${
+              className={`w-full py-4 px-8 rounded-full font-semibold text-lg transition-all duration-300 ${
                 !vibe.trim() || isGenerating
-                  ? 'bg-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600'
-              } text-white ${isGenerating ? 'animate-pulse-glow' : ''}`}
+                  ? 'bg-card border border-border cursor-not-allowed text-muted'
+                  : 'bg-gradient-primary text-white shadow-glow hover:opacity-90 hover:shadow-glow-hover'
+              } ${isGenerating ? 'animate-pulse-glow' : ''}`}
             >
               {isGenerating ? (
                 <div className="flex items-center justify-center space-x-2">

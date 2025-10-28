@@ -21,9 +21,15 @@ module.exports = {
       },
       boxShadow: {
         glow: '0 0 20px rgba(255, 79, 248, 0.3)',
+        'glow-lg': '0 0 40px rgba(255, 79, 248, 0.4)',
+        'glow-hover': '0 0 30px rgba(123, 47, 247, 0.6)',
       },
       borderRadius: {
         xl: '1rem',
+        '2xl': '1.5rem',
+      },
+      animation: {
+        'glow': 'textGlow 3s ease-in-out infinite',
       },
     },
   },

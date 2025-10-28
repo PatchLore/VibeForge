@@ -52,11 +52,11 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-2xl font-light text-text mb-2">
-          <span className="text-transparent bg-clip-text bg-gradient-primary">
+          <span className="text-transparent bg-clip-text bg-gradient-primary glow-text">
             🔥 Live Trending Vibes
           </span>
         </h3>
-        <p className="text-muted">Popular emotional soundscapes people are forging</p>
+        <p className="text-accent uppercase tracking-widest text-sm">Popular emotional soundscapes people are forging</p>
       </div>
 
       {isLoading ? (
@@ -120,7 +120,9 @@ export default function TrendingVibes({ onVibeSelect }: TrendingVibesProps) {
             fetchTrendingVibes();
           }}
           disabled={isLoading}
-          className="px-6 py-3 rounded-xl bg-card border border-border text-accent hover:bg-gradient-primary transition-all duration-300 ease-out disabled:opacity-50"
+          className="px-6 py-3 bg-card border border-primary rounded-full 
+                     text-primary hover:bg-primary hover:text-white 
+                     transition-all duration-300 font-medium disabled:opacity-50"
         >
           {isLoading ? '🔄 Refreshing...' : '🎲 Refresh Vibes'}
         </motion.button>
