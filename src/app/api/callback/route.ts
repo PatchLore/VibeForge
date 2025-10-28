@@ -151,9 +151,15 @@ export async function POST(request: NextRequest) {
         // Use literal image prompt based on user's theme
         const imagePrompt = buildImagePrompt(pending.prompt);
         
+        // Add explicit guards
+        if (!imagePrompt || imagePrompt.length < 12) {
+          console.error("❌ [IMAGE PROMPT MISSING]", { prompt: pending.prompt, imagePrompt });
+        }
+        
         console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
         console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
         console.log('🎨 [IMAGE CALLBACK] Literal image prompt:', imagePrompt);
+        console.log('🔍 [DEBUG] Image prompt length:', imagePrompt.length);
         console.log("[IMAGE PROMPT SENT]", imagePrompt);
         
         // Generate image
@@ -176,6 +182,7 @@ export async function POST(request: NextRequest) {
             console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
           } else {
             console.log('✅ [IMAGE CALLBACK] Track updated with generated image');
+            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: generatedImageUrl });
           }
         }
       } catch (imageErr) {

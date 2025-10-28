@@ -121,6 +121,15 @@ export async function POST(req: Request) {
     const musicPrompt = buildMusicPrompt(userVibe);
     const imagePrompt = buildImagePrompt(userVibe);
     
+    // Add explicit guards
+    if (!musicPrompt || musicPrompt.length < 12) {
+      console.error("❌ [MUSIC PROMPT MISSING]", { userVibe, musicPrompt });
+    }
+
+    if (!imagePrompt || imagePrompt.length < 12) {
+      console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
+    }
+    
     // Clean music prompt to remove any remaining bias phrases
     const cleanedMusicPrompt = musicPrompt
       .replace(/ambient generative soundscape/gi, "")
@@ -129,6 +138,8 @@ export async function POST(req: Request) {
 
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
+    console.log("🔍 [DEBUG] Music prompt length:", cleanedMusicPrompt.length);
+    console.log("🔍 [DEBUG] Image prompt length:", imagePrompt.length);
     console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
     console.log("🎯 [GENERATION START] detected intent:", "structured");
     console.log("🎵 [GENERATION START] structured music prompt:", cleanedMusicPrompt);
