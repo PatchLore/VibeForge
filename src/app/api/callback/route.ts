@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
+import { generateImage } from '@/lib/kie';
+import { enrichPrompt } from '@/lib/enrichPrompt';
 
 export const dynamic = "force-dynamic";
 
@@ -63,10 +65,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'database unavailable' }, { status: 500 });
     }
 
-    // Load the pending track
+    // Load the pending track with extended prompt
     const { data: pending, error: fetchErr } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status')
+      .select('id, user_id, status, prompt, extended_prompt')
       .eq('task_id', taskId)
       .maybeSingle();
 
@@ -135,6 +137,48 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ [CALLBACK] Track updated →', taskId);
+
+    // --- Generate image using enriched prompt if no image was provided ---
+    let generatedImageUrl = completed.image_url;
+    if (!generatedImageUrl && pending.prompt) {
+      try {
+        console.log('🎨 [IMAGE CALLBACK] Generating image for track:', taskId);
+        
+        // Use the original prompt to enrich and get image prompt
+        const enrichedPrompts = enrichPrompt(pending.prompt);
+        const imagePrompt = enrichedPrompts.imagePrompt;
+        
+        console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
+        console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
+        console.log('🎨 [IMAGE CALLBACK] Prompt:', imagePrompt);
+        
+        // Generate image
+        generatedImageUrl = await generateImage(imagePrompt);
+        
+        if (generatedImageUrl) {
+          console.log('🎨 [IMAGE CALLBACK] Image generated successfully');
+          console.log('🎨 [IMAGE CALLBACK] Image URL:', generatedImageUrl);
+          
+          // Update track with generated image
+          const { error: imageUpdateErr } = await supabaseServer
+            .from('tracks')
+            .update({ 
+              image_url: generatedImageUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', taskId);
+            
+          if (imageUpdateErr) {
+            console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
+          } else {
+            console.log('✅ [IMAGE CALLBACK] Track updated with generated image');
+          }
+        }
+      } catch (imageErr) {
+        console.error('❌ [CALLBACK] Image generation failed:', imageErr);
+        // Continue without image - don't fail the whole callback
+      }
+    }
 
     // --- Deduct credits atomically via RPC (idempotent with status check above) ---
     const { data: deducted, error: rpcErr } = await supabaseServer.rpc(

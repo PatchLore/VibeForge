@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
-import { generateExpandedPrompt } from "@/lib/promptExpansion";
+import { enrichPrompt } from "@/lib/enrichPrompt";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -116,10 +116,13 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Expand the user's vibe into detailed prompts
-    const { musicPrompt, artPrompt } = generateExpandedPrompt(userVibe);
+    // Enrich the user's vibe into detailed prompts for both music and image generation
+    const enrichedPrompts = enrichPrompt(userVibe);
+    const { musicPrompt, imagePrompt, combinedPrompt, detectedIntent } = enrichedPrompts;
 
     console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
+    console.log("🎯 [GENERATION START] detected intent:", detectedIntent);
+    console.log("🎵 [GENERATION START] enriched music prompt:", musicPrompt);
 
     // Generate music using the expanded prompt
     const taskId = await generateMusic(musicPrompt);
@@ -138,12 +141,13 @@ export async function POST(req: Request) {
           user_id: user.id,
           title: 'Generating...',
           prompt: userVibe,
+          extended_prompt: combinedPrompt,
           audio_url: null,
           image_url: null,
           status: 'pending',
           created_at: new Date().toISOString()
         });
-      console.log("📝 [GENERATION START] Pending track stored");
+      console.log("📝 [GENERATION START] Pending track stored with extended prompt");
     } catch (trackErr) {
       console.error("⚠️ [GENERATION START] Failed to store pending track:", trackErr);
       // Continue anyway - callback will create the final track
@@ -162,7 +166,9 @@ export async function POST(req: Request) {
       remainingCredits: remainingCredits,
       expandedPrompts: {
         music: musicPrompt,
-        art: artPrompt
+        image: imagePrompt,
+        combined: combinedPrompt,
+        intent: detectedIntent
       }
     });
 

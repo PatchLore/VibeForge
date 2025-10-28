@@ -109,30 +109,75 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
   const model = "bytedance/seedream-v4-text-to-image";
   
-  console.log("🎨 [KieAI] model:", model);
-  console.log("🎨 [KieAI] prompt:", finalPrompt);
+  // Optimal 2K parameters for highest quality
+  const imageParams = {
+    model: model,
+    prompt: finalPrompt,
+    resolution: "2048x1152", // 2K 16:9 resolution
+    aspect_ratio: "16:9",
+    quality: "high",
+    steps: 30,
+    cfg_scale: 8,
+    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
+  };
+  
+  console.log("🎨 [IMAGE GEN] Model:", model);
+  console.log("🎨 [IMAGE GEN] Resolution:", imageParams.resolution);
+  console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
+  console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality);
+  console.log("🎨 [IMAGE GEN] Steps:", imageParams.steps);
 
-  const response = await fetch(`${BASE_URL}/generate/image`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "bytedance/seedream-v4-text-to-image",
-      prompt: finalPrompt,
-      resolution: "1920x1080",
-      aspect_ratio: "16:9",
-      quality: "ultra",
-    }),
-  });
+  try {
+    const response = await fetch(`${BASE_URL}/generate/image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(imageParams),
+    });
 
-  const data = await response.json();
-  if (!response.ok || data.code !== 200) {
-    console.error("🖼️ Image generation error:", data);
-    throw new Error(`Image generation failed: ${data.msg}`);
+    const data = await response.json();
+    if (!response.ok || data.code !== 200) {
+      console.error("🖼️ [IMAGE GEN] Error response:", data);
+      
+      // Fallback to lower resolution if 2K is rejected
+      if (data.msg?.includes('resolution') || data.msg?.includes('size')) {
+        console.log("🔄 [IMAGE GEN] Falling back to 1024x576 resolution");
+        const fallbackParams = {
+          ...imageParams,
+          resolution: "1024x576",
+          quality: "high"
+        };
+        
+        const fallbackResponse = await fetch(`${BASE_URL}/generate/image`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(fallbackParams),
+        });
+        
+        const fallbackData = await fallbackResponse.json();
+        if (!fallbackResponse.ok || fallbackData.code !== 200) {
+          console.error("🖼️ [IMAGE GEN] Fallback also failed:", fallbackData);
+          throw new Error(`Image generation failed: ${fallbackData.msg}`);
+        }
+        
+        console.log("✅ [IMAGE GEN] Image generated successfully (fallback resolution)");
+        return fallbackData.data?.response?.imageUrl;
+      }
+      
+      throw new Error(`Image generation failed: ${data.msg}`);
+    }
+
+    console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
+    console.log("🎨 [IMAGE GEN] Image URL:", data.data?.response?.imageUrl);
+    return data.data?.response?.imageUrl;
+    
+  } catch (error) {
+    console.error("❌ [IMAGE GEN] Generation error:", error);
+    throw error;
   }
-
-  console.log("✅ [KieAI] Image generated successfully");
-  return data.data?.response?.imageUrl;
 }

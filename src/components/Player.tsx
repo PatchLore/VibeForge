@@ -192,7 +192,8 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
                 <img
                   src={videoUrl}
                   alt="AI Generated Artwork"
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto rounded-xl object-cover aspect-video"
+                  loading="lazy"
                 />
               ) : (
                 <video

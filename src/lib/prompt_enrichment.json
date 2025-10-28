@@ -1,0 +1,122 @@
+{
+  "gaming": {
+    "music": "fast-paced EDM/synthwave 120-150 BPM with pulsing basslines, synthetic melodies, and dynamic drops perfect for gaming sessions, featuring chiptune elements, rhythm game soundtrack aesthetics, and high-energy electronic production",
+    "image": "neon-lit gaming setup with RGB lighting, futuristic HUD elements, glowing screens, cyberpunk atmosphere, digital grid patterns, vibrant color schemes, and high-tech gaming environment"
+  },
+  "lofi": {
+    "music": "soft, analog, low BPM lofi hip-hop with vinyl crackle, smooth textures, gentle rain sounds, and nostalgic atmosphere perfect for studying and relaxation, featuring jazzy chords and mellow beats",
+    "image": "cozy bedroom scene with warm lighting, vinyl records, plants, rain-streaked windows, nostalgic atmosphere, soft shadows, and intimate indoor setting"
+  },
+  "cinematic": {
+    "music": "orchestral, epic, high-intensity dynamic range with soaring strings, powerful brass sections, dramatic percussion, and cinematic grandeur featuring emotional crescendos and sweeping melodies",
+    "image": "cinematic landscape with dramatic lighting, epic vistas, golden hour atmosphere, movie-quality composition, and grand sweeping views"
+  },
+  "ambient": {
+    "music": "ethereal ambient soundscape with floating pads, subtle textures, immersive atmospheric layers, and meditative drones creating a sense of space and tranquility",
+    "image": "ethereal cosmic landscape with nebula clouds, floating particles, soft glowing lights, otherworldly atmosphere, and dreamlike visual elements"
+  },
+  "trap": {
+    "music": "rhythmic, deep 808s, energetic percussion with hard-hitting trap beats, aggressive hi-hats, dark melodies, and urban street energy featuring modern production techniques and intense rhythms",
+    "image": "urban street scene with neon signs, city lights, gritty atmosphere, dark alleys, and metropolitan nightlife with high contrast lighting"
+  },
+  "hiphop": {
+    "music": "rhythmic, deep 808s, energetic percussion with classic hip-hop boom-bap drums, soulful samples, smooth flows, and authentic street vibes featuring old-school production and lyrical storytelling",
+    "image": "urban culture scene with graffiti art, street fashion, city backdrop, and authentic hip-hop aesthetic with vibrant street art elements"
+  },
+  "rock": {
+    "music": "energetic rock music with driving rhythm, electric guitars, powerful drums, and raw energy featuring classic rock instrumentation and rebellious spirit",
+    "image": "rock concert atmosphere with stage lights, electric guitars, crowd energy, and dynamic performance setting with dramatic lighting"
+  },
+  "metal": {
+    "music": "heavy metal with intense rhythm, distorted guitars, thunderous drums, aggressive vocals, and powerful energy featuring dark themes and powerful instrumentation",
+    "image": "dark metal aesthetic with gothic elements, dramatic shadows, intense lighting, and powerful visual imagery with dark and edgy atmosphere"
+  },
+  "pop": {
+    "music": "catchy pop music with upbeat rhythm, bright melodies, polished production, and mainstream appeal featuring contemporary pop elements and radio-friendly sound",
+    "image": "bright and colorful pop aesthetic with vibrant colors, modern fashion, upbeat atmosphere, and mainstream visual appeal"
+  },
+  "retro": {
+    "music": "nostalgic retro music with vintage synthesizers, analog warmth, 80s influences, and classic electronic sounds featuring nostalgic melodies and period-appropriate production",
+    "image": "retro aesthetic with vintage colors, classic design elements, nostalgic atmosphere, and period-appropriate visual styling from past decades"
+  },
+  "cyberpunk": {
+    "music": "futuristic cyberpunk electronic music with dark synths, industrial beats, dystopian atmosphere, and high-tech soundscapes featuring neon-lit urban vibes",
+    "image": "cyberpunk cityscape with neon lights, futuristic architecture, dark alleys, holographic displays, and dystopian urban environment"
+  },
+  "fantasy": {
+    "music": "epic fantasy orchestral music with magical melodies, mystical instruments, heroic themes, and enchanting atmosphere featuring medieval and magical elements",
+    "image": "fantasy landscape with magical forests, mystical creatures, enchanted castles, and otherworldly beauty with ethereal lighting"
+  },
+  "dreamy": {
+    "music": "dreamy and ethereal music with soft melodies, floating harmonies, gentle rhythms, and otherworldly atmosphere creating a sense of wonder and imagination",
+    "image": "dreamy scene with soft lighting, floating elements, pastel colors, and ethereal atmosphere with magical and whimsical visual elements"
+  },
+  "surreal": {
+    "music": "experimental surreal music with unconventional sounds, abstract melodies, and dreamlike atmosphere featuring avant-garde elements and creative sound design",
+    "image": "surreal artistic scene with impossible geometry, dreamlike imagery, abstract elements, and creative visual compositions"
+  },
+  "vaporwave": {
+    "music": "nostalgic vaporwave with slowed-down samples, retro synthesizers, dreamy atmosphere, and 80s aesthetic featuring lo-fi production and nostalgic melodies",
+    "image": "vaporwave aesthetic with neon colors, retro computer graphics, palm trees, sunset vibes, and nostalgic 80s visual elements"
+  },
+  "classical": {
+    "music": "elegant classical music with orchestral instruments, sophisticated melodies, and refined composition featuring traditional classical elements and timeless beauty",
+    "image": "classical elegance with ornate architecture, refined aesthetics, sophisticated lighting, and timeless visual beauty"
+  },
+  "jazz": {
+    "music": "smooth jazz with improvisational elements, sophisticated harmonies, and elegant instrumentation featuring saxophone, piano, and rhythmic complexity",
+    "image": "jazz club atmosphere with warm lighting, intimate setting, musical instruments, and sophisticated urban nightlife aesthetic"
+  },
+  "rnb": {
+    "music": "smooth R&B with soulful vocals, groovy basslines, and romantic atmosphere featuring contemporary R&B elements and emotional depth",
+    "image": "smooth R&B aesthetic with romantic lighting, intimate atmosphere, and sophisticated urban lifestyle with warm and inviting visuals"
+  },
+  "acoustic": {
+    "music": "warm acoustic music with organic instruments, natural reverb, and intimate emotional expression featuring guitar, piano, and authentic sound",
+    "image": "natural outdoor setting with warm sunlight, organic textures, wooden instruments, and cozy atmosphere with natural lighting"
+  },
+  "dark": {
+    "music": "dark atmospheric music with minor keys, haunting melodies, and brooding emotional depth featuring gothic elements and mysterious atmosphere",
+    "image": "moody dark scene with shadows, muted colors, gothic elements, and mysterious atmosphere with dramatic lighting"
+  },
+  "futuristic": {
+    "music": "cutting-edge futuristic electronic music with advanced synthesizers, innovative sound design, and high-tech atmosphere featuring next-generation production",
+    "image": "futuristic landscape with advanced technology, sleek design, holographic elements, and high-tech visual aesthetics"
+  },
+  "ethereal": {
+    "music": "otherworldly ethereal music with celestial sounds, angelic harmonies, and transcendent atmosphere featuring spiritual and mystical elements",
+    "image": "ethereal celestial scene with heavenly light, floating elements, divine atmosphere, and spiritual visual beauty"
+  },
+  "sci-fi": {
+    "music": "science fiction electronic music with space-age sounds, cosmic atmosphere, and futuristic themes featuring interstellar and technological elements",
+    "image": "sci-fi environment with space technology, cosmic landscapes, futuristic spacecraft, and interstellar visual elements"
+  },
+  "nostalgic": {
+    "music": "nostalgic music with sentimental melodies, warm memories, and emotional depth featuring vintage elements and heartfelt expression",
+    "image": "nostalgic scene with vintage elements, warm memories, sentimental atmosphere, and emotional visual storytelling"
+  },
+  "horror": {
+    "music": "chilling horror music with dissonant harmonies, eerie soundscapes, and terrifying atmosphere featuring suspenseful elements and dark themes",
+    "image": "horror atmosphere with dark shadows, eerie lighting, mysterious elements, and spine-chilling visual composition"
+  },
+  "upbeat": {
+    "music": "upbeat and cheerful music with major keys, bright melodies, and positive energy featuring uplifting rhythms and joyful atmosphere",
+    "image": "bright and cheerful scene with vibrant colors, sunny atmosphere, and positive energy with uplifting visual elements"
+  },
+  "melancholic": {
+    "music": "melancholic music with emotional depth, introspective melodies, and bittersweet atmosphere featuring soulful expression and contemplative mood",
+    "image": "melancholic scene with muted colors, introspective atmosphere, and emotional depth with contemplative visual elements"
+  },
+  "energetic": {
+    "music": "high-energy music with driving rhythms, powerful dynamics, and intense excitement featuring energetic beats and electrifying atmosphere",
+    "image": "energetic scene with dynamic movement, vibrant colors, and high-energy atmosphere with electrifying visual elements"
+  },
+  "peaceful": {
+    "music": "peaceful and serene music with gentle melodies, calming rhythms, and tranquil atmosphere featuring meditative elements and soothing sounds",
+    "image": "peaceful scene with serene atmosphere, gentle lighting, and tranquil beauty with calming visual elements"
+  },
+  "experimental": {
+    "music": "experimental electronic music with creative sound design, innovative techniques, and avant-garde elements featuring unconventional approaches and artistic expression",
+    "image": "experimental artistic scene with creative visual elements, innovative composition, and avant-garde aesthetic with artistic expression"
+  }
+}
