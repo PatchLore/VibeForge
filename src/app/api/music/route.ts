@@ -127,6 +127,8 @@ export async function POST(req: Request) {
       .replace(/focus and relaxation/gi, "")
       .trim();
 
+    console.log("🎵 Generating:", cleanedMusicPrompt);
+    console.log("🎨 Creating:", imagePrompt);
     console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
     console.log("🎯 [GENERATION START] detected intent:", "structured");
     console.log("🎵 [GENERATION START] structured music prompt:", cleanedMusicPrompt);

@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
         console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
         console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
         console.log('🎨 [IMAGE CALLBACK] Literal image prompt:', imagePrompt);
+        console.log("[IMAGE PROMPT SENT]", imagePrompt);
         
         // Generate image
         generatedImageUrl = await generateImage(imagePrompt);

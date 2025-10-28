@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     const imagePrompt = buildImagePrompt(prompt);
 
     console.log("🎨 [VISUAL] Literal image prompt:", imagePrompt);
+    console.log("[IMAGE PROMPT SENT]", imagePrompt);
 
     // Generate image using enriched prompt
     const imageUrl = await generateImage(imagePrompt);

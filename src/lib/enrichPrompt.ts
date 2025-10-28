@@ -128,16 +128,14 @@ If lofi or chill: 70–90 BPM, soft analog textures.
  */
 export function buildImagePrompt(userPrompt: string) {
   const prompt = userPrompt.trim();
-
   return `
 Create an image directly representing "${prompt}".
-Use literal interpretation where possible.
-If it refers to a game, scene, or brand (e.g. "Roblox", "Minecraft", "Geometry Dash"), 
-depict the visual world of that theme — characters, environments, or atmosphere in that style.
+Use literal interpretation when possible — 
+if it refers to a game, world, or object (like "Roblox", "Geometry Dash", "Minecraft"),
+depict that environment in a creative yet recognizable way.
 
-Visual style: realistic or stylized according to context,
-high-detail, cinematic lighting, 16:9 composition, 2K resolution.
-Avoid generic terms like "vibrant colors", "artstation", or "oil painting" unless the user mentions them.
+Visual style: cinematic lighting, 16:9, 2K resolution, detailed textures.
+Avoid abstract "vibrant color" descriptions unless explicitly requested.
 `.trim();
 }
 
