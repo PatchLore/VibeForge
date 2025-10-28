@@ -32,15 +32,19 @@ export default function DashboardPage() {
       const response = await fetch('/api/tracks/user');
       const json = await response.json();
       console.log('📊 [MyTracks] Fetched tracks:', json.tracks?.length || 0);
-      console.log('📊 [MyTracks] Track data:', json.tracks?.[0] ? {
-        id: json.tracks[0].id,
-        title: json.tracks[0].title,
-        status: json.tracks[0].status,
-        hasAudio: !!json.tracks[0].audio_url,
-        hasImage: !!json.tracks[0].image_url,
-        audioUrl: json.tracks[0].audio_url?.substring(0, 50),
-        imageUrl: json.tracks[0].image_url?.substring(0, 50),
-      } : 'No tracks');
+      
+      // Log all tracks with their URLs
+      json.tracks?.forEach((track: any, idx: number) => {
+        console.log(`📊 [MyTracks] Track ${idx + 1}:`, {
+          id: track.id,
+          title: track.title,
+          status: track.status,
+          image_url: track.image_url || 'NULL',
+          audio_url: track.audio_url ? 'exists' : 'missing',
+          isImageUrlValid: track.image_url && track.image_url.startsWith('http'),
+        });
+      });
+      
       setUserTracks(json.tracks || []);
     } catch (error) {
       console.error('❌ [MyTracks] Error fetching tracks:', error);
@@ -187,7 +191,7 @@ export default function DashboardPage() {
                   className="bg-neutral-900 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all"
                 >
                   {/* Image */}
-                  {track.image_url ? (
+                  {track.image_url && track.image_url.startsWith('http') ? (
                     <img
                       src={track.image_url}
                       alt={track.title || "Generated art"}
@@ -195,16 +199,14 @@ export default function DashboardPage() {
                       onError={(e) => {
                         console.error('❌ [MyTracks] Image failed to load:', track.image_url);
                         e.currentTarget.style.display = 'none';
-                        const placeholder = e.currentTarget.nextElementSibling;
+                        const placeholder = e.currentTarget.parentElement?.querySelector('.image-placeholder');
                         if (placeholder) placeholder.classList.remove('hidden');
                       }}
                     />
                   ) : null}
-                  {!track.image_url || track.status === "pending" ? (
-                    <div className={`aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3 ${track.image_url ? 'hidden' : ''}`}>
-                      {track.status === "pending" ? "Generating..." : "No image"}
-                    </div>
-                  ) : null}
+                  <div className={`aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3 image-placeholder ${track.image_url && track.image_url.startsWith('http') ? 'hidden' : ''}`}>
+                    {track.status === "pending" ? "Generating..." : "No image"}
+                  </div>
 
                   {/* Title */}
                   <h4 className="text-white font-semibold text-lg mb-1">
