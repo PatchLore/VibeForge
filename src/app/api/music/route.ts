@@ -19,6 +19,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  let taskId: string | undefined;
+  
   try {
     // Robust input guards
     const body = await req.json().catch(() => ({}));
@@ -171,7 +173,7 @@ export async function POST(req: Request) {
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
     // Generate music using the cleaned prompt
-    const taskId = await generateMusic(cleanedMusicPrompt);
+    taskId = await generateMusic(cleanedMusicPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 
