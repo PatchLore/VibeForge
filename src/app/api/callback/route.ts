@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'track update failed' }, { status: 500 });
     }
 
-    console.log('✅ [CALLBACK] Track updated →', taskId);
+    console.log(`✅ [CALLBACK] Track updated for task_id: ${taskId}`);
 
     // --- Deduct credits atomically via RPC (idempotent with status check above) ---
     const { data: deducted, error: rpcErr } = await supabaseServer.rpc(
