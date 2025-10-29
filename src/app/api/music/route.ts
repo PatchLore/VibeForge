@@ -182,7 +182,22 @@ export async function POST(req: Request) {
     // DON'T deduct credits yet - wait for callback confirmation
     // Credits will be deducted in the callback route when generation succeeds
     
-    // Generate track title for display
+    // Generate dynamic track title based on user vibe
+    const generateTrackTitle = (vibe: string) => {
+      const wordBank = [
+        "Dream", "Pulse", "Horizons", "Odyssey", "Voyage", "Frequency",
+        "Aurora", "Neon", "Drift", "Echo", "Vision", "Frontier",
+        "Flux", "Motion", "Skies", "Euphoria", "Spectrum", "Phantom"
+      ];
+      const baseWords = vibe
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .split(" ")
+        .filter(w => w.length > 2)
+        .slice(0, 2);
+      const suffix = wordBank[Math.floor(Math.random() * wordBank.length)];
+      return `${baseWords.join(" ")} ${suffix}`.trim();
+    };
+    
     const generatedTitle = generateTrackTitle(userVibe);
     console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
     
@@ -220,7 +235,8 @@ export async function POST(req: Request) {
       remainingCredits: remainingCredits,
       expandedPrompts: {
         music: displayMusicPrompt || cleanedMusicPrompt || "",
-        image: displayImagePrompt || imagePrompt || ""
+        image: displayImagePrompt || imagePrompt || "",
+        title: generatedTitle // Include title in expandedPrompts for frontend visibility
       }
     };
 

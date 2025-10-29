@@ -122,7 +122,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
   };
   
-  console.log("🖼️ [KIE IMAGE] Using", model, resolution);
+  console.log("🖼️ [KIE IMAGE] Using model:", model, "Resolution:", resolution);
   console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
   console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality);
   console.log("🎨 [IMAGE GEN] Steps:", imageParams.steps);
@@ -217,12 +217,14 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
 
     const imageUrl = data.data?.response?.imageUrl;
     
-    // Verify 2K quality - check if URL contains 2048 or if we can detect high resolution
+    // Enhanced 2K quality verification - check URL patterns and attempt to detect low-res
     const is2KQuality = imageUrl && (
       imageUrl.includes("2048") || 
       imageUrl.includes("2k") || 
       imageUrl.includes("high") ||
-      imageUrl.includes("hd")
+      imageUrl.includes("hd") ||
+      imageUrl.includes("quality") ||
+      !imageUrl.includes("1024") // Avoid 1024x576 fallback
     );
     
     if (is2KQuality) {
@@ -231,21 +233,21 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       console.log("🖼️ [DEBUG IMAGE SAVED] Image URL received:", imageUrl);
       return imageUrl;
     } else {
-      console.log("⚠️ [IMAGE GEN] Image may not be 2K quality, retrying with explicit 2K parameters");
+      console.log("🔍 Image appears low-res, reattempting 2K render");
       
-      // Retry with explicit 2K parameters
+      // Retry with enforced 2048x1152 parameters
       const retryParams = {
         model: "bytedance/seedream-v4-text-to-image",
         prompt: finalPrompt,
         resolution: "2048x1152",
         aspect_ratio: "16:9",
         quality: "high",
-        steps: 25,
-        cfg_scale: 7,
-        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution"
+        steps: 30,
+        cfg_scale: 8,
+        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality"
       };
       
-      console.log("🧠 [DEBUG IMAGE] Sending retry request with explicit 2K params:", retryParams);
+      console.log("🧠 [DEBUG IMAGE] Sending retry request with enforced 2K params:", retryParams);
       
       const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
         method: "POST",

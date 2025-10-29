@@ -124,19 +124,28 @@ If lofi or chill: 70–90 BPM, soft analog textures.
 }
 
 /**
- * Build literal image prompt based on user's theme
+ * Build enriched image prompt using prompt_enrichment.json mapping
  */
 export function buildImagePrompt(userPrompt: string) {
   const prompt = userPrompt.trim();
-  return `
-Create an image directly representing "${prompt}".
-Use literal interpretation when possible — 
-if it refers to a game, world, or object (like "Roblox", "Geometry Dash", "Minecraft"),
-depict that environment in a creative yet recognizable way.
-
-Visual style: cinematic lighting, 16:9, 2K resolution, detailed textures.
-Avoid abstract "vibrant color" descriptions unless explicitly requested.
+  
+  // Detect the primary style/intent from the user prompt
+  const { intent } = detectIntent(prompt);
+  
+  // Get the enriched image description from the mapping
+  const styleMapping = styles[intent as keyof typeof styles];
+  const enrichedImageDescription = styleMapping?.image || styles.experimental.image;
+  
+  // Build the final enriched prompt
+  const enrichedPrompt = `
+Digital artwork of ${prompt.toLowerCase()}, ${enrichedImageDescription}, cinematic lighting, 16:9 aspect ratio, ultra-detailed textures, high contrast, professional composition, 2K resolution quality.
 `.trim();
+  
+  console.log(`🖼️ [ENRICHED IMAGE] Detected intent: ${intent}`);
+  console.log(`🖼️ [ENRICHED IMAGE] Using description: ${enrichedImageDescription}`);
+  console.log(`🖼️ [ENRICHED IMAGE] Final prompt: ${enrichedPrompt}`);
+  
+  return enrichedPrompt;
 }
 
 /**
