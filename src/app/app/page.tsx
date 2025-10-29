@@ -81,6 +81,10 @@ export default function AppPage() {
             duration: track.duration || 600,
             // @ts-ignore store extra for TrackCard rendering
             summary: track.summary || '',
+            // @ts-ignore propagate extended prompts
+            extended_prompt: track.extended_prompt || '',
+            // @ts-ignore propagate extended image prompt
+            extended_prompt_image: track.extended_prompt_image || '',
           };
           console.log('🎧 [AppPage] Track converted:', { title: converted.title, hasAudio: !!converted.audioUrl, hasImage: !!converted.imageUrl });
           return converted;
@@ -313,6 +317,8 @@ export default function AppPage() {
                         prompt: track.mood,
                         vibe: track.mood,
                         summary: (track as any).summary,
+                        extended_prompt: (track as any).extended_prompt,
+                        extended_prompt_image: (track as any).extended_prompt_image,
                         audio_url: track.audioUrl,
                         image_url: track.imageUrl,
                         duration: track.duration,

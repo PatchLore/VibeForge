@@ -21,7 +21,7 @@ export async function GET() {
     // Get all completed tracks across all users, sorted by recency
     const { data: tracks, error } = await supabase
       .from("tracks")
-      .select("id, title, prompt, vibe, summary, status, audio_url, image_url, likes, created_at, user_id")
+      .select("id, title, prompt, extended_prompt, extended_prompt_image, vibe, summary, status, audio_url, image_url, likes, created_at, user_id")
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(20);
@@ -45,6 +45,9 @@ export async function GET() {
       mood: track.vibe || track.prompt || 'Unknown mood',
       vibe: track.vibe || null,
       summary: track.summary || '',
+      prompt: track.prompt || '',
+      extended_prompt: track.extended_prompt || '',
+      extended_prompt_image: track.extended_prompt_image || '',
       status: track.status || 'completed',
       generatedAt: track.created_at,
       duration: 600, // Default duration
@@ -57,7 +60,13 @@ export async function GET() {
     // Add summary log
     console.log(`📊 [Popular Tracks Summary] Total: ${formattedTracks.length} | With audio: ${formattedTracks.filter(t => t.audioUrl).length} | With images: ${formattedTracks.filter(t => t.imageUrl).length}`);
 
-    return NextResponse.json({ tracks: formattedTracks });
+    const _debug = {
+      route: "src/app/api/tracks/popular/route.ts",
+      ts: new Date().toISOString(),
+      commit: process.env.VERCEL_GIT_COMMIT_SHA || null
+    };
+
+    return NextResponse.json({ tracks: formattedTracks, _debug });
   } catch (e) {
     console.error("❌ [Popular Tracks] Unexpected error:", e);
     return NextResponse.json({ tracks: [], error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });

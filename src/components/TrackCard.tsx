@@ -4,12 +4,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 // Using regular img instead of Next.js Image due to proxy URL
 const FALLBACK_IMG = "/images/placeholders/track-fallback-16x9.jpg";
+import PromptReveal from './PromptReveal';
 
 interface TrackCardProps {
   track: {
     id: string;
     title: string;
     prompt: string;
+    extended_prompt?: string;
+    extended_prompt_image?: string;
     audio_url: string;
     image_url?: string;
     vibe?: string; // preferred field name
@@ -79,10 +82,11 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             
             <div className="relative">
               <img 
-                src={track.image_url || FALLBACK_IMG}
+                src={track.image_url ? `/api/proxy-audio?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
                 alt={track.title}
                 className="w-full h-48 rounded-xl object-cover"
                 loading="lazy"
+                referrerPolicy="no-referrer"
                 onError={(e) => {
                   console.error('❌ [TrackCard] Image failed to load:', track.image_url);
                   (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
@@ -106,7 +110,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             onClick={() => {
               if (track.image_url) {
                 const link = document.createElement('a');
-                link.href = track.image_url;
+                link.href = `/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`;
                 link.download = `soundswoop-artwork-${track.id}.png`;
                 document.body.appendChild(link);
                 link.click();
@@ -150,6 +154,9 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
 
         {/* Summary */}
         <p className="text-sm text-gray-300 line-clamp-2 min-h-[2.5rem]">{track.summary || 'Generated with Soundswoop AI'}</p>
+
+        {/* Prompts toggle */}
+        <PromptReveal musicPrompt={track.extended_prompt} imagePrompt={track.extended_prompt_image} />
 
         {/* Track Info */}
         <div className="flex items-center justify-between text-sm text-muted">

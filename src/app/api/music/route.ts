@@ -266,6 +266,7 @@ export async function POST(req: Request) {
           vibe: generatedVibe,
           summary: generatedSummary,
           extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+          extended_prompt_image: imagePrompt,
           audio_url: null,
           image_url: null,
           status: 'pending',
