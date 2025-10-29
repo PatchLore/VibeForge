@@ -155,7 +155,6 @@ export async function POST(request: NextRequest) {
       prompt: safePrompt,
       audio_url: completed.audio_url,
       image_url: completed.image_url ?? null,
-      resolution: "2048x1152", // Default to 2K resolution
       duration: completed.duration ?? null,
       status: 'completed',
       updated_at: new Date().toISOString(),
@@ -201,14 +200,12 @@ export async function POST(request: NextRequest) {
         if (imageResult && imageResult.imageUrl) {
           console.log('🎨 [IMAGE CALLBACK] Image generated successfully');
           console.log('🎨 [IMAGE CALLBACK] Image URL:', imageResult.imageUrl);
-          console.log('🎨 [IMAGE CALLBACK] Resolution:', imageResult.resolution);
           
-          // Update track with generated image and resolution
+          // Update track with generated image
           const { error: imageUpdateErr } = await supabaseServer
             .from('tracks')
             .update({ 
               image_url: imageResult.imageUrl,
-              resolution: imageResult.resolution || "2048x1152",
               updated_at: new Date().toISOString()
             })
             .eq('task_id', taskId);
@@ -216,8 +213,8 @@ export async function POST(request: NextRequest) {
           if (imageUpdateErr) {
             console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
           } else {
-            console.log('✅ [IMAGE CALLBACK] Track updated with generated image and resolution');
-            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: imageResult.imageUrl, resolution: imageResult.resolution });
+            console.log('✅ [IMAGE CALLBACK] Track updated with generated image');
+            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: imageResult.imageUrl });
           }
         }
       } catch (imageErr) {
