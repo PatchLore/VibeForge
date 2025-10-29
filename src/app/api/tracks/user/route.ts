@@ -89,24 +89,43 @@ export async function GET() {
       console.log("🎧 First track:", deduplicatedTracks[0].title, deduplicatedTracks[0].audio_url ? "has audio" : "no audio");
     }
 
-    // Format to match popular endpoint shape (camelCase extras)
-    const formattedTracks = deduplicatedTracks.map((track: any) => ({
-      id: track.id,
-      title: track.title || 'Untitled Track',
-      audioUrl: track.audio_url,
-      imageUrl: track.image_url,
-      mood: track.vibe || track.prompt || 'Unknown mood',
-      vibe: track.vibe || null,
-      summary: track.summary || '',
-      prompt: track.prompt || '',
-      extendedPrompt: track.extended_prompt || '',
-      extendedPromptImage: track.extended_prompt_image || '',
-      status: track.status || 'completed',
-      generatedAt: track.created_at,
-      duration: track.duration || 600,
-      likes: track.likes || 0,
-      userId: track.user_id
-    }));
+    // Dual-key mapping (snake_case + camelCase) to match /api/tracks/popular
+    const formattedTracks = deduplicatedTracks.map((t: any) => {
+      const audioUrl = t.audio_url ?? null;
+      const imageUrl = t.image_url ?? null;
+      const extendedPrompt = t.extended_prompt ?? '';
+      const extendedPromptImage = t.extended_prompt_image ?? '';
+
+      return {
+        id: t.id,
+        title: t.title || 'Untitled Track',
+
+        // snake_case (legacy)
+        audio_url: t.audio_url ?? null,
+        image_url: t.image_url ?? null,
+        extended_prompt: extendedPrompt,
+        extended_prompt_image: extendedPromptImage,
+        created_at: t.created_at,
+        user_id: t.user_id,
+
+        // camelCase (current)
+        audioUrl,
+        imageUrl,
+        extendedPrompt,
+        extendedPromptImage,
+        generatedAt: t.created_at,
+        userId: t.user_id,
+
+        // general fields
+        prompt: t.prompt ?? '',
+        vibe: t.vibe ?? null,
+        mood: t.vibe ?? t.prompt ?? 'Unknown mood',
+        summary: t.summary ?? '',
+        status: t.status ?? 'completed',
+        duration: t.duration || 600,
+        likes: t.likes ?? 0,
+      };
+    });
 
     return NextResponse.json({ tracks: formattedTracks });
   } catch (e) {
