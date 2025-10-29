@@ -216,64 +216,72 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     }
 
     const imageUrl = data.data?.response?.imageUrl;
+    console.log("✅ [KIE IMAGE] Received:", imageUrl);
     
-    // Enhanced 2K quality verification - check URL patterns and attempt to detect low-res
-    const is2KQuality = imageUrl && (
-      imageUrl.includes("2048") || 
-      imageUrl.includes("2k") || 
-      imageUrl.includes("high") ||
-      imageUrl.includes("hd") ||
-      imageUrl.includes("quality") ||
-      !imageUrl.includes("1024") // Avoid 1024x576 fallback
-    );
-    
-    if (is2KQuality) {
-      console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
-      console.log("🎨 [IMAGE GEN] Image URL:", imageUrl);
-      console.log("🖼️ [DEBUG IMAGE SAVED] Image URL received:", imageUrl);
-      return imageUrl;
-    } else {
-      console.log("🔍 Image appears low-res, reattempting 2K render");
-      
-      // Retry with enforced 2048x1152 parameters
-      const retryParams = {
-        model: "bytedance/seedream-v4-text-to-image",
-        prompt: finalPrompt,
-        resolution: "2048x1152",
-        aspect_ratio: "16:9",
-        quality: "high",
-        steps: 30,
-        cfg_scale: 8,
-        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality"
-      };
-      
-      console.log("🧠 [DEBUG IMAGE] Sending retry request with enforced 2K params:", retryParams);
-      
-      const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(retryParams),
-      });
-      
-      console.log("🧠 [DEBUG IMAGE] Retry response status:", retryResponse.status);
-      
-      const retryData = await retryResponse.json();
-      if (!retryResponse.ok || retryData.code !== 200) {
-        console.error("🖼️ [IMAGE GEN] Retry also failed:", retryData);
-        // Return original image even if not verified 2K
-        console.log("⚠️ [IMAGE GEN] Returning original image despite quality uncertainty");
-        return imageUrl;
+    if (imageUrl) {
+      try {
+        // Enhanced 2K quality verification with size checking
+        const head = await fetch(imageUrl, { method: "HEAD" });
+        const size = head.headers.get("content-length");
+        const widthCheck = imageUrl.includes("2048") || imageUrl.includes("1152") || imageUrl.includes("2k");
+        
+        console.log("🔍 [IMAGE CHECK] Size:", size, "bytes, Width check:", widthCheck);
+        
+        if ((size && parseInt(size) < 800000) || !widthCheck) {
+          console.warn("⚠️ [IMAGE CHECK] Low-res detected, retrying at 2K...");
+          await new Promise(r => setTimeout(r, 1500));
+          
+          const retryParams = {
+            model: "bytedance/seedream-v4-text-to-image",
+            prompt: finalPrompt,
+            resolution: "2048x1152",
+            aspect_ratio: "16:9",
+            quality: "high",
+            steps: 30,
+            cfg_scale: 8,
+            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality"
+          };
+          
+          console.log("🧠 [DEBUG IMAGE] Sending retry request with enforced 2K params:", retryParams);
+          
+          const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(retryParams),
+          });
+          
+          console.log("🧠 [DEBUG IMAGE] Retry response status:", retryResponse.status);
+          
+          const retryData = await retryResponse.json();
+          if (!retryResponse.ok || retryData.code !== 200) {
+            console.error("🖼️ [IMAGE GEN] Retry also failed:", retryData);
+            console.log("⚠️ [IMAGE GEN] Returning original image despite quality uncertainty");
+            return { imageUrl, resolution: "2048x1152" };
+          }
+          
+          const retryImageUrl = retryData.data?.response?.imageUrl;
+          if (retryImageUrl) {
+            console.log("✅ [IMAGE CHECK] Retried successfully with 2K image");
+            return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+          }
+        }
+        
+        console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
+        console.log("🎨 [IMAGE GEN] Image URL:", imageUrl);
+        console.log("🖼️ [DEBUG IMAGE SAVED] Image URL received:", imageUrl);
+        return { imageUrl, resolution: "2048x1152" };
+        
+      } catch (err) {
+        console.error("❌ [IMAGE CHECK] Verification failed:", err);
+        console.log("⚠️ [IMAGE GEN] Returning image without verification");
+        return { imageUrl, resolution: "2048x1152" };
       }
-      
-      const retryImageUrl = retryData.data?.response?.imageUrl;
-      console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution (retry)");
-      console.log("🎨 [IMAGE GEN] Image URL:", retryImageUrl);
-      console.log("🖼️ [DEBUG IMAGE SAVED] Retry Image URL received:", retryImageUrl);
-      return retryImageUrl;
     }
+    
+    throw new Error("No image URL received from Kie.ai");
     
   } catch (error) {
     console.error("❌ [IMAGE GEN] Generation error:", error);

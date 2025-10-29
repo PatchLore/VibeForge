@@ -192,17 +192,24 @@ export default function DashboardPage() {
                 >
                   {/* Image */}
                   {track.image_url && track.image_url.startsWith('http') ? (
-                    <img
-                      src={`/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`}
-                      alt={track.title || "Generated art"}
-                      className="w-full rounded-xl object-cover aspect-video mb-3"
-                      onError={(e) => {
-                        console.error('❌ [MyTracks] Image failed to load:', track.image_url);
-                        e.currentTarget.style.display = 'none';
-                        const placeholder = e.currentTarget.parentElement?.querySelector('.image-placeholder');
-                        if (placeholder) placeholder.classList.remove('hidden');
-                      }}
-                    />
+                    <div className="relative">
+                      <img
+                        src={`/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`}
+                        alt={track.title || "Generated art"}
+                        className="w-full rounded-xl object-cover aspect-video mb-3"
+                        onError={(e) => {
+                          console.error('❌ [MyTracks] Image failed to load:', track.image_url);
+                          e.currentTarget.style.display = 'none';
+                          const placeholder = e.currentTarget.parentElement?.querySelector('.image-placeholder');
+                          if (placeholder) placeholder.classList.remove('hidden');
+                        }}
+                      />
+                      {track?.resolution === "2048x1152" && (
+                        <span className="absolute bottom-5 right-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                          🎨 2K Rendered
+                        </span>
+                      )}
+                    </div>
                   ) : null}
                   <div className={`aspect-video rounded-xl bg-neutral-800 flex items-center justify-center text-gray-500 text-sm mb-3 image-placeholder ${track.image_url && track.image_url.startsWith('http') ? 'hidden' : ''}`}>
                     {track.status === "pending" ? "Generating..." : "No image"}

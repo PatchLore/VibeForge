@@ -15,6 +15,7 @@ interface TrackCardProps {
     likes?: number;
     duration: number;
     created_at: string;
+    resolution?: string;
   };
   onDelete?: (id: string) => void;
 }
@@ -62,15 +63,22 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             {/* Neon Glow Border */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
             
-            <img 
-              src={track.image_url}
-              alt={track.title}
-              className="w-full h-auto rounded-xl object-cover aspect-video"
-              loading="lazy"
-              onError={(e) => {
-                console.error('❌ [TrackCard] Image failed to load:', track.image_url);
-              }}
-            />
+            <div className="relative">
+              <img 
+                src={track.image_url}
+                alt={track.title}
+                className="w-full h-auto rounded-xl object-cover aspect-video"
+                loading="lazy"
+                onError={(e) => {
+                  console.error('❌ [TrackCard] Image failed to load:', track.image_url);
+                }}
+              />
+              {track?.resolution === "2048x1152" && (
+                <span className="absolute bottom-2 right-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                  🎨 2K Rendered
+                </span>
+              )}
+            </div>
           </div>
           
           {/* Download Button */}
