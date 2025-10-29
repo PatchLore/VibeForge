@@ -124,19 +124,19 @@ export default function Home() {
         throw new Error('Failed to generate SoundPainting');
       }
 
-      // Store expanded prompts for display (feature-flagged)
-      if (data.displayPrompts) {
-        console.log("🔍 [DEBUG] Display prompts received:", data.displayPrompts);
+      // Store expanded prompts for display
+      if (data.expandedPrompts) {
+        console.log("🔍 [DEBUG] Expanded prompts received:", data.expandedPrompts);
         setExpandedPrompts({
-          music: data.displayPrompts.music,
-          image: data.displayPrompts.image
+          music: data.expandedPrompts.music,
+          image: data.expandedPrompts.image
         });
         
         // Log prompts to console for debugging
-        console.log("🎵 Generating:", data.displayPrompts.music || "Unknown");
-        console.log("🎨 Creating:", data.displayPrompts.image || "Unknown");
+        console.log("🎵 Generating:", data.expandedPrompts.music || "Unknown");
+        console.log("🎨 Creating:", data.expandedPrompts.image || "Unknown");
       } else {
-        console.log("🔍 [DEBUG] No display prompts - feature flag disabled");
+        console.log("🔍 [DEBUG] No expanded prompts received");
       }
 
       // Start polling for completion

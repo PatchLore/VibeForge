@@ -206,28 +206,22 @@ export async function POST(req: Request) {
     
     remainingCredits = currentCredits; // Return current credits, not deducted yet
 
-    // Feature-flagged response structure
+    // Response structure with expandedPrompts for frontend display
     const payload: any = { 
       success: true, 
       provider: "suno-api",
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
-      remainingCredits: remainingCredits
+      remainingCredits: remainingCredits,
+      expandedPrompts: {
+        music: displayMusicPrompt || cleanedMusicPrompt || "",
+        image: displayImagePrompt || imagePrompt || ""
+      }
     };
 
-    // Only include display prompts if feature flag is enabled
-    if (process.env.NEXT_PUBLIC_SHOW_DISPLAY_PROMPTS === "true") {
-      payload.displayPrompts = {
-        music: displayMusicPrompt,
-        image: displayImagePrompt
-      };
-      // Include technical prompts for debugging only
-      payload.debugPrompts = {
-        music: cleanedMusicPrompt,
-        image: imagePrompt
-      };
-    }
+    // Add diagnostic logging
+    console.log("🎨 [EXPANDED PROMPTS SENT]", payload.expandedPrompts);
 
     return NextResponse.json(payload, { status: 200 });
 
