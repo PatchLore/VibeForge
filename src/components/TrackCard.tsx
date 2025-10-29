@@ -79,12 +79,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
           <div className="relative rounded-xl overflow-hidden bg-gradient-to-r from-pink-500/20 to-cyan-500/20 p-1 shadow-lg">
             {/* Neon Glow Border */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
-            
-            <div className="relative">
-              <img 
+
+            {/* Maintain true 16:9 ratio and full quality */}
+            <div className="relative aspect-video overflow-hidden rounded-xl">
+              <img
                 src={track.image_url ? `/api/proxy-audio?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
                 alt={track.title}
-                className="w-full h-48 rounded-xl object-cover"
+                className="w-full h-full object-cover"
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
