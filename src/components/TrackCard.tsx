@@ -11,7 +11,9 @@ interface TrackCardProps {
     prompt: string;
     audio_url: string;
     image_url?: string;
-    mood?: string;
+    vibe?: string; // preferred field name
+    mood?: string; // legacy fallback
+    summary?: string;
     likes?: number;
     duration: number;
     created_at: string;
@@ -23,6 +25,17 @@ interface TrackCardProps {
 export default function TrackCard({ track, onDelete }: TrackCardProps) {
   const [likes, setLikes] = useState(track.likes || 0);
   const [isLiking, setIsLiking] = useState(false);
+
+  const handlePlay = (id: string) => {
+    try {
+      const audios = document.querySelectorAll<HTMLAudioElement>('audio[data-id]');
+      audios.forEach(a => {
+        if (a.dataset.id !== id) a.pause();
+      });
+    } catch (e) {
+      // no-op
+    }
+  };
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -50,11 +63,12 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative bg-card backdrop-blur-lg border border-border rounded-2xl p-6 
-                 transition-all duration-300 ease-out hover:border-primary 
-                 hover:shadow-glow-lg hover:-translate-y-2 cursor-pointer 
-                 overflow-hidden card-shine"
+      className="relative rounded-2xl p-4 border border-pink-500/10 bg-gradient-to-br from-[#22003e] to-[#4c007d] shadow-lg hover:scale-[1.02] hover:shadow-pink-500/20 transition-all duration-300"
     >
+      {/* Title */}
+      <h3 className="text-lg font-semibold text-white mb-1">{track.title}</h3>
+      {/* Mood/Vibe */}
+      <p className="text-sm italic text-pink-300 mb-2">Mood: {track.vibe || track.mood || track.prompt}</p>
       {/* Artwork */}
       {track.image_url ? (
         <div className="relative mb-4">
@@ -122,11 +136,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
           <div className="bg-card backdrop-blur-lg border-2 border-border rounded-xl p-2 mt-3">
             <audio
               controls
+              data-id={track.id}
               preload="none"
               src={`/api/proxy-audio?url=${encodeURIComponent(track.audio_url)}`}
               className="w-full bg-card rounded-xl shadow-glow accent-primary
                          [&::-webkit-media-controls-panel]:bg-card
                          [&::-webkit-media-controls-play-button]:text-primary"
+              onPlay={() => handlePlay(track.id)}
               onError={(e) => {
                 console.error('❌ [TrackCard] Audio playback error:', track.audio_url);
               }}
@@ -134,15 +150,15 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
           </div>
         )}
 
+        {/* Summary */}
+        {track.summary && (
+          <p className="text-sm text-gray-300 line-clamp-2">{track.summary}</p>
+        )}
+
         {/* Track Info */}
         <div className="flex items-center justify-between text-sm text-muted">
           <div className="flex items-center space-x-2">
             <span>🎵🎨 Soundswoop</span>
-            {track.mood && (
-              <span className="px-2 py-1 bg-card rounded-full text-xs">
-                {track.mood}
-              </span>
-            )}
           </div>
           <span>{new Date(track.created_at).toLocaleDateString()}</span>
         </div>

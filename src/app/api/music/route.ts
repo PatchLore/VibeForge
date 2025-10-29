@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
-import { generateTrackTitle, generateCreativeTitle } from "@/lib/generateTrackTitle";
+import { generateTrackTitle, generateCreativeTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 // Fallback polling mechanism for slow Kie.ai completions
@@ -248,8 +248,10 @@ export async function POST(req: Request) {
     // DON'T deduct credits yet - wait for callback confirmation
     // Credits will be deducted in the callback route when generation succeeds
     
-    // Generate creative title with proper capitalization
+    // Generate creative title, vibe and summary
     const generatedTitle = generateCreativeTitle(userVibe);
+    const generatedVibe = detectVibe(userVibe);
+    const generatedSummary = generateSummary(userVibe);
     console.log("🎵 [MUSIC API] Generated creative title for pending track:", generatedTitle);
     
     // Store pending generation in tracks table for tracking
@@ -261,6 +263,8 @@ export async function POST(req: Request) {
           user_id: user.id,
           title: generatedTitle,
           prompt: userVibe,
+          vibe: generatedVibe,
+          summary: generatedSummary,
           extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           audio_url: null,
           image_url: null,

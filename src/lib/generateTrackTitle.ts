@@ -192,6 +192,50 @@ export function generateCreativeTitle(userPrompt: string): string {
 }
 
 /**
+ * Detect primary mood/vibe from user prompt
+ * Examples:
+ * - "melodic trance sunrise" → "Euphoric / Uplifting"
+ * - "dark dnb bassline" → "Aggressive / Intense"
+ * - "ambient forest soundscape" → "Calm / Reflective"
+ */
+export function detectVibe(userPrompt: string): string {
+  const p = (userPrompt || "").toLowerCase();
+  if (/trance|euphoria|uplift|sunrise|anthem/.test(p)) return "Euphoric / Uplifting";
+  if (/(dark|dnb|drum and bass|neuro|industrial|hard)/.test(p)) return "Aggressive / Intense";
+  if (/(ambient|forest|rain|nature|calm|meditat|chill|lofi)/.test(p)) return "Calm / Reflective";
+  if (/(game|gaming|roblox|geometry dash|edm|synthwave|arcade|8-bit|chip)/.test(p)) return "Energetic / Gaming";
+  if (/(cinematic|orchestral|film|epic|trailer)/.test(p)) return "Cinematic / Dramatic";
+  if (/(jazzy|jazz|sax|blues)/.test(p)) return "Smooth / Jazzy";
+  if (/(pop|upbeat|dance)/.test(p)) return "Upbeat / Pop";
+  return "Creative / Expressive";
+}
+
+/**
+ * Generate a short vivid summary for the track
+ */
+export function generateSummary(userPrompt: string): string {
+  const vibe = detectVibe(userPrompt);
+  const p = userPrompt.trim();
+  // Simple templated narrative
+  if (/trance|euphor/i.test(p)) {
+    return "An atmospheric trance anthem inspired by sunrise energy — glowing pads, shimmering synths, and euphoric build-ups.";
+  }
+  if (/dnb|drum and bass|neuro|bassline|dark/i.test(p)) {
+    return "A high-velocity DnB drive — razor bass, rapid-fire drums, and tension-filled drops with cinematic impact.";
+  }
+  if (/ambient|forest|rain|nature/i.test(p)) {
+    return "A serene ambient journey — misty textures, gentle swells, and organic field tones evoking tranquil nature.";
+  }
+  if (/game|gaming|roblox|geometry dash|edm|synthwave/i.test(p)) {
+    return "A high-energy electronic rush — playful synths, neon textures, and glitch-tinted drops built for fast-paced worlds.";
+  }
+  if (/cinematic|orchestral|film|epic/i.test(p)) {
+    return "A sweeping cinematic piece — soaring strings, bold brass, and dramatic crescendos glowing with emotion.";
+  }
+  return `${vibe} piece — expressive melodies, modern production, and immersive atmosphere.`;
+}
+
+/**
  * Test function to validate title generation
  */
 export function testTitleGeneration(): void {
