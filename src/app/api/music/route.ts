@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     }
 
     // Detect style for user-friendly descriptions
-    const lowerVibe = userVibe.toLowerCase();
+    const lowerVibe = (userVibe || '').toLowerCase();
     let detectedStyle = 'emotion and mood';
     let styleDescriptor = 'color and motion';
     
@@ -159,8 +159,8 @@ export async function POST(req: Request) {
     }
 
     // Create user-friendly display prompts
-    const displayMusicPrompt = `Creating music inspired by "${userVibe}" — focusing on ${detectedStyle}.`;
-    const displayImagePrompt = `Visualizing the feeling of "${userVibe}" through ${styleDescriptor}.`;
+    const displayMusicPrompt = `Creating music inspired by "${userVibe || 'your vibe'}" — focusing on ${detectedStyle}.`;
+    const displayImagePrompt = `Visualizing the feeling of "${userVibe || 'your vibe'}" through ${styleDescriptor}.`;
     
     // Clean music prompt to remove any remaining bias phrases
     const cleanedMusicPrompt = musicPrompt
