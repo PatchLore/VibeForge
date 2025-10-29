@@ -311,7 +311,7 @@ export default function Home() {
                     <TrackCard
                       track={{
                         id: track.id,
-                        title: track.mood,
+                        title: track.title || track.mood, // Use generated title if available, fallback to mood
                         prompt: track.mood,
                         audio_url: track.audioUrl,
                         image_url: track.imageUrl,

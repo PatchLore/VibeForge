@@ -180,11 +180,12 @@ export async function POST(req: Request) {
     // DON'T deduct credits yet - wait for callback confirmation
     // Credits will be deducted in the callback route when generation succeeds
     
+    // Generate track title for display
+    const generatedTitle = generateTrackTitle(userVibe);
+    console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
+    
     // Store pending generation in tracks table for tracking
     try {
-      const generatedTitle = generateTrackTitle(userVibe);
-      console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
-      
       await supabaseAdmin
         .from('tracks')
         .insert({
@@ -213,6 +214,7 @@ export async function POST(req: Request) {
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
+      title: generatedTitle, // Include the generated track title
       remainingCredits: remainingCredits,
       expandedPrompts: {
         music: displayMusicPrompt || cleanedMusicPrompt || "",

@@ -121,8 +121,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
   };
   
-  console.log("🎨 [IMAGE GEN] Model:", model);
-  console.log("🎨 [IMAGE GEN] Resolution:", imageParams.resolution);
+  console.log("🖼️ [KIE IMAGE] Model:", model, "Resolution:", imageParams.resolution);
   console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
   console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality);
   console.log("🎨 [IMAGE GEN] Steps:", imageParams.steps);
@@ -147,9 +146,38 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     if (!response.ok || data.code !== 200) {
       console.error("🖼️ [IMAGE GEN] Error response:", data);
       
-      // Fallback to lower resolution if 2K is rejected
-      if (data.msg?.includes('resolution') || data.msg?.includes('size')) {
-        console.log("🔄 [IMAGE GEN] Falling back to 1024x576 resolution");
+      // Retry once with explicit 2K parameters if first attempt fails
+      console.log("🖼️ [KIE IMAGE] Retrying at 2K");
+      const retryParams = {
+        model: "bytedance/seedream-v4-text-to-image",
+        prompt: finalPrompt,
+        resolution: "2048x1152",
+        aspect_ratio: "16:9",
+        quality: "high",
+        steps: 25,
+        cfg_scale: 7,
+        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
+      };
+      
+      console.log("🧠 [DEBUG IMAGE] Sending retry request with params:", retryParams);
+      
+      const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(retryParams),
+      });
+      
+      console.log("🧠 [DEBUG IMAGE] Retry response status:", retryResponse.status);
+      
+      const retryData = await retryResponse.json();
+      if (!retryResponse.ok || retryData.code !== 200) {
+        console.error("🖼️ [IMAGE GEN] Retry also failed:", retryData);
+        
+        // Final fallback to lower resolution only if 2K completely fails
+        console.log("🔄 [IMAGE GEN] Final fallback to 1024x576 resolution");
         const fallbackParams = {
           ...imageParams,
           resolution: "1024x576",
@@ -171,7 +199,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         
         const fallbackData = await fallbackResponse.json();
         if (!fallbackResponse.ok || fallbackData.code !== 200) {
-          console.error("🖼️ [IMAGE GEN] Fallback also failed:", fallbackData);
+          console.error("🖼️ [IMAGE GEN] All attempts failed:", fallbackData);
           throw new Error(`Image generation failed: ${fallbackData.msg}`);
         }
         
@@ -180,7 +208,10 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         return fallbackData.data?.response?.imageUrl;
       }
       
-      throw new Error(`Image generation failed: ${data.msg}`);
+      console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution (retry)");
+      console.log("🎨 [IMAGE GEN] Image URL:", retryData.data?.response?.imageUrl);
+      console.log("🖼️ [DEBUG IMAGE SAVED] Retry Image URL received:", retryData.data?.response?.imageUrl);
+      return retryData.data?.response?.imageUrl;
     }
 
     console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
