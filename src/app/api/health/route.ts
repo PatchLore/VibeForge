@@ -1,19 +1,13 @@
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  return Response.json({ 
-    status: "ok", 
-    message: "Health check working",
-    timestamp: new Date().toISOString()
+  return new Response(JSON.stringify({ 
+    ok: true, 
+    time: new Date().toISOString() 
+  }), { 
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json'
+    }
   });
 }
-
-export async function POST() {
-  return Response.json({ 
-    status: "ok", 
-    message: "POST method working",
-    timestamp: new Date().toISOString()
-  });
-}
-

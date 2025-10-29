@@ -20,8 +20,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { prompt } = body;
+    // Robust input guards
+    const body = await req.json().catch(() => ({}));
+    const userVibeRaw = (body?.prompt ?? "").toString();
+    const userVibe = userVibeRaw.trim();
+    
+    if (!userVibe) {
+      return NextResponse.json({ success: false, error: "Empty prompt" }, { status: 400 });
+    }
     
     // Extract user from Authorization header
     const authHeader = req.headers.get('authorization');
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Build structured prompts without ambient bias
+    // Build technical prompts (the ones the model needs)
     const musicPrompt = buildMusicPrompt(userVibe);
     const imagePrompt = buildImagePrompt(userVibe);
     
@@ -130,37 +136,22 @@ export async function POST(req: Request) {
       console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
     }
 
-    // Detect style for user-friendly descriptions
-    const lowerVibe = (userVibe || '').toLowerCase();
-    let detectedStyle = 'emotion and mood';
-    let styleDescriptor = 'color and motion';
-    
-    if (lowerVibe.includes('game') || lowerVibe.includes('gaming') || lowerVibe.includes('roblox')) {
-      detectedStyle = 'energetic gaming vibes';
-      styleDescriptor = 'neon-lit digital worlds';
-    } else if (lowerVibe.includes('lofi') || lowerVibe.includes('chill') || lowerVibe.includes('study')) {
-      detectedStyle = 'chill, relaxed vibes';
-      styleDescriptor = 'soft, nostalgic atmospheres';
-    } else if (lowerVibe.includes('cinematic') || lowerVibe.includes('epic') || lowerVibe.includes('orchestral')) {
-      detectedStyle = 'cinematic grandeur';
-      styleDescriptor = 'dramatic, sweeping visuals';
-    } else if (lowerVibe.includes('trap') || lowerVibe.includes('hip-hop') || lowerVibe.includes('urban')) {
-      detectedStyle = 'urban, rhythmic beats';
-      styleDescriptor = 'street art and city vibes';
-    } else if (lowerVibe.includes('rock') || lowerVibe.includes('metal') || lowerVibe.includes('electric')) {
-      detectedStyle = 'powerful, energetic rock';
-      styleDescriptor = 'bold, dynamic imagery';
-    } else if (lowerVibe.includes('pop') || lowerVibe.includes('upbeat') || lowerVibe.includes('bright')) {
-      detectedStyle = 'catchy, upbeat pop';
-      styleDescriptor = 'vibrant, colorful aesthetics';
-    } else if (lowerVibe.includes('ambient') || lowerVibe.includes('dream') || lowerVibe.includes('ethereal')) {
-      detectedStyle = 'dreamy, ambient soundscapes';
-      styleDescriptor = 'ethereal, floating visuals';
-    }
+    // Non-blocking display prompt creation (never allowed to throw)
+    let displayMusicPrompt = null;
+    let displayImagePrompt = null;
 
-    // Create user-friendly display prompts
-    const displayMusicPrompt = `Creating music inspired by "${userVibe || 'your vibe'}" — focusing on ${detectedStyle}.`;
-    const displayImagePrompt = `Visualizing the feeling of "${userVibe || 'your vibe'}" through ${styleDescriptor}.`;
+    try {
+      const detectedStyle =
+        /game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass/i.test(userVibe) ? "high-energy electronic"
+        : /cinematic|orchestral|film/i.test(userVibe) ? "cinematic orchestral"
+        : /lofi|chill/i.test(userVibe) ? "lofi / chill"
+        : "creative";
+
+      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${detectedStyle}.`;
+      displayImagePrompt = `Visualizing "${userVibe}" literally (theme, characters, UI), cinematic 16:9.`;
+    } catch (e) {
+      console.warn("⚠️ Non-blocking display prompt error:", e);
+    }
     
     // Clean music prompt to remove any remaining bias phrases
     const cleanedMusicPrompt = musicPrompt
@@ -214,38 +205,47 @@ export async function POST(req: Request) {
     
     remainingCredits = currentCredits; // Return current credits, not deducted yet
 
-    // Add safety logging for display prompts
-    console.log("🎨 [RETURNING DISPLAY PROMPTS]", { 
-      music: displayMusicPrompt, 
-      image: displayImagePrompt 
-    });
-
-    // Return immediately with task ID - Vercel has 5-minute timeout limit
-    // The generation happens in the background via the API's callback system
-    return NextResponse.json({
-      success: true,
+    // Feature-flagged response structure
+    const payload: any = { 
+      success: true, 
       provider: "suno-api",
       taskId: taskId,
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
-      remainingCredits: remainingCredits,
-      musicPrompt: displayMusicPrompt,
-      imagePrompt: displayImagePrompt,
-      expandedPrompts: {
+      remainingCredits: remainingCredits
+    };
+
+    // Only include display prompts if feature flag is enabled
+    if (process.env.NEXT_PUBLIC_SHOW_DISPLAY_PROMPTS === "true") {
+      payload.displayPrompts = {
         music: displayMusicPrompt,
-        image: displayImagePrompt,
-        combined: `${userVibe} | Music: ${displayMusicPrompt} | Visual: ${displayImagePrompt}`,
-        intent: detectedStyle
-      }
-    });
+        image: displayImagePrompt
+      };
+      // Include technical prompts for debugging only
+      payload.debugPrompts = {
+        music: cleanedMusicPrompt,
+        image: imagePrompt
+      };
+    }
 
-  } catch (err: unknown) {
-    console.error("SoundPainting error:", err);
+    return NextResponse.json(payload, { status: 200 });
 
-    // Return professional error message instead of fallback audio
-    return NextResponse.json({
-      success: false,
-      message: "🎵 SoundPainting generation is temporarily unavailable. Please try again in a few moments.",
-    }, { status: 503 });
+  } catch (err: any) {
+    console.error("❌ /api/music error:", err?.message || err);
+    
+    // If we have already created a taskId/pending record, never 503 the user
+    if (typeof taskId === "string" && taskId.length > 0) {
+      return NextResponse.json({ 
+        success: true, 
+        taskId, 
+        warning: "Queued with limited metadata" 
+      }, { status: 200 });
+    }
+    
+    // Otherwise, return a 500 with a clear message
+    return NextResponse.json({ 
+      success: false, 
+      error: "Failed to start generation" 
+    }, { status: 500 });
   }
 }
