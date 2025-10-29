@@ -198,20 +198,53 @@ export async function POST(req: Request) {
     
     // Build prompts
     const musicPrompt = buildMusicPrompt(userVibe);
-    const imagePrompt = buildImagePrompt(userVibe);
+    let imagePrompt = buildImagePrompt(userVibe);
 
     // Enrichment with vocals + image context
     const vocalsText = vocalsMode === 'vocals'
       ? 'Include expressive AI vocals and lyrics that fit the mood and style.'
       : 'Instrumental only, no vocals.';
     const imageContext = imageInspiration ? 'This track should be inspired by the imagery and atmosphere of the provided image.' : '';
-    const dreamPrefix = dreamify ? 'Interpret this as a dream described through music and visuals. Capture subconscious emotion, surreal imagery, and symbolic mood. ' : '';
-    const enrichedPrompt = (
-`${dreamPrefix}Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
+    let enrichedPrompt = (
+`Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
 ${vocalsText}
 ${imageContext}
 Focus on rhythm, mood, and production quality matching the requested vibe.`
     ).trim();
+
+    // Dreamify enrichment (music + image)
+    if (dreamify) {
+      enrichedPrompt = (
+`Interpret the user's text as a dream described through music.
+Capture subconscious emotion, surreal transitions, and symbolic rhythm.
+Blend genres fluidly — dreamlike melodies, textures, and atmosphere.
+Avoid structured forms; focus on emotion and imagination.
+Prompt: "${userVibe}"`
+      ).trim();
+
+      imagePrompt = (
+`Dreamlike visual interpretation of "${userVibe}" —
+symbolic imagery, surreal lighting, ethereal atmosphere,
+cinematic composition, ultra-detailed 2K 16:9 artwork.`
+      ).trim();
+    }
+
+    // Image Inspiration enrichment
+    if (imageInspiration) {
+      enrichedPrompt += (
+`
+Interpret the visual mood and color palette of the uploaded image into music.
+Reflect color energy and atmosphere as sound texture and tone.
+Use the image as emotional context for composition.`
+      );
+
+      if (dreamify) {
+        imagePrompt = (
+`Reimagine the dream through the visual tones of the uploaded image.
+Merge subconscious elements and real imagery into one surreal, cinematic 2K composition.`
+        ).trim();
+      }
+    }
     
     // Add explicit guards
     if (!musicPrompt || musicPrompt.length < 12) {
@@ -247,7 +280,8 @@ Focus on rhythm, mood, and production quality matching the requested vibe.`
     console.log("🎤 Vocals Mode:", vocalsMode);
     console.log("🖼️ Image Inspiration:", !!imageInspiration);
     console.log("🌙 Dreamify Mode:", dreamify);
-    console.log("🎵 Final Prompt:", enrichedPrompt);
+    console.log("🎵 Final Kie.ai Prompt:", enrichedPrompt);
+    console.log("🎨 Final Image Prompt:", imagePrompt);
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
     console.log("🎵 [DISPLAY] User-friendly:", displayMusicPrompt);
