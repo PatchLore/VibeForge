@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
       payload?.taskId ??
       raw?.task_id ??
       raw?.taskId;
+    if (taskId) {
+      console.log('[CALLBACK RECEIVED]', taskId, new Date().toISOString());
+    }
 
     const status =
       payload?.status ??

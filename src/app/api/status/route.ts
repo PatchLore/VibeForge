@@ -66,6 +66,18 @@ export async function GET(req: Request) {
 
     // Track is pending or doesn't exist - check Kie.ai status
     console.log("🔄 [POLL] Checking Kie.ai for task:", taskId);
+
+    // Temporary diagnostic: fetch and log raw Kie status
+    try {
+      const apiKey = process.env.KIE_MUSIC_API_KEY || process.env.VIBEFORGE_API_KEY;
+      const diagRes = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
+        headers: { Authorization: `Bearer ${apiKey || ''}` }
+      });
+      const diagJson = await diagRes.json().catch(() => ({}));
+      console.log("[DEBUG][KIE STATUS]", taskId, JSON.stringify(diagJson));
+    } catch (e) {
+      console.warn("[DEBUG][KIE STATUS] fetch failed", String(e));
+    }
     try {
       const kieData = await checkMusicStatus(taskId);
       
