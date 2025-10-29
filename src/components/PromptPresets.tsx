@@ -51,17 +51,17 @@ const presets = [
 
 export default function PromptPresets({ onPresetSelect }: PromptPresetsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
       {presets.map((preset, index) => (
         <motion.button
           key={preset.value}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
+          transition={{ delay: index * 0.05 }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onPresetSelect(preset.value)}
-          className={`px-6 py-4 rounded-2xl bg-gradient-to-r ${preset.gradient} text-white font-medium hover:shadow-lg transition-all duration-200`}
+          className="h-16 w-full rounded-2xl flex items-center justify-center font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 transition"
         >
           {preset.label}
         </motion.button>

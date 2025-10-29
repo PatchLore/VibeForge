@@ -345,6 +345,24 @@ export default function AppPage() {
                        transition-all duration-300 ease-out hover:border-primary 
                        hover:shadow-glow-lg"
           >
+            {/* Dreamify Mode card (moved above prompt) */}
+            <div className={`p-3 rounded-2xl border transition relative mb-6 ${
+              dreamify ? 'border-pink-400 bg-gradient-to-r from-purple-600/20 to-pink-600/20 shadow-[0_0_15px_rgba(255,0,150,0.3)] animate-pulse-slow' : 'border-white/10 bg-transparent'
+            }`}>
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <h3 className="text-white text-lg font-semibold">🌙 Dreamify Mode</h3>
+                  <p className="text-white/70 text-sm">Interpret your dream into sound and visuals</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={dreamify}
+                  onChange={(e) => setDreamify(e.target.checked)}
+                  className="w-6 h-6 accent-pink-500"
+                />
+              </label>
+            </div>
+
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-text text-lg">
@@ -408,28 +426,33 @@ export default function AppPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-muted mb-2">Optional: Add Image to Produce Music</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-primary file:text-white hover:file:opacity-90"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return setImageInspiration(null);
-                    try {
-                      const buf = await file.arrayBuffer();
-                      const base64 = Buffer.from(buf).toString('base64');
-                      const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
-                      setImageInspiration(dataUrl);
-                    } catch (err) {
-                      console.error('Image upload error:', err);
-                      setImageInspiration(null);
-                    }
-                  }}
-                />
-                {imageInspiration && (
-                  <p className="mt-2 text-xs text-muted">Image attached ✓</p>
-                )}
+                <div className="mt-1 border border-white/10 rounded-2xl p-3 hover:border-purple-400 transition cursor-pointer text-center">
+                  <label htmlFor="imageUpload" className="block cursor-pointer text-white/80">
+                    🎨 Add Image to Inspire Music
+                    <input
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return setImageInspiration(null);
+                        try {
+                          const buf = await file.arrayBuffer();
+                          const base64 = Buffer.from(buf).toString('base64');
+                          const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+                          setImageInspiration(dataUrl);
+                        } catch (err) {
+                          console.error('Image upload error:', err);
+                          setImageInspiration(null);
+                        }
+                      }}
+                    />
+                  </label>
+                  {imageInspiration && (
+                    <img src={imageInspiration} alt="Preview" className="mt-2 rounded-xl w-full max-h-40 object-cover" />
+                  )}
+                </div>
               </div>
             </div>
 

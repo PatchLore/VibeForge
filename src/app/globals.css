@@ -263,3 +263,13 @@ body::after {
 .animate-text-glow {
   animation: text-glow 3s ease-in-out infinite;
 }
+
+/* Slow pulse box-shadow for Dreamify */
+@keyframes pulse-slow {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 150, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(255, 0, 150, 0.4); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
