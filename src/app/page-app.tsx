@@ -126,6 +126,11 @@ export default function Home() {
 
       // Store expanded prompts for display
       if (data.expandedPrompts) {
+        console.log("🔍 [DEBUG] Full API response:", data);
+        console.log("🔍 [DEBUG] expandedPrompts:", data.expandedPrompts);
+        console.log("🔍 [DEBUG] image field:", data.expandedPrompts.image);
+        console.log("🔍 [DEBUG] art field:", data.expandedPrompts.art);
+        
         setExpandedPrompts(data.expandedPrompts);
         
         // Log prompts to console for debugging
@@ -364,12 +369,18 @@ export default function Home() {
                     <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
                     <div className="text-gray-300 italic">{expandedPrompts.music}</div>
                   </div>
-                  {(expandedPrompts.image || expandedPrompts.art) && (
-                    <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                      <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
-                      <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
-                    </div>
-                  )}
+                  {(() => {
+                    const hasImagePrompt = expandedPrompts.image || expandedPrompts.art;
+                    console.log("🔍 [UI DEBUG] hasImagePrompt:", hasImagePrompt);
+                    console.log("🔍 [UI DEBUG] expandedPrompts.image:", expandedPrompts.image);
+                    console.log("🔍 [UI DEBUG] expandedPrompts.art:", expandedPrompts.art);
+                    return hasImagePrompt && (
+                      <div className="bg-white/10 rounded-xl p-3 border border-white/20">
+                        <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
+                        <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               )}
             </div>
