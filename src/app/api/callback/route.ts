@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
-import { generateImage } from '@/lib/kie';
+import { generateImage, verifyAndUpscaleTo2K } from '@/lib/kie';
 import { buildImagePrompt } from '@/lib/enrichPrompt';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Load the pending track with extended prompt
     const { data: pending, error: fetchErr } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt')
+      .select('id, user_id, status, prompt, extended_prompt, extended_prompt_image')
       .eq('task_id', taskId)
       .maybeSingle();
 
@@ -140,6 +140,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, message: 'processing' }, { status: 200 });
     }
 
+    // --- Resolve final image (verify/upscale/regenerate) BEFORE updating track ---
+    const TARGET = { width: 2048, height: 1152 };
+    let finalImageUrl: string | null = null;
+
+    const sourceImageUrl: string | null = (completed?.image_url as string) || null;
+    if (sourceImageUrl) {
+      try {
+        const checked = await verifyAndUpscaleTo2K(sourceImageUrl, TARGET);
+        if (checked.width >= TARGET.width && checked.height >= TARGET.height) {
+          finalImageUrl = checked.url;
+        } else if (pending?.extended_prompt_image) {
+          console.warn('⚠️ [CALLBACK] Incoming image below 2K; regenerating at 2K with stored prompt');
+          const regen = await generateImage(pending.extended_prompt_image);
+          const regenUrl = typeof regen === 'string' ? regen : regen?.imageUrl;
+          if (regenUrl) finalImageUrl = regenUrl;
+        }
+      } catch (e) {
+        console.error('❌ [CALLBACK] Image verify/upscale failed:', e);
+      }
+    } else if (pending?.extended_prompt_image) {
+      try {
+        console.log('🎨 [CALLBACK] No image provided, generating new 2K image');
+        const gen = await generateImage(pending.extended_prompt_image);
+        finalImageUrl = typeof gen === 'string' ? gen : gen?.imageUrl || null;
+      } catch (e) {
+        console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
+      }
+    }
+
     // --- Update track with results ---
     const safeTitle =
       completed.title ||
@@ -154,7 +183,7 @@ export async function POST(request: NextRequest) {
       title: safeTitle,
       prompt: safePrompt,
       audio_url: completed.audio_url,
-      image_url: completed.image_url ?? null,
+      image_url: finalImageUrl ?? completed.image_url ?? null,
       duration: completed.duration ?? null,
       status: 'completed',
       updated_at: new Date().toISOString(),
@@ -173,55 +202,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ [CALLBACK] Track updated →', taskId);
-
-    // --- Generate image using enriched prompt if no image was provided ---
-    let generatedImageUrl = completed.image_url;
-    if (!generatedImageUrl && pending.prompt) {
-      try {
-        console.log('🎨 [IMAGE CALLBACK] Generating image for track:', taskId);
-        
-        // Use literal image prompt based on user's theme
-        const imagePrompt = buildImagePrompt(pending.prompt);
-        
-        // Add explicit guards
-        if (!imagePrompt || imagePrompt.length < 12) {
-          console.error("❌ [IMAGE PROMPT MISSING]", { prompt: pending.prompt, imagePrompt });
-        }
-        
-        console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
-        console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
-        console.log('🎨 [IMAGE CALLBACK] Literal image prompt:', imagePrompt);
-        console.log('🔍 [DEBUG] Image prompt length:', imagePrompt.length);
-        console.log("[IMAGE PROMPT SENT]", imagePrompt);
-        
-        // Generate image
-        const imageResult = await generateImage(imagePrompt);
-        
-        if (imageResult && imageResult.imageUrl) {
-          console.log('🎨 [IMAGE CALLBACK] Image generated successfully');
-          console.log('🎨 [IMAGE CALLBACK] Image URL:', imageResult.imageUrl);
-          
-          // Update track with generated image
-          const { error: imageUpdateErr } = await supabaseServer
-            .from('tracks')
-            .update({ 
-              image_url: imageResult.imageUrl,
-              updated_at: new Date().toISOString()
-            })
-            .eq('task_id', taskId);
-            
-          if (imageUpdateErr) {
-            console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
-          } else {
-            console.log('✅ [IMAGE CALLBACK] Track updated with generated image');
-            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: imageResult.imageUrl });
-          }
-        }
-      } catch (imageErr) {
-        console.error('❌ [CALLBACK] Image generation failed:', imageErr);
-        // Continue without image - don't fail the whole callback
-      }
-    }
 
     // --- Deduct credits atomically via RPC (idempotent with status check above) ---
     const { data: deducted, error: rpcErr } = await supabaseServer.rpc(

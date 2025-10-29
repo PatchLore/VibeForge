@@ -302,3 +302,131 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     throw error;
   }
 }
+
+type ImageSize = { width: number; height: number };
+
+function probePngSize(view: DataView): ImageSize | null {
+  // PNG signature 8 bytes, IHDR chunk starts at byte 8
+  const pngSig = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (view.getUint8(i) !== pngSig[i]) return null;
+  }
+  // IHDR at byte 16 contains width/height (4 bytes each, big-endian)
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  if (width > 0 && height > 0) return { width, height };
+  return null;
+}
+
+function probeJpegSize(view: DataView): ImageSize | null {
+  // JPEG starts with 0xFFD8
+  if (view.getUint8(0) !== 0xff || view.getUint8(1) !== 0xd8) return null;
+  let offset = 2;
+  const length = view.byteLength;
+  while (offset < length) {
+    if (view.getUint8(offset) !== 0xff) { offset++; continue; }
+    let marker = view.getUint8(offset + 1);
+    // SOI/EOI
+    if (marker === 0xd9 || marker === 0xda) break;
+    const blockLen = view.getUint16(offset + 2);
+    // SOF0..SOF3 (baseline), SOF5..SOF7, SOF9..SOF11, SOF13..SOF15 contain size
+    if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+      const height = view.getUint16(offset + 5);
+      const width = view.getUint16(offset + 7);
+      if (width > 0 && height > 0) return { width, height };
+      return null;
+    }
+    offset += 2 + blockLen;
+  }
+  return null;
+}
+
+function probeWebpSize(view: DataView): ImageSize | null {
+  // RIFF header 'RIFF' .... 'WEBP'
+  const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+  const webp = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
+  if (riff !== 'RIFF' || webp !== 'WEBP') return null;
+  const chunk = String.fromCharCode(view.getUint8(12), view.getUint8(13), view.getUint8(14), view.getUint8(15));
+  if (chunk === 'VP8X') {
+    // Extended format: bytes at 24..26 width-1, 27..29 height-1 (little-endian 24-bit)
+    const width = 1 + (view.getUint8(24) | (view.getUint8(25) << 8) | (view.getUint8(26) << 16));
+    const height = 1 + (view.getUint8(27) | (view.getUint8(28) << 8) | (view.getUint8(29) << 16));
+    return { width, height };
+  }
+  if (chunk === 'VP8 ') {
+    // Lossy bitstream header at 26: 2 bytes (frame tag), then 16-bit little-endian width/height at 26+6, 26+8
+    // Here we use a heuristic: width/height at 26+6 and 26+8
+    const w = view.getUint16(26 + 6, true);
+    const h = view.getUint16(26 + 8, true);
+    if (w && h) return { width: w, height: h };
+  }
+  if (chunk === 'VP8L') {
+    // Lossless: width/height are encoded starting at byte 21
+    const b0 = view.getUint8(21);
+    const b1 = view.getUint8(22);
+    const b2 = view.getUint8(23);
+    const b3 = view.getUint8(24);
+    const width = 1 + (((b1 & 0x3f) << 8) | b0);
+    const height = 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6));
+    if (width && height) return { width, height };
+  }
+  return null;
+}
+
+async function fetchPartialBuffer(url: string, bytes = 65536): Promise<ArrayBuffer> {
+  const res = await fetch(url, { headers: { Range: `bytes=0-${bytes - 1}` } }).catch(() => null as any);
+  if (res && res.ok) return await res.arrayBuffer();
+  // Fallback: full fetch
+  const res2 = await fetch(url);
+  return await res2.arrayBuffer();
+}
+
+async function detectImageSize(url: string): Promise<ImageSize | null> {
+  try {
+    const buffer = await fetchPartialBuffer(url);
+    const view = new DataView(buffer);
+    // Try PNG
+    let size = probePngSize(view);
+    if (size) return size;
+    // Try JPEG
+    size = probeJpegSize(view);
+    if (size) return size;
+    // Try WEBP
+    size = probeWebpSize(view);
+    if (size) return size;
+  } catch (e) {
+    console.warn("⚠️ [ImageVerify] Size detection failed:", e);
+  }
+  return null;
+}
+
+export async function verifyAndUpscaleTo2K(imageUrl: string, target = { width: 2048, height: 1152 }): Promise<{ url: string; width: number; height: number }> {
+  let status: 'verified' | 'upscaled' | 'failed' = 'failed';
+  try {
+    const size = await detectImageSize(imageUrl);
+    if (size && size.width >= target.width && size.height >= target.height) {
+      status = 'verified';
+      console.log(`[ImageVerify] ${imageUrl} ${size.width}x${size.height} ${status}`);
+      return { url: imageUrl, width: size.width, height: size.height };
+    }
+
+    if (size) {
+      console.warn(`⚠️ [ImageVerify] Low-res detected ${size.width}x${size.height}, target ${target.width}x${target.height}`);
+    } else {
+      console.warn(`⚠️ [ImageVerify] Could not detect size for ${imageUrl}, attempting fallback`);
+    }
+
+    // Attempt internal upscaler endpoint if exists (no-op here; placeholder)
+    // If you add an upscaler route in the future, call it here.
+
+    // Without an upscaler and no prompt context here, return failed so caller can regenerate with the proper prompt
+    const finalW = size?.width ?? 0;
+    const finalH = size?.height ?? 0;
+    console.log(`[ImageVerify] ${imageUrl} ${finalW}x${finalH} ${status}`);
+    return { url: imageUrl, width: finalW, height: finalH };
+  } catch (e) {
+    console.error('❌ [ImageVerify] Exception:', e);
+    console.log(`[ImageVerify] ${imageUrl} 0x0 failed`);
+    return { url: imageUrl, width: 0, height: 0 };
+  }
+}

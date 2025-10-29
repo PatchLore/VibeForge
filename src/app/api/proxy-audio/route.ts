@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAndUpscaleTo2K } from '@/lib/kie';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,9 +42,19 @@ export async function GET(request: NextRequest) {
       }, { status: audioResponse.status });
     }
 
-    // Get the audio data
+    // Get the audio/image data
     const audioBuffer = await audioResponse.arrayBuffer();
     const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+
+    // Optional diagnostics for images: log dimensions via verifier
+    if (contentType.startsWith('image/')) {
+      try {
+        const check = await verifyAndUpscaleTo2K(audioUrl, { width: 2048, height: 1152 });
+        console.log(`[Proxy] ${audioUrl} — ${check.width}x${check.height}`);
+      } catch (e: any) {
+        console.warn('[Proxy] Dimension check failed:', e?.message || e);
+      }
+    }
 
     console.log('✅ [AUDIO PROXY] Successfully fetched audio, size:', audioBuffer.byteLength, 'bytes');
 
