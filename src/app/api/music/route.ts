@@ -96,6 +96,7 @@ export async function POST(req: Request) {
     const userVibeRaw = (body?.userPrompt ?? body?.prompt ?? "").toString();
     const vocalsMode = (body?.vocals === 'vocals') ? 'vocals' : 'instrumental';
     const imageInspiration = typeof body?.imageInspiration === 'string' && body.imageInspiration.length > 0 ? body.imageInspiration : null;
+    const dreamify = Boolean(body?.dreamify);
     const userVibe = userVibeRaw.trim();
     
     if (!userVibe) {
@@ -204,8 +205,9 @@ export async function POST(req: Request) {
       ? 'Include expressive AI vocals and lyrics that fit the mood and style.'
       : 'Instrumental only, no vocals.';
     const imageContext = imageInspiration ? 'This track should be inspired by the imagery and atmosphere of the provided image.' : '';
+    const dreamPrefix = dreamify ? 'Interpret this as a dream described through music and visuals. Capture subconscious emotion, surreal imagery, and symbolic mood. ' : '';
     const enrichedPrompt = (
-`Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
+`${dreamPrefix}Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
 ${vocalsText}
 ${imageContext}
 Focus on rhythm, mood, and production quality matching the requested vibe.`
@@ -244,6 +246,7 @@ Focus on rhythm, mood, and production quality matching the requested vibe.`
 
     console.log("🎤 Vocals Mode:", vocalsMode);
     console.log("🖼️ Image Inspiration:", !!imageInspiration);
+    console.log("🌙 Dreamify Mode:", dreamify);
     console.log("🎵 Final Prompt:", enrichedPrompt);
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
@@ -283,9 +286,10 @@ Focus on rhythm, mood, and production quality matching the requested vibe.`
           prompt: userVibe,
           vibe: generatedVibe,
           summary: generatedSummary,
-          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+          extended_prompt: `${dreamify ? '[DREAMIFY] ' : ''}${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           extended_prompt_image: imagePrompt,
           image_inspiration: imageInspiration,
+          dreamify: dreamify,
           audio_url: null,
           image_url: null,
           status: 'pending',

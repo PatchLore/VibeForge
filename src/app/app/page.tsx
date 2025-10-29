@@ -36,6 +36,7 @@ export default function AppPage() {
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
   const [vocals, setVocals] = useState<'instrumental' | 'vocals'>('instrumental');
   const [imageInspiration, setImageInspiration] = useState<string | null>(null);
+  const [dreamify, setDreamify] = useState<boolean>(false);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -141,7 +142,7 @@ export default function AppPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: vibe, userPrompt: vibe, vocals, imageInspiration }),
+        body: JSON.stringify({ prompt: vibe, userPrompt: vibe, vocals, imageInspiration, dreamify }),
       });
 
       const data = await response.json();
@@ -430,6 +431,18 @@ export default function AppPage() {
                   <p className="mt-2 text-xs text-muted">Image attached ✓</p>
                 )}
               </div>
+            </div>
+
+            {/* Dreamify Mode */}
+            <div className="mb-6">
+              <label className="flex items-center gap-2 text-sm text-text">
+                <input
+                  type="checkbox"
+                  checked={dreamify}
+                  onChange={(e) => setDreamify(e.target.checked)}
+                />
+                <span>Dreamify Mode ✨ (Interpret your dream into sound and visuals)</span>
+              </label>
             </div>
 
             <motion.button
