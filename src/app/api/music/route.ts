@@ -196,7 +196,7 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Build prompts
+    // Build prompts (imagePrompt kept for logging/DB only; Kie.ai music receives finalPrompt only)
     const musicPrompt = buildMusicPrompt(userVibe);
     let imagePrompt = buildImagePrompt(userVibe);
 
@@ -205,46 +205,18 @@ export async function POST(req: Request) {
       ? 'Include expressive AI vocals and lyrics that fit the mood and style.'
       : 'Instrumental only, no vocals.';
     const imageContext = imageInspiration ? 'This track should be inspired by the imagery and atmosphere of the provided image.' : '';
-    let enrichedPrompt = (
-`Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
-${vocalsText}
-${imageContext}
-Focus on rhythm, mood, and production quality matching the requested vibe.`
-    ).trim();
+    // Simplified, API-safe enrichment
+    let enrichedPrompt = `Generate professional ${vocalsMode === "vocals" ? "song" : "instrumental"} inspired by "${userVibe}".`;
 
-    // Dreamify enrichment (music + image)
     if (dreamify) {
-      enrichedPrompt = (
-`Interpret the user's text as a dream described through music.
-Capture subconscious emotion, surreal transitions, and symbolic rhythm.
-Blend genres fluidly — dreamlike melodies, textures, and atmosphere.
-Avoid structured forms; focus on emotion and imagination.
-Prompt: "${userVibe}"`
-      ).trim();
-
-      imagePrompt = (
-`Dreamlike visual interpretation of "${userVibe}" —
-symbolic imagery, surreal lighting, ethereal atmosphere,
-cinematic composition, ultra-detailed 2K 16:9 artwork.`
-      ).trim();
+      enrichedPrompt += `\n  Interpret this as a dream — abstract, emotional, and symbolic.\n  Focus on surreal transitions, subconscious emotion, and cinematic storytelling.\n  `;
     }
 
-    // Image Inspiration enrichment
     if (imageInspiration) {
-      enrichedPrompt += (
-`
-Interpret the visual mood and color palette of the uploaded image into music.
-Reflect color energy and atmosphere as sound texture and tone.
-Use the image as emotional context for composition.`
-      );
-
-      if (dreamify) {
-        imagePrompt = (
-`Reimagine the dream through the visual tones of the uploaded image.
-Merge subconscious elements and real imagery into one surreal, cinematic 2K composition.`
-        ).trim();
-      }
+      enrichedPrompt += `\n  Use the visual atmosphere and color tones of the uploaded image as inspiration.\n  Translate light, motion, and color into rhythm, melody, and texture.\n  `;
     }
+
+    enrichedPrompt += `\nFocus on creative structure, depth, and high production quality.\n`;
     
     // Add explicit guards
     if (!musicPrompt || musicPrompt.length < 12) {
@@ -297,7 +269,7 @@ Merge subconscious elements and real imagery into one surreal, cinematic 2K comp
     // Generate music using the cleaned prompt
     // Trim and validate prompt to prevent Kie.ai stalls
     const finalPrompt = enrichedPrompt.slice(0, 400).trim();
-    // Use finalPrompt for the actual generation
+    // Only pass the string prompt to Kie.ai; model selection happens downstream
     taskId = await generateMusic(finalPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
