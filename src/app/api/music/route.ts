@@ -149,7 +149,9 @@ export async function POST(req: Request) {
         : "creative";
 
       displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${detectedStyle}.`;
-      displayImagePrompt = `Visualizing "${userVibe}" literally (theme, characters, UI), cinematic 16:9.`;
+      
+      // Use enriched image prompt for display (more detailed and descriptive)
+      displayImagePrompt = imagePrompt;
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
     }

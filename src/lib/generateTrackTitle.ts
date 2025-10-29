@@ -137,16 +137,9 @@ export function generateTrackTitle(prompt?: string): string {
   const options = titleThemes[theme];
   const base = options[Math.floor(Math.random() * options.length)];
 
-  // Create a short, unique hash from the prompt + timestamp
-  const hash = crypto
-    .createHash("md5")
-    .update((prompt || "") + Date.now().toString())
-    .digest("hex")
-    .slice(0, 4);
-
-  console.log(`🎵 [TITLE GEN] Theme: ${theme}, Base: ${base}, Hash: ${hash}`);
+  console.log(`🎵 [TITLE GEN] Theme: ${theme}, Base: ${base}`);
   
-  return `${base} — ${hash}`;
+  return base;
 }
 
 /**
