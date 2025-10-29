@@ -117,16 +117,18 @@ export async function POST(request: NextRequest) {
 
           if (retryData?.data?.response?.sunoData?.[0]?.audio_url) {
             console.log("✅ [CALLBACK RETRY SUCCESS] Audio ready, updating DB.");
-            await supabaseServer
-              .from("tracks")
-              .update({
-                audio_url: retryData.data.response.sunoData[0].audio_url,
-                image_url: retryData.data.response.sunoData[0].image_url || null,
-                status: "completed",
-                updated_at: new Date().toISOString(),
-              })
-              .eq("task_id", taskId);
-            console.log("✅ [CALLBACK RETRY] Track completed successfully");
+            if (supabaseServer) {
+              await supabaseServer
+                .from("tracks")
+                .update({
+                  audio_url: retryData.data.response.sunoData[0].audio_url,
+                  image_url: retryData.data.response.sunoData[0].image_url || null,
+                  status: "completed",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("task_id", taskId);
+              console.log("✅ [CALLBACK RETRY] Track completed successfully");
+            }
           } else {
             console.warn("❌ [CALLBACK RETRY] Still no audio_url after 20s.");
           }
