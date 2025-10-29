@@ -46,8 +46,8 @@ export async function GET() {
       vibe: track.vibe || null,
       summary: track.summary || '',
       prompt: track.prompt || '',
-      extended_prompt: track.extended_prompt || '',
-      extended_prompt_image: track.extended_prompt_image || '',
+      extendedPrompt: track.extended_prompt || '',
+      extendedPromptImage: track.extended_prompt_image || '',
       status: track.status || 'completed',
       generatedAt: track.created_at,
       duration: 600, // Default duration
@@ -60,13 +60,7 @@ export async function GET() {
     // Add summary log
     console.log(`📊 [Popular Tracks Summary] Total: ${formattedTracks.length} | With audio: ${formattedTracks.filter(t => t.audioUrl).length} | With images: ${formattedTracks.filter(t => t.imageUrl).length}`);
 
-    const _debug = {
-      route: "src/app/api/tracks/popular/route.ts",
-      ts: new Date().toISOString(),
-      commit: process.env.VERCEL_GIT_COMMIT_SHA || null
-    };
-
-    return NextResponse.json({ tracks: formattedTracks, _debug });
+    return NextResponse.json({ tracks: formattedTracks });
   } catch (e) {
     console.error("❌ [Popular Tracks] Unexpected error:", e);
     return NextResponse.json({ tracks: [], error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });

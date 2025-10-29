@@ -89,7 +89,26 @@ export async function GET() {
       console.log("🎧 First track:", deduplicatedTracks[0].title, deduplicatedTracks[0].audio_url ? "has audio" : "no audio");
     }
 
-    return NextResponse.json({ tracks: deduplicatedTracks });
+    // Format to match popular endpoint shape (camelCase extras)
+    const formattedTracks = deduplicatedTracks.map((track: any) => ({
+      id: track.id,
+      title: track.title || 'Untitled Track',
+      audioUrl: track.audio_url,
+      imageUrl: track.image_url,
+      mood: track.vibe || track.prompt || 'Unknown mood',
+      vibe: track.vibe || null,
+      summary: track.summary || '',
+      prompt: track.prompt || '',
+      extendedPrompt: track.extended_prompt || '',
+      extendedPromptImage: track.extended_prompt_image || '',
+      status: track.status || 'completed',
+      generatedAt: track.created_at,
+      duration: track.duration || 600,
+      likes: track.likes || 0,
+      userId: track.user_id
+    }));
+
+    return NextResponse.json({ tracks: formattedTracks });
   } catch (e) {
     console.error("Unexpected error fetching user tracks:", e);
     return NextResponse.json({ tracks: [], error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 });
