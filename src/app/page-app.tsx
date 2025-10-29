@@ -66,8 +66,6 @@ export default function Home() {
   const handleGenerate = async () => {
     if (!vibe.trim()) return;
     
-    console.log("🚨 [TEST] GENERATE BUTTON CLICKED - DEBUG LOGS SHOULD APPEAR NOW!");
-    
     setIsGenerating(true);
     setError(null); // Clear any previous errors
     
