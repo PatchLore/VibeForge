@@ -235,6 +235,31 @@ export function generateSummary(userPrompt: string): string {
   return `${vibe} piece — expressive melodies, modern production, and immersive atmosphere.`;
 }
 
+// --- Two-word, TitleCase title enforcement ---
+export function toTitleCaseTwoWords(s: string): string {
+  if (!s) return "Untitled Track";
+  const words = s
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w.toLowerCase());
+
+  const ranked = [...new Set(words)].sort((a,b) => b.length - a.length);
+  const base = ranked.slice(0, 2).length ? ranked.slice(0, 2) : words.slice(0, 2);
+  const chosen = base.map(w => w.charAt(0).toUpperCase() + w.slice(1));
+
+  const title = chosen.join(" ").trim();
+  return title || "Untitled Track";
+}
+
+export function generateCreativeTitleTwoWords(userPrompt: string, genreHint?: string): string {
+  const flair = ["Pulse","Echo","Horizon","Rush","Dream","Flux","Nova","Glide","Shift","Spark"];
+  const base = toTitleCaseTwoWords(userPrompt);
+  if (base.split(" ").length >= 2) return base;
+  const add = flair.find(f => f !== base);
+  return `${base} ${add || "Pulse"}`;
+}
+
 /**
  * Test function to validate title generation
  */

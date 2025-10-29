@@ -76,9 +76,11 @@ export default function AppPage() {
             title: track.title || 'Generated Track',
             audioUrl: track.audio_url,
             imageUrl: track.image_url,
-            mood: track.prompt || track.title,
+            mood: track.vibe || track.prompt || track.title,
             generatedAt: track.created_at,
             duration: track.duration || 600,
+            // @ts-ignore store extra for TrackCard rendering
+            summary: track.summary || '',
           };
           console.log('🎧 [AppPage] Track converted:', { title: converted.title, hasAudio: !!converted.audioUrl, hasImage: !!converted.imageUrl });
           return converted;
@@ -307,8 +309,10 @@ export default function AppPage() {
                     <TrackCard
                       track={{
                         id: track.id,
-                        title: track.mood,
+                        title: track.title,
                         prompt: track.mood,
+                        vibe: track.mood,
+                        summary: (track as any).summary,
                         audio_url: track.audioUrl,
                         image_url: track.imageUrl,
                         duration: track.duration,

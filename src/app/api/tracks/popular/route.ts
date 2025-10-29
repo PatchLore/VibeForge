@@ -21,7 +21,7 @@ export async function GET() {
     // Get all completed tracks across all users, sorted by recency
     const { data: tracks, error } = await supabase
       .from("tracks")
-      .select("id, title, prompt, audio_url, image_url, likes, created_at, user_id")
+      .select("id, title, prompt, vibe, summary, status, audio_url, image_url, likes, created_at, user_id")
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(20);
@@ -42,7 +42,10 @@ export async function GET() {
       title: track.title || 'Untitled Track',
       audioUrl: track.audio_url,
       imageUrl: track.image_url,
-      mood: track.prompt || 'Unknown mood',
+      mood: track.vibe || track.prompt || 'Unknown mood',
+      vibe: track.vibe || null,
+      summary: track.summary || '',
+      status: track.status || 'completed',
       generatedAt: track.created_at,
       duration: 600, // Default duration
       likes: track.likes || 0,

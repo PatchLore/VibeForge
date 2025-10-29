@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 // Using regular img instead of Next.js Image due to proxy URL
+const FALLBACK_IMG = "/images/placeholders/track-fallback-16x9.jpg";
 
 interface TrackCardProps {
   track: {
@@ -63,15 +64,14 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-2xl p-4 border border-pink-500/10 bg-gradient-to-br from-[#22003e] to-[#4c007d] shadow-lg hover:scale-[1.02] hover:shadow-pink-500/20 transition-all duration-300"
+      className="relative rounded-2xl p-4 border border-pink-500/10 bg-gradient-to-br from-[#22003e] to-[#4c007d] shadow-lg hover:scale-[1.02] hover:shadow-pink-500/20 transition-all duration-300 min-h-[380px]"
     >
       {/* Title */}
-      <h3 className="text-lg font-semibold text-white mb-1">{track.title}</h3>
+      <h3 className="text-base font-semibold text-white mb-1 truncate">{track.title}</h3>
       {/* Mood/Vibe */}
-      <p className="text-sm italic text-pink-300 mb-2">Mood: {track.vibe || track.mood || track.prompt}</p>
+      <p className="text-xs italic text-pink-300 mb-2 truncate">Mood: {track.vibe || track.mood || track.prompt || '—'}</p>
       {/* Artwork */}
-      {track.image_url ? (
-        <div className="relative mb-4">
+      <div className="relative mb-4">
           {/* Artwork Container with Neon Glow */}
           <div className="relative rounded-xl overflow-hidden bg-gradient-to-r from-pink-500/20 to-cyan-500/20 p-1 shadow-lg">
             {/* Neon Glow Border */}
@@ -79,12 +79,13 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             
             <div className="relative">
               <img 
-                src={track.image_url}
+                src={track.image_url || FALLBACK_IMG}
                 alt={track.title}
-                className="w-full h-auto rounded-xl object-cover aspect-video"
+                className="w-full h-48 rounded-xl object-cover"
                 loading="lazy"
                 onError={(e) => {
                   console.error('❌ [TrackCard] Image failed to load:', track.image_url);
+                  (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
                 }}
               />
               {track?.resolution === "2048x1152" && (
@@ -94,7 +95,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
               )}
             </div>
           </div>
-          
+          {!track.image_url && (
+            <span className="absolute top-2 left-2 text-[11px] text-pink-300 bg-black/30 rounded px-2 py-0.5">Image processing…</span>
+          )}
+
           {/* Download Button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -122,12 +126,6 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             Generated with Soundswoop AI
           </p>
         </div>
-      ) : (
-        <div className="h-64 w-full rounded-xl bg-gradient-to-tr from-accent/20 to-primary/20
-                        flex items-center justify-center text-muted text-sm italic mb-4">
-          No Image
-        </div>
-      )}
 
       {/* Audio Player */}
       <div className="space-y-3">
@@ -151,9 +149,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
         )}
 
         {/* Summary */}
-        {track.summary && (
-          <p className="text-sm text-gray-300 line-clamp-2">{track.summary}</p>
-        )}
+        <p className="text-sm text-gray-300 line-clamp-2 min-h-[2.5rem]">{track.summary || 'Generated with Soundswoop AI'}</p>
 
         {/* Track Info */}
         <div className="flex items-center justify-between text-sm text-muted">
