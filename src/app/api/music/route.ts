@@ -93,7 +93,9 @@ export async function POST(req: Request) {
   try {
     // Robust input guards
     const body = await req.json().catch(() => ({}));
-    const userVibeRaw = (body?.prompt ?? "").toString();
+    const userVibeRaw = (body?.userPrompt ?? body?.prompt ?? "").toString();
+    const vocalsMode = (body?.vocals === 'vocals') ? 'vocals' : 'instrumental';
+    const imageInspiration = typeof body?.imageInspiration === 'string' && body.imageInspiration.length > 0 ? body.imageInspiration : null;
     const userVibe = userVibeRaw.trim();
     
     if (!userVibe) {
@@ -193,9 +195,21 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Build technical prompts (the ones the model needs)
+    // Build prompts
     const musicPrompt = buildMusicPrompt(userVibe);
     const imagePrompt = buildImagePrompt(userVibe);
+
+    // Enrichment with vocals + image context
+    const vocalsText = vocalsMode === 'vocals'
+      ? 'Include expressive AI vocals and lyrics that fit the mood and style.'
+      : 'Instrumental only, no vocals.';
+    const imageContext = imageInspiration ? 'This track should be inspired by the imagery and atmosphere of the provided image.' : '';
+    const enrichedPrompt = (
+`Generate professional ${vocalsMode === 'vocals' ? 'song' : 'instrumental'} inspired by "${userVibe}".
+${vocalsText}
+${imageContext}
+Focus on rhythm, mood, and production quality matching the requested vibe.`
+    ).trim();
     
     // Add explicit guards
     if (!musicPrompt || musicPrompt.length < 12) {
@@ -228,6 +242,9 @@ export async function POST(req: Request) {
       .replace(/focus and relaxation/gi, "")
       .trim();
 
+    console.log("🎤 Vocals Mode:", vocalsMode);
+    console.log("🖼️ Image Inspiration:", !!imageInspiration);
+    console.log("🎵 Final Prompt:", enrichedPrompt);
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
     console.log("🎵 [DISPLAY] User-friendly:", displayMusicPrompt);
@@ -241,7 +258,8 @@ export async function POST(req: Request) {
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
     // Generate music using the cleaned prompt
-    taskId = await generateMusic(cleanedMusicPrompt);
+    // Use enrichedPrompt for the actual generation to respect vocals/image context
+    taskId = await generateMusic(enrichedPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 
@@ -267,6 +285,7 @@ export async function POST(req: Request) {
           summary: generatedSummary,
           extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           extended_prompt_image: imagePrompt,
+          image_inspiration: imageInspiration,
           audio_url: null,
           image_url: null,
           status: 'pending',

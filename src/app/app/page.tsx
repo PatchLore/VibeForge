@@ -34,6 +34,8 @@ export default function AppPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
+  const [vocals, setVocals] = useState<'instrumental' | 'vocals'>('instrumental');
+  const [imageInspiration, setImageInspiration] = useState<string | null>(null);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -139,7 +141,7 @@ export default function AppPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: vibe }),
+        body: JSON.stringify({ prompt: vibe, userPrompt: vibe, vocals, imageInspiration }),
       });
 
       const data = await response.json();
@@ -389,6 +391,45 @@ export default function AppPage() {
             <div className="mb-8">
               <p className="text-text text-lg mb-4">Or choose a preset:</p>
               <PromptPresets onPresetSelect={handleVibeSelect} />
+            </div>
+
+            {/* New options: Vocals + Image Inspiration */}
+            <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <div>
+                <label className="block text-sm text-muted mb-2">Vocals</label>
+                <select
+                  value={vocals}
+                  onChange={(e) => setVocals(e.target.value as 'instrumental' | 'vocals')}
+                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-border focus:outline-none"
+                >
+                  <option value="instrumental">Instrumental</option>
+                  <option value="vocals">AI Vocals</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-muted mb-2">Optional: Add Image to Produce Music</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-primary file:text-white hover:file:opacity-90"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return setImageInspiration(null);
+                    try {
+                      const buf = await file.arrayBuffer();
+                      const base64 = Buffer.from(buf).toString('base64');
+                      const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+                      setImageInspiration(dataUrl);
+                    } catch (err) {
+                      console.error('Image upload error:', err);
+                      setImageInspiration(null);
+                    }
+                  }}
+                />
+                {imageInspiration && (
+                  <p className="mt-2 text-xs text-muted">Image attached ✓</p>
+                )}
+              </div>
             </div>
 
             <motion.button
