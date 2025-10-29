@@ -64,7 +64,6 @@ export async function POST(req: Request) {
     
     console.log("[/api/music] user id:", user.id);
 
-    const userVibe = prompt || "calm";
     let remainingCredits = 0;
     
     // Check and deduct credits using server client
