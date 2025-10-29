@@ -43,6 +43,11 @@ const presets = [
     gradient: 'from-green-500 to-teal-500'
   },
   {
+    label: '🌊 Ocean Drift',
+    value: 'Flowing ambient electronic textures inspired by the ocean — serene, reflective, and emotionally immersive. Gentle waves of synths and calm melodies drifting in deep blue space.',
+    gradient: 'from-sky-400 to-blue-800'
+  },
+  {
     label: '🌌 Space Odyssey',
     value: 'cosmic ambient exploration through starlight',
     gradient: 'from-indigo-500 to-purple-500'
@@ -60,7 +65,12 @@ export default function PromptPresets({ onPresetSelect }: PromptPresetsProps) {
           transition={{ delay: index * 0.05 }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => onPresetSelect(preset.value)}
+          onClick={() => {
+            if (preset.label.includes('Ocean Drift')) {
+              console.log('🌊 Ocean Drift preset selected — generating serene ambient electronic textures.');
+            }
+            onPresetSelect(preset.value)
+          }}
           className="h-16 w-full rounded-2xl flex items-center justify-center font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 transition"
         >
           {preset.label}
