@@ -9,7 +9,7 @@ import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 async function startFallbackPolling(taskId: string) {
   console.log("🔄 [FALLBACK POLLING] Starting background polling for task:", taskId);
   
-  const maxRetries = 30; // 30 x 10s = 5 minutes
+  const maxRetries = 60; // 60 x 10s = 10 minutes
   let pollData: any = null;
   
   for (let i = 0; i < maxRetries; i++) {
@@ -295,8 +295,10 @@ Merge subconscious elements and real imagery into one surreal, cinematic 2K comp
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
     // Generate music using the cleaned prompt
-    // Use enrichedPrompt for the actual generation to respect vocals/image context
-    taskId = await generateMusic(enrichedPrompt);
+    // Trim and validate prompt to prevent Kie.ai stalls
+    const finalPrompt = enrichedPrompt.slice(0, 400).trim();
+    // Use finalPrompt for the actual generation
+    taskId = await generateMusic(finalPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 

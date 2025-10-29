@@ -194,7 +194,7 @@ export default function AppPage() {
   };
 
   const pollForCompletion = async (taskId: string) => {
-    const maxAttempts = 30; // Reduced from 60 to 30 (5 minutes total instead of 10)
+    const maxAttempts = 60;
     let attempts = 0;
 
     const poll = async () => {
@@ -413,46 +413,51 @@ export default function AppPage() {
             </div>
 
             {/* New options: Vocals + Image Inspiration */}
-            <div className="grid md:grid-cols-2 gap-4 mb-8">
+            <div className="flex flex-col gap-4 mt-4 mb-8">
+              {/* Vocals Selector */}
               <div>
-                <label className="block text-sm text-muted mb-2">Vocals</label>
+                <label className="block text-white mb-2 text-sm font-semibold">Vocals</label>
                 <select
                   value={vocals}
                   onChange={(e) => setVocals(e.target.value as 'instrumental' | 'vocals')}
-                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-border focus:outline-none"
+                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-white/10 focus:border-purple-400 transition"
                 >
                   <option value="instrumental">Instrumental</option>
                   <option value="vocals">AI Vocals</option>
                 </select>
               </div>
-              <div>
-                <div className="mt-1 border border-white/10 rounded-2xl p-3 hover:border-purple-400 transition cursor-pointer text-center">
-                  <label htmlFor="imageUpload" className="block cursor-pointer text-white/80">
-                    🎨 Add Image to Inspire Music
-                    <input
-                      id="imageUpload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return setImageInspiration(null);
-                        try {
-                          const buf = await file.arrayBuffer();
-                          const base64 = Buffer.from(buf).toString('base64');
-                          const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
-                          setImageInspiration(dataUrl);
-                        } catch (err) {
-                          console.error('Image upload error:', err);
-                          setImageInspiration(null);
-                        }
-                      }}
-                    />
-                  </label>
-                  {imageInspiration && (
-                    <img src={imageInspiration} alt="Preview" className="mt-2 rounded-xl w-full max-h-40 object-cover" />
-                  )}
-                </div>
+
+              {/* Image Inspiration */}
+              <div className="border border-white/10 rounded-2xl p-3 hover:border-purple-400 transition cursor-pointer text-center">
+                <label htmlFor="imageUpload" className="block cursor-pointer text-white/80 text-sm font-semibold">
+                  🎨 Add Image to Inspire Music
+                  <input
+                    id="imageUpload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return setImageInspiration(null);
+                      try {
+                        const buf = await file.arrayBuffer();
+                        const base64 = Buffer.from(buf).toString('base64');
+                        const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+                        setImageInspiration(dataUrl);
+                      } catch (err) {
+                        console.error('Image upload error:', err);
+                        setImageInspiration(null);
+                      }
+                    }}
+                  />
+                </label>
+                {imageInspiration && (
+                  <img
+                    src={imageInspiration}
+                    alt="Preview"
+                    className="mt-2 rounded-xl w-full max-h-40 object-cover"
+                  />
+                )}
               </div>
             </div>
 
