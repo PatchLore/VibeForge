@@ -92,25 +92,28 @@ function getStyleKeywords(styleKey: string): string[] {
 }
 
 /**
- * Build structured music prompt without ambient bias
+ * Build creative, narrative-style music prompt
  * Compressed to stay under Kie.ai's 500 character limit
  */
 export function buildMusicPrompt(userPrompt: string) {
-  const basePrompt = `
-Generate professional, structured music inspired by "${userPrompt}".
-Focus on rhythm, energy, and arrangement matching the requested genre and mood.
-Avoid using terms like "ambient" or "soundscape" unless explicitly mentioned.
-`.trim();
+  const lowerPrompt = userPrompt.toLowerCase();
+  
+  // Detect style and create narrative description
+  let narrativePrompt = "";
+  
+  if (/game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass|dubstep/i.test(lowerPrompt)) {
+    narrativePrompt = `A high-energy ${/dubstep/i.test(lowerPrompt) ? 'dubstep' : 'electronic'} ${/anthem/i.test(lowerPrompt) ? 'anthem' : 'track'} inspired by ${userPrompt} — thundering basslines, ${/roblox|gaming|game/i.test(lowerPrompt) ? 'playful synths, and glitchy drops' : 'driving rhythms, and electrifying synth melodies'}`;
+  } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
+    narrativePrompt = `An epic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic orchestral' : 'orchestral'} composition inspired by ${userPrompt} — sweeping strings, powerful brass sections, dramatic crescendos, and emotional depth`;
+  } else if (/lofi|chill|relaxing|study|peaceful/i.test(lowerPrompt)) {
+    narrativePrompt = `A ${/lofi/i.test(lowerPrompt) ? 'lofi' : 'chill'} melody inspired by ${userPrompt} — soft analog textures, gentle piano chords, warm vinyl crackle, and laid-back grooves`;
+  } else {
+    // Creative default for other prompts
+    narrativePrompt = `Creative music inspired by ${userPrompt} — dynamic arrangement, expressive melodies, rich instrumentation, and engaging rhythms`;
+  }
 
-  // Enrichment context (genre logic, style cues)
-  const enrichment = `
-If the style implies energy (gaming, edm, dnb, trap, pop, rock, metal): energetic structure, BPM 120–150.
-If cinematic: orchestral progression, emotional intensity.
-If lofi or chill: 70–90 BPM, soft analog textures.
-`.trim();
-
-  // Combine and compress
-  let finalPrompt = `${basePrompt}\n${enrichment}`.replace(/\s+/g, " ").trim();
+  // Clean and compress
+  let finalPrompt = narrativePrompt.replace(/\s+/g, " ").trim();
 
   // Enforce max length (Kie.ai limit ≈ 500 chars)
   if (finalPrompt.length > 490) {
@@ -119,14 +122,16 @@ If lofi or chill: 70–90 BPM, soft analog textures.
   }
 
   console.log("[PROMPT LENGTH]", finalPrompt.length, "chars");
+  console.log("🎵 [CREATIVE PROMPT] Music:", finalPrompt);
   
   return finalPrompt;
 }
 
 /**
- * Build enriched image prompt using prompt_enrichment.json mapping
+ * Build creative, narrative-style image prompt
  */
 export function buildImagePrompt(userPrompt: string) {
+  const lowerPrompt = userPrompt.toLowerCase();
   const prompt = userPrompt.trim();
   
   // Detect the primary style/intent from the user prompt
@@ -136,14 +141,27 @@ export function buildImagePrompt(userPrompt: string) {
   const styleMapping = styles[intent as keyof typeof styles];
   const enrichedImageDescription = styleMapping?.image || styles.experimental.image;
   
-  // Build the final enriched prompt
-  const enrichedPrompt = `
-Digital artwork of ${prompt.toLowerCase()}, ${enrichedImageDescription}, cinematic lighting, 16:9 aspect ratio, ultra-detailed textures, high contrast, professional composition, 2K resolution quality.
-`.trim();
+  // Create narrative-style visual description
+  let visualPrompt = "";
+  
+  if (/game|gaming|roblox|geometry dash/i.test(lowerPrompt)) {
+    visualPrompt = `A neon futuristic ${/roblox/i.test(lowerPrompt) ? 'Roblox' : 'gaming'} arena with glowing avatars, energy bursts, cyber city lights, vibrant colors, dynamic action, and cutting-edge visuals in 2K cinematic quality, 16:9 aspect ratio`;
+  } else if (/geometry dash/i.test(lowerPrompt)) {
+    visualPrompt = `A geometric digital landscape inspired by ${prompt} — neon grid patterns, rhythmic obstacles, dynamic shapes, vibrant color gradients, and cinematic 2K resolution, 16:9 aspect ratio`;
+  } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
+    visualPrompt = `A cinematic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic' : 'dramatic'} scene visualizing ${prompt} — epic landscapes, dramatic lighting, sweeping vistas, theatrical composition, and 2K cinematic quality, 16:9 aspect ratio`;
+  } else if (/lofi|chill/i.test(lowerPrompt)) {
+    visualPrompt = `A ${/lofi/i.test(lowerPrompt) ? 'nostalgic lofi' : 'serene'} aesthetic visualizing ${prompt} — warm tones, soft lighting, cozy atmosphere, vintage textures, and 2K cinematic quality, 16:9 aspect ratio`;
+  } else {
+    // Creative default with enriched description
+    visualPrompt = `A stunning visual representation of ${prompt}, ${enrichedImageDescription}, cinematic lighting, 16:9 aspect ratio, ultra-detailed textures, high contrast, professional composition, 2K resolution quality`;
+  }
+  
+  // Clean up
+  const enrichedPrompt = visualPrompt.replace(/\s+/g, " ").trim();
   
   console.log(`🖼️ [ENRICHED IMAGE] Detected intent: ${intent}`);
-  console.log(`🖼️ [ENRICHED IMAGE] Using description: ${enrichedImageDescription}`);
-  console.log(`🖼️ [ENRICHED IMAGE] Final prompt: ${enrichedPrompt}`);
+  console.log(`🖼️ [CREATIVE PROMPT] Image: ${enrichedPrompt}`);
   
   return enrichedPrompt;
 }

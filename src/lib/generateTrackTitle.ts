@@ -143,6 +143,55 @@ export function generateTrackTitle(prompt?: string): string {
 }
 
 /**
+ * Generate a creative title based on user prompt with proper capitalization
+ * Examples:
+ * - "geometry dash frontier" → "Geometry Dash Frontier"
+ * - "roblox dubstep anthem" → "Roblox Dubstep Anthem"
+ * - "lofi chill vibes" → "Lofi Chill Vibes"
+ */
+export function generateCreativeTitle(userPrompt: string): string {
+  if (!userPrompt || userPrompt.trim().length === 0) {
+    return generateTrackTitle(); // Fallback to theme-based title
+  }
+
+  // Clean and normalize the prompt
+  const cleaned = userPrompt
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+
+  if (cleaned.length === 0) {
+    return generateTrackTitle();
+  }
+
+  // Split into words and capitalize each word properly
+  const words = cleaned.split(' ');
+  const capitalized = words.map(word => {
+    // Preserve hyphens
+    if (word.includes('-')) {
+      return word.split('-').map(part => 
+        part.charAt(0).toUpperCase() + part.slice(1)
+      ).join('-');
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+
+  // Join words back together
+  let creativeTitle = capitalized.join(' ');
+
+  // Ensure it's not too long (max 50 chars)
+  if (creativeTitle.length > 50) {
+    creativeTitle = creativeTitle.slice(0, 47) + '...';
+  }
+
+  console.log(`🎨 [CREATIVE TITLE] "${userPrompt}" → "${creativeTitle}"`);
+  
+  return creativeTitle;
+}
+
+/**
  * Test function to validate title generation
  */
 export function testTitleGeneration(): void {

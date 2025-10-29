@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
-import { generateTrackTitle } from "@/lib/generateTrackTitle";
+import { generateTrackTitle, generateCreativeTitle } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 // Fallback polling mechanism for slow Kie.ai completions
@@ -206,23 +206,20 @@ export async function POST(req: Request) {
       console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
     }
 
-    // Non-blocking display prompt creation (never allowed to throw)
+    // Create creative, narrative-style display prompts (never allowed to throw)
     let displayMusicPrompt = null;
     let displayImagePrompt = null;
 
     try {
-      const detectedStyle =
-        /game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass/i.test(userVibe) ? "high-energy electronic"
-        : /cinematic|orchestral|film/i.test(userVibe) ? "cinematic orchestral"
-        : /lofi|chill/i.test(userVibe) ? "lofi / chill"
-        : "creative";
-
-      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${detectedStyle}.`;
-      
-      // Use enriched image prompt for display (more detailed and descriptive)
+      // Use the creative music and image prompts directly for display
+      // They're already enriched with narrative descriptions
+      displayMusicPrompt = musicPrompt;
       displayImagePrompt = imagePrompt;
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
+      // Fallback to basic prompts
+      displayMusicPrompt = musicPrompt || `Creating music inspired by "${userVibe}"`;
+      displayImagePrompt = imagePrompt || `Visualizing "${userVibe}"`;
     }
     
     // Clean music prompt to remove any remaining bias phrases
@@ -251,24 +248,9 @@ export async function POST(req: Request) {
     // DON'T deduct credits yet - wait for callback confirmation
     // Credits will be deducted in the callback route when generation succeeds
     
-    // Generate dynamic track title based on user vibe
-    const generateTrackTitle = (vibe: string) => {
-      const wordBank = [
-        "Dream", "Pulse", "Horizons", "Odyssey", "Voyage", "Frequency",
-        "Aurora", "Neon", "Drift", "Echo", "Vision", "Frontier",
-        "Flux", "Motion", "Skies", "Euphoria", "Spectrum", "Phantom"
-      ];
-      const baseWords = vibe
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .split(" ")
-        .filter(w => w.length > 2)
-        .slice(0, 2);
-      const suffix = wordBank[Math.floor(Math.random() * wordBank.length)];
-      return `${baseWords.join(" ")} ${suffix}`.trim();
-    };
-    
-    const generatedTitle = generateTrackTitle(userVibe);
-    console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
+    // Generate creative title with proper capitalization
+    const generatedTitle = generateCreativeTitle(userVibe);
+    console.log("🎵 [MUSIC API] Generated creative title for pending track:", generatedTitle);
     
     // Store pending generation in tracks table for tracking
     try {
@@ -308,6 +290,11 @@ export async function POST(req: Request) {
         title: generatedTitle // Include title in expandedPrompts for frontend visibility
       }
     };
+
+    // Log expanded prompts to console for verification
+    console.log("🎨 [EXPANDED PROMPTS] Music:", payload.expandedPrompts.music);
+    console.log("🎨 [EXPANDED PROMPTS] Image:", payload.expandedPrompts.image);
+    console.log("🎨 [EXPANDED PROMPTS] Title:", payload.expandedPrompts.title);
 
     // Add diagnostic logging
     console.log("🎨 [EXPANDED PROMPTS SENT]", payload.expandedPrompts);

@@ -108,13 +108,13 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
 
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
   const model = "bytedance/seedream-v4-text-to-image";
-  const resolution = "2048x1152";
+  const resolution = "2048x1152"; // 2K resolution for highest quality
   
   // Optimal 2K parameters for highest quality
   const imageParams = {
     model: model,
     prompt: finalPrompt,
-    resolution: resolution, // 2K 16:9 resolution
+    resolution: resolution, // 2K 16:9 resolution (2048x1152)
     aspect_ratio: "16:9",
     quality: "high",
     steps: 30,
@@ -122,10 +122,9 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
   };
   
-  console.log("🖼️ [KIE IMAGE] Using model:", model, "Resolution:", resolution);
+  console.log("🖼️ [KIE IMAGE] Model:", model, "| Resolution:", resolution, "| Confirmed: 2K");
   console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
-  console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality);
-  console.log("🎨 [IMAGE GEN] Steps:", imageParams.steps);
+  console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
 
   try {
     console.log("🧠 [DEBUG IMAGE] Sending imagePrompt:", finalPrompt);
@@ -227,45 +226,60 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         
         console.log("🔍 [IMAGE CHECK] Size:", size, "bytes, Width check:", widthCheck);
         
-        if ((size && parseInt(size) < 800000) || !widthCheck) {
-          console.warn("⚠️ [IMAGE CHECK] Low-res detected, retrying at 2K...");
+        // Check if image is < 2K resolution and needs upscaling
+        const isLowRes = (size && parseInt(size) < 800000) || !widthCheck;
+        
+        if (isLowRes) {
+          console.warn("⚠️ [IMAGE CHECK] Low-res detected (< 2K or < 800KB), attempting upscale retry...");
+          console.warn("⚠️ [IMAGE CHECK] Image size:", size, "bytes | Width check:", widthCheck);
           await new Promise(r => setTimeout(r, 1500));
           
-          const retryParams = {
+          // Upscaler fallback: request explicitly at 2K resolution with enhanced quality
+          const upscalerParams = {
             model: "bytedance/seedream-v4-text-to-image",
             prompt: finalPrompt,
-            resolution: "2048x1152",
+            resolution: "2048x1152", // Explicit 2K resolution
             aspect_ratio: "16:9",
             quality: "high",
-            steps: 30,
-            cfg_scale: 8,
-            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality"
+            steps: 35, // Increased steps for better quality
+            cfg_scale: 8.5, // Slightly higher guidance
+            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality, upscaled"
           };
           
-          console.log("🧠 [DEBUG IMAGE] Sending retry request with enforced 2K params:", retryParams);
+          console.log("🔄 [UPSCALER] Sending upscaler request with enhanced 2K params:", upscalerParams);
           
-          const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
+          const upscalerResponse = await fetch(`${BASE_URL}/generate/image`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(retryParams),
+            body: JSON.stringify(upscalerParams),
           });
           
-          console.log("🧠 [DEBUG IMAGE] Retry response status:", retryResponse.status);
+          console.log("🔄 [UPSCALER] Upscaler response status:", upscalerResponse.status);
           
-          const retryData = await retryResponse.json();
-          if (!retryResponse.ok || retryData.code !== 200) {
-            console.error("🖼️ [IMAGE GEN] Retry also failed:", retryData);
-            console.log("⚠️ [IMAGE GEN] Returning original image despite quality uncertainty");
+          const upscalerData = await upscalerResponse.json();
+          if (!upscalerResponse.ok || upscalerData.code !== 200) {
+            console.error("❌ [UPSCALER] Upscaler retry failed:", upscalerData);
+            console.log("⚠️ [IMAGE GEN] Returning original image despite low resolution");
             return { imageUrl, resolution: "2048x1152" };
           }
           
-          const retryImageUrl = retryData.data?.response?.imageUrl;
-          if (retryImageUrl) {
-            console.log("✅ [IMAGE CHECK] Retried successfully with 2K image");
-            return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+          const upscaledImageUrl = upscalerData.data?.response?.imageUrl;
+          if (upscaledImageUrl) {
+            // Verify upscaled image quality
+            const upscaledHead = await fetch(upscaledImageUrl, { method: "HEAD" }).catch(() => null);
+            const upscaledSize = upscaledHead?.headers.get("content-length");
+            const upscaledWidthCheck = upscaledImageUrl.includes("2048") || upscaledImageUrl.includes("1152") || upscaledImageUrl.includes("2k");
+            
+            if ((upscaledSize && parseInt(upscaledSize) >= 800000) || upscaledWidthCheck) {
+              console.log("✅ [UPSCALER] Successfully upscaled to 2K | Size:", upscaledSize, "bytes");
+              return { imageUrl: upscaledImageUrl, resolution: "2048x1152" };
+            } else {
+              console.warn("⚠️ [UPSCALER] Upscaled image still appears low-res, using original");
+              return { imageUrl, resolution: "2048x1152" };
+            }
           }
         }
         

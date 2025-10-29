@@ -132,9 +132,12 @@ export default function Home() {
           image: data.expandedPrompts.image
         });
         
-        // Log prompts to console for debugging
+        // Log prompts to console for verification
         console.log("🎵 Generating:", data.expandedPrompts.music || "Unknown");
         console.log("🎨 Creating:", data.expandedPrompts.image || "Unknown");
+        if (data.expandedPrompts.title) {
+          console.log("📝 Title:", data.expandedPrompts.title);
+        }
       } else {
         console.log("🔍 [DEBUG] No expanded prompts received");
       }
