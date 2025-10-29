@@ -131,6 +131,8 @@ export default function Home() {
         // Log prompts to console for debugging
         console.log("🎵 Generating:", data.expandedPrompts.music || "Unknown");
         console.log("🎨 Creating:", data.expandedPrompts.image || data.expandedPrompts.art || "Unknown");
+        console.log("🎵 [DISPLAY] User-friendly:", data.musicPrompt || "Unknown");
+        console.log("🎨 [DISPLAY] User-friendly:", data.imagePrompt || "Unknown");
       }
 
       // Start polling for completion

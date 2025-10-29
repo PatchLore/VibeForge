@@ -129,6 +129,38 @@ export async function POST(req: Request) {
     if (!imagePrompt || imagePrompt.length < 12) {
       console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
     }
+
+    // Detect style for user-friendly descriptions
+    const lowerVibe = userVibe.toLowerCase();
+    let detectedStyle = 'emotion and mood';
+    let styleDescriptor = 'color and motion';
+    
+    if (lowerVibe.includes('game') || lowerVibe.includes('gaming') || lowerVibe.includes('roblox')) {
+      detectedStyle = 'energetic gaming vibes';
+      styleDescriptor = 'neon-lit digital worlds';
+    } else if (lowerVibe.includes('lofi') || lowerVibe.includes('chill') || lowerVibe.includes('study')) {
+      detectedStyle = 'chill, relaxed vibes';
+      styleDescriptor = 'soft, nostalgic atmospheres';
+    } else if (lowerVibe.includes('cinematic') || lowerVibe.includes('epic') || lowerVibe.includes('orchestral')) {
+      detectedStyle = 'cinematic grandeur';
+      styleDescriptor = 'dramatic, sweeping visuals';
+    } else if (lowerVibe.includes('trap') || lowerVibe.includes('hip-hop') || lowerVibe.includes('urban')) {
+      detectedStyle = 'urban, rhythmic beats';
+      styleDescriptor = 'street art and city vibes';
+    } else if (lowerVibe.includes('rock') || lowerVibe.includes('metal') || lowerVibe.includes('electric')) {
+      detectedStyle = 'powerful, energetic rock';
+      styleDescriptor = 'bold, dynamic imagery';
+    } else if (lowerVibe.includes('pop') || lowerVibe.includes('upbeat') || lowerVibe.includes('bright')) {
+      detectedStyle = 'catchy, upbeat pop';
+      styleDescriptor = 'vibrant, colorful aesthetics';
+    } else if (lowerVibe.includes('ambient') || lowerVibe.includes('dream') || lowerVibe.includes('ethereal')) {
+      detectedStyle = 'dreamy, ambient soundscapes';
+      styleDescriptor = 'ethereal, floating visuals';
+    }
+
+    // Create user-friendly display prompts
+    const displayMusicPrompt = `Creating music inspired by "${userVibe}" — focusing on ${detectedStyle}.`;
+    const displayImagePrompt = `Visualizing the feeling of "${userVibe}" through ${styleDescriptor}.`;
     
     // Clean music prompt to remove any remaining bias phrases
     const cleanedMusicPrompt = musicPrompt
@@ -138,6 +170,8 @@ export async function POST(req: Request) {
 
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
+    console.log("🎵 [DISPLAY] User-friendly:", displayMusicPrompt);
+    console.log("🎨 [DISPLAY] User-friendly:", displayImagePrompt);
     console.log("🔍 [DEBUG] Music prompt length:", cleanedMusicPrompt.length);
     console.log("🔍 [DEBUG] Image prompt length:", imagePrompt.length);
     console.log("🎵 [GENERATION START] user:", user.id, "prompt:", userVibe);
@@ -180,6 +214,12 @@ export async function POST(req: Request) {
     
     remainingCredits = currentCredits; // Return current credits, not deducted yet
 
+    // Add safety logging for display prompts
+    console.log("🎨 [RETURNING DISPLAY PROMPTS]", { 
+      music: displayMusicPrompt, 
+      image: displayImagePrompt 
+    });
+
     // Return immediately with task ID - Vercel has 5-minute timeout limit
     // The generation happens in the background via the API's callback system
     return NextResponse.json({
@@ -189,11 +229,13 @@ export async function POST(req: Request) {
       message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
       remainingCredits: remainingCredits,
+      musicPrompt: displayMusicPrompt,
+      imagePrompt: displayImagePrompt,
       expandedPrompts: {
-        music: cleanedMusicPrompt,
-        image: imagePrompt,
-        combined: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
-        intent: "structured"
+        music: displayMusicPrompt,
+        image: displayImagePrompt,
+        combined: `${userVibe} | Music: ${displayMusicPrompt} | Visual: ${displayImagePrompt}`,
+        intent: detectedStyle
       }
     });
 
