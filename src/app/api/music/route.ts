@@ -5,6 +5,75 @@ import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
 import { generateTrackTitle } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
+// Fallback polling mechanism for slow Kie.ai completions
+async function startFallbackPolling(taskId: string) {
+  console.log("🔄 [FALLBACK POLLING] Starting background polling for task:", taskId);
+  
+  const maxRetries = 30; // 30 x 10s = 5 minutes
+  let pollData: any = null;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const pollRes = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/status?taskId=${taskId}`);
+      pollData = await pollRes.json();
+
+      if (pollData.status === "SUCCESS" && pollData.track?.audioUrl) {
+        console.log("✅ [POLL SUCCESS] Audio ready from /api/status");
+        if (supabaseAdmin) {
+          await supabaseAdmin
+            .from("tracks")
+            .update({
+              audio_url: pollData.track.audioUrl,
+              image_url: pollData.track.imageUrl || null,
+              status: "completed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("task_id", taskId);
+          console.log("✅ [FALLBACK POLLING] Track completed successfully");
+          return;
+        }
+      }
+
+      console.log("⏳ [POLL] Still waiting for Kie.ai completion...", i + 1);
+      await new Promise(r => setTimeout(r, 10000)); // 10s wait
+    } catch (error) {
+      console.error("❌ [POLL ERROR]", error);
+      await new Promise(r => setTimeout(r, 10000)); // Continue polling even on error
+    }
+  }
+
+  // If still not completed after retries, do a direct API check
+  if (!pollData?.track?.audioUrl) {
+    console.log("⚠️ [POLL FALLBACK] Checking Kie.ai directly...");
+    try {
+      const check = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
+        headers: { Authorization: `Bearer ${process.env.VIBEFORGE_API_KEY}` },
+      });
+      const checkData = await check.json();
+
+      if (checkData?.data?.response?.sunoData?.[0]?.audio_url) {
+        console.log("✅ [POLL FALLBACK SUCCESS] Retrieved final audio_url directly.");
+        if (supabaseAdmin) {
+          await supabaseAdmin
+            .from("tracks")
+            .update({
+              audio_url: checkData.data.response.sunoData[0].audio_url,
+              image_url: checkData.data.response.sunoData[0].image_url || null,
+              status: "completed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("task_id", taskId);
+          console.log("✅ [FALLBACK POLLING] Track completed via direct API check");
+        }
+      } else {
+        console.warn("❌ [POLL FALLBACK] Still no result after direct check.");
+      }
+    } catch (error) {
+      console.error("❌ [POLL FALLBACK ERROR]", error);
+    }
+  }
+}
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -242,6 +311,11 @@ export async function POST(req: Request) {
 
     // Add diagnostic logging
     console.log("🎨 [EXPANDED PROMPTS SENT]", payload.expandedPrompts);
+
+    // Start fallback polling mechanism in background (non-blocking)
+    if (taskId) {
+      startFallbackPolling(taskId);
+    }
 
     return NextResponse.json(payload, { status: 200 });
 

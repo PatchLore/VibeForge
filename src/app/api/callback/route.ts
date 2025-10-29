@@ -105,6 +105,36 @@ export async function POST(request: NextRequest) {
     // If not failed and not completed yet, acknowledge but don't update
     if (!completed) {
       console.log('⏳ [CALLBACK] Not ready yet, no audio_url in payload.');
+      
+      // Schedule a retry after 20 seconds
+      setTimeout(async () => {
+        try {
+          console.log("⏳ [CALLBACK RETRY] Audio not ready, retrying in 20s...");
+          const retryRes = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
+            headers: { Authorization: `Bearer ${process.env.VIBEFORGE_API_KEY}` },
+          });
+          const retryData = await retryRes.json();
+
+          if (retryData?.data?.response?.sunoData?.[0]?.audio_url) {
+            console.log("✅ [CALLBACK RETRY SUCCESS] Audio ready, updating DB.");
+            await supabaseServer
+              .from("tracks")
+              .update({
+                audio_url: retryData.data.response.sunoData[0].audio_url,
+                image_url: retryData.data.response.sunoData[0].image_url || null,
+                status: "completed",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("task_id", taskId);
+            console.log("✅ [CALLBACK RETRY] Track completed successfully");
+          } else {
+            console.warn("❌ [CALLBACK RETRY] Still no audio_url after 20s.");
+          }
+        } catch (e) {
+          console.error("❌ [CALLBACK RETRY ERROR]", e);
+        }
+      }, 20000);
+      
       return NextResponse.json({ ok: true, message: 'processing' }, { status: 200 });
     }
 
