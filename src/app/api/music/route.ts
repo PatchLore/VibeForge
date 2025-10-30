@@ -93,10 +93,7 @@ export async function POST(req: Request) {
   try {
     // Robust input guards
     const body = await req.json().catch(() => ({}));
-    const userVibeRaw = (body?.userPrompt ?? body?.prompt ?? "").toString();
-    const vocalsMode = (body?.vocals === 'vocals') ? 'vocals' : 'instrumental';
-    const imageInspiration = typeof body?.imageInspiration === 'string' && body.imageInspiration.length > 0 ? body.imageInspiration : null;
-    const dreamify = Boolean(body?.dreamify);
+    const userVibeRaw = (body?.prompt ?? "").toString();
     const userVibe = userVibeRaw.trim();
     
     if (!userVibe) {
@@ -196,27 +193,9 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
     
-    // Build prompts (imagePrompt kept for logging/DB only; Kie.ai music receives finalPrompt only)
+    // Build technical prompts (the ones the model needs)
     const musicPrompt = buildMusicPrompt(userVibe);
-    let imagePrompt = buildImagePrompt(userVibe);
-
-    // Enrichment with vocals + image context
-    const vocalsText = vocalsMode === 'vocals'
-      ? 'Include expressive AI vocals and lyrics that fit the mood and style.'
-      : 'Instrumental only, no vocals.';
-    const imageContext = imageInspiration ? 'This track should be inspired by the imagery and atmosphere of the provided image.' : '';
-    // Simplified, API-safe enrichment with fast Dreamify cues
-    let enrichedPrompt = `Generate professional ${vocalsMode === "vocals" ? "song" : "instrumental"} inspired by "${userVibe}".`;
-
-    if (dreamify) {
-      enrichedPrompt = `Ethereal, cinematic, and dreamlike electronic music inspired by a surreal dream. Focus on melody, atmosphere, and emotion. ${vocalsMode === 'vocals' ? 'Expressive AI vocals allowed.' : 'Instrumental only.'} Inspired by "${userVibe}".`;
-    }
-
-    if (imageInspiration) {
-      enrichedPrompt += ` Use the uploaded image's colors and mood as tone, texture, and pacing.`;
-    }
-
-    enrichedPrompt += ` High production quality.`;
+    const imagePrompt = buildImagePrompt(userVibe);
     
     // Add explicit guards
     if (!musicPrompt || musicPrompt.length < 12) {
@@ -249,11 +228,6 @@ export async function POST(req: Request) {
       .replace(/focus and relaxation/gi, "")
       .trim();
 
-    console.log("🎤 Vocals Mode:", vocalsMode);
-    console.log("🖼️ Image Inspiration:", !!imageInspiration);
-    console.log("🌙 Dreamify Mode:", dreamify);
-    console.log("🎵 Final Kie.ai Prompt:", enrichedPrompt);
-    console.log("🎨 Final Image Prompt:", imagePrompt);
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
     console.log("🎵 [DISPLAY] User-friendly:", displayMusicPrompt);
@@ -267,11 +241,7 @@ export async function POST(req: Request) {
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
     // Generate music using the cleaned prompt
-    // Trim and validate prompt to prevent Kie.ai stalls
-    const finalPrompt = enrichedPrompt.slice(0, 300).trim();
-    console.log("[Dreamify Prompt]", finalPrompt.length, finalPrompt);
-    // Only pass the string prompt to Kie.ai; model selection happens downstream
-    taskId = await generateMusic(finalPrompt);
+    taskId = await generateMusic(cleanedMusicPrompt);
     
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 
@@ -295,10 +265,8 @@ export async function POST(req: Request) {
           prompt: userVibe,
           vibe: generatedVibe,
           summary: generatedSummary,
-          extended_prompt: `${dreamify ? '[DREAMIFY] ' : ''}${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           extended_prompt_image: imagePrompt,
-          image_inspiration: imageInspiration,
-          dreamify: dreamify,
           audio_url: null,
           image_url: null,
           status: 'pending',

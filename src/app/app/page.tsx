@@ -34,9 +34,6 @@ export default function AppPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
-  const [vocals, setVocals] = useState<'instrumental' | 'vocals'>('instrumental');
-  const [imageInspiration, setImageInspiration] = useState<string | null>(null);
-  const [dreamify, setDreamify] = useState<boolean>(false);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -142,7 +139,7 @@ export default function AppPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: vibe, userPrompt: vibe, vocals, imageInspiration, dreamify }),
+        body: JSON.stringify({ prompt: vibe }),
       });
 
       const data = await response.json();
@@ -345,22 +342,14 @@ export default function AppPage() {
                        transition-all duration-300 ease-out hover:border-primary 
                        hover:shadow-glow-lg"
           >
-            {/* Dreamify Mode card (moved above prompt) */}
-            <div className={`p-3 rounded-2xl border transition relative mb-6 ${
-              dreamify ? 'border-pink-400 bg-gradient-to-r from-purple-600/20 to-pink-600/20 shadow-[0_0_15px_rgba(255,0,150,0.3)] animate-pulse-slow' : 'border-white/10 bg-transparent'
-            }`}>
-              <label className="flex items-center justify-between cursor-pointer">
+            {/* Dreamify Mode - Coming Soon */}
+            <div className="p-3 rounded-2xl border border-white/10 bg-transparent mb-6 opacity-50">
+              <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-white text-lg font-semibold">🌙 Dreamify Mode</h3>
-                  <p className="text-white/70 text-sm">Interpret your dream into sound and visuals</p>
+                  <p className="text-white/70 text-sm">Coming soon...</p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={dreamify}
-                  onChange={(e) => setDreamify(e.target.checked)}
-                  className="w-6 h-6 accent-pink-500"
-                />
-              </label>
+              </div>
             </div>
 
             <div className="mb-8">
@@ -413,65 +402,23 @@ export default function AppPage() {
             </div>
 
             {/* New options: Vocals + Image Inspiration */}
-            <div className="flex flex-col gap-4 mt-4 mb-8">
-              {/* Vocals Selector */}
+            {/* Vocals & Image Inspiration - Coming Soon */}
+            <div className="flex flex-col gap-4 mt-4 mb-8 opacity-50">
               <div>
                 <label className="block text-white mb-2 text-sm font-semibold">Vocals</label>
                 <select
-                  value={vocals}
-                  onChange={(e) => setVocals(e.target.value as 'instrumental' | 'vocals')}
-                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-white/10 focus:border-purple-400 transition"
+                  disabled
+                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-white/10 cursor-not-allowed"
                 >
-                  <option value="instrumental">Instrumental</option>
-                  <option value="vocals">AI Vocals</option>
+                  <option>Coming soon...</option>
                 </select>
               </div>
-
-              {/* Image Inspiration */}
-              <div className="border border-white/10 rounded-2xl p-3 hover:border-purple-400 transition cursor-pointer text-center">
-                <label htmlFor="imageUpload" className="block cursor-pointer text-white/80 text-sm font-semibold">
-                  🎨 Add Image to Inspire Music
-                  <input
-                    id="imageUpload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return setImageInspiration(null);
-                      try {
-                        const buf = await file.arrayBuffer();
-                        const base64 = Buffer.from(buf).toString('base64');
-                        const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
-                        setImageInspiration(dataUrl);
-                      } catch (err) {
-                        console.error('Image upload error:', err);
-                        setImageInspiration(null);
-                      }
-                    }}
-                  />
-                </label>
-                {imageInspiration && (
-                  <img
-                    src={imageInspiration}
-                    alt="Preview"
-                    className="mt-2 rounded-xl w-full max-h-40 object-cover"
-                  />
-                )}
+              <div className="border border-white/10 rounded-2xl p-3 text-center">
+                <p className="text-white/80 text-sm font-semibold">🎨 Add Image to Inspire Music</p>
+                <p className="text-white/50 text-xs mt-1">Coming soon...</p>
               </div>
             </div>
 
-            {/* Dreamify Mode */}
-            <div className="mb-6">
-              <label className="flex items-center gap-2 text-sm text-text">
-                <input
-                  type="checkbox"
-                  checked={dreamify}
-                  onChange={(e) => setDreamify(e.target.checked)}
-                />
-                <span>Dreamify Mode ✨ (Interpret your dream into sound and visuals)</span>
-              </label>
-            </div>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
