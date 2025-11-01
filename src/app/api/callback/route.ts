@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
     // --- Resolve final image (verify/upscale/regenerate) BEFORE updating track ---
     const TARGET = { width: 2048, height: 1152 };
     let finalImageUrl: string | null = null;
+    let finalResolution: string | null = null;
 
     const sourceImageUrl: string | null = (completed?.image_url as string) || null;
     if (sourceImageUrl) {
@@ -153,11 +154,12 @@ export async function POST(request: NextRequest) {
         const checked = await verifyAndUpscaleTo2K(sourceImageUrl, TARGET);
         if (checked.width >= TARGET.width && checked.height >= TARGET.height) {
           finalImageUrl = checked.url;
+          finalResolution = `${checked.width}x${checked.height}`;
         } else if (pending?.extended_prompt_image) {
           console.warn('⚠️ [CALLBACK] Incoming image below 2K; regenerating at 2K with stored prompt');
           const regen = await generateImage(pending.extended_prompt_image);
-          const regenUrl = typeof regen === 'string' ? regen : regen?.imageUrl;
-          if (regenUrl) finalImageUrl = regenUrl;
+          finalImageUrl = regen.imageUrl;
+          finalResolution = regen.resolution;
         }
       } catch (e) {
         console.error('❌ [CALLBACK] Image verify/upscale failed:', e);
@@ -166,7 +168,8 @@ export async function POST(request: NextRequest) {
       try {
         console.log('🎨 [CALLBACK] No image provided, generating new 2K image');
         const gen = await generateImage(pending.extended_prompt_image);
-        finalImageUrl = typeof gen === 'string' ? gen : gen?.imageUrl || null;
+        finalImageUrl = gen.imageUrl;
+        finalResolution = gen.resolution;
       } catch (e) {
         console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
       }
@@ -187,10 +190,13 @@ export async function POST(request: NextRequest) {
       prompt: safePrompt,
       audio_url: completed.audio_url,
       image_url: finalImageUrl ?? completed.image_url ?? null,
+      resolution: finalResolution ?? null,
       duration: completed.duration ?? null,
       status: 'completed',
       updated_at: new Date().toISOString(),
     };
+    
+    console.log('🖼️ [CALLBACK] Final image resolution:', finalResolution);
 
     console.log('💾 [CALLBACK] Updating track:', updateFields);
 

@@ -209,6 +209,10 @@ export default function UnifiedPlayer({
                     transform: 'translateZ(0)'
                   }}
                   loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
+                  }}
                 />
               ) : (
                 <video
@@ -231,7 +235,7 @@ export default function UnifiedPlayer({
                 transition={{ delay: 0.5 }}
                 onClick={() => {
                   const link = document.createElement('a');
-                  link.href = videoUrl;
+                  link.href = videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl;
                   link.download = `soundswoop-artwork-${Date.now()}.png`;
                   document.body.appendChild(link);
                   link.click();

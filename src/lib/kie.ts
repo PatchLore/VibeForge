@@ -205,13 +205,13 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         
         console.log("✅ [IMAGE GEN] Image generated successfully (fallback resolution)");
         console.log("🖼️ [DEBUG IMAGE SAVED] Fallback Image URL received:", fallbackData.data?.response?.imageUrl);
-        return fallbackData.data?.response?.imageUrl;
+        return { imageUrl: fallbackData.data?.response?.imageUrl, resolution: "1024x576" };
       }
       
       console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution (retry)");
       console.log("🎨 [IMAGE GEN] Image URL:", retryData.data?.response?.imageUrl);
       console.log("🖼️ [DEBUG IMAGE SAVED] Retry Image URL received:", retryData.data?.response?.imageUrl);
-      return retryData.data?.response?.imageUrl;
+      return { imageUrl: retryData.data?.response?.imageUrl, resolution: "2048x1152" };
     }
 
     const imageUrl = data.data?.response?.imageUrl;

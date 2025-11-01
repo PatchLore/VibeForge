@@ -197,6 +197,10 @@ export default function DashboardPage() {
                         src={`/api/proxy-image?url=${encodeURIComponent(track.image_url)}`}
                         alt={track.title || "Generated art"}
                         className="w-full rounded-xl object-cover aspect-video mb-3"
+                        onLoad={(e) => {
+                          const img = e.currentTarget;
+                          console.log(`🖼️ [Dashboard] Image loaded: ${track.title} | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
+                        }}
                         onError={(e) => {
                           console.error('❌ [MyTracks] Image failed to load:', track.image_url);
                           e.currentTarget.style.display = 'none';

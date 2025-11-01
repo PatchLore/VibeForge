@@ -223,6 +223,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
                 }}
                 loading="lazy"
                 referrerPolicy="no-referrer"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  console.log(`🖼️ [TrackCard] Image loaded: ${track.title} | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
+                }}
                 onError={(e) => {
                   console.error('❌ [TrackCard] Image failed to load:', track.image_url);
                   (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
