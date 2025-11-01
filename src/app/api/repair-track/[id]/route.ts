@@ -13,9 +13,9 @@ export const runtime = "nodejs";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const trackId = params.id;
+  const { id: trackId } = await params;
   
   console.log(`🔧 [REPAIR] Starting one-off repair for track ${trackId}`);
   console.log(`⏰ [REPAIR] Started at ${new Date().toISOString()}`);
