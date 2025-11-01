@@ -35,10 +35,10 @@ async function startFallbackPolling(taskId: string) {
       }
 
       console.log("⏳ [POLL] Still waiting for Kie.ai completion...", i + 1);
-      await new Promise(r => setTimeout(r, 10000)); // 10s wait
+      await new Promise(r => setTimeout(r, 15000)); // 15s wait
     } catch (error) {
       console.error("❌ [POLL ERROR]", error);
-      await new Promise(r => setTimeout(r, 10000)); // Continue polling even on error
+      await new Promise(r => setTimeout(r, 15000)); // Continue polling even on error
     }
   }
 
@@ -297,8 +297,8 @@ export async function POST(req: Request) {
     };
 
     // Log expanded prompts to console for verification
-    console.log("🎨 [EXPANDED PROMPTS] Music:", payload.expandedPrompts.music);
-    console.log("🎨 [EXPANDED PROMPTS] Image:", payload.expandedPrompts.image);
+    console.log("🎨 Enriched Image Prompt:", payload.expandedPrompts.image);
+    console.log("🎵 Enriched Music Prompt:", payload.expandedPrompts.music);
     console.log("🎨 [EXPANDED PROMPTS] Title:", payload.expandedPrompts.title);
 
     // Add diagnostic logging

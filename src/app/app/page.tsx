@@ -214,7 +214,7 @@ export default function AppPage() {
           console.error('Status check failed:', response.status, response.statusText);
           attempts++;
           if (attempts < maxAttempts) {
-            setTimeout(poll, 10000);
+            setTimeout(poll, 15000);
           } else {
             setError(`Generation check failed (${response.status}). Please try again.`);
             setIsGenerating(false);
@@ -244,7 +244,7 @@ export default function AppPage() {
 
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(poll, 10000);
+          setTimeout(poll, 15000);
         } else {
           setError('Generation is taking longer than expected. Please try again.');
           setIsGenerating(false);
@@ -468,7 +468,7 @@ export default function AppPage() {
             )}
 
             {isGenerating && (
-              <GenerationProgress />
+              <GenerationProgress expandedPrompts={expandedPrompts || undefined} />
             )}
           </motion.div>
         ) : (

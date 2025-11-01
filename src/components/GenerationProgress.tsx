@@ -2,7 +2,11 @@
 
 import { motion } from 'framer-motion';
 
-export default function GenerationProgress() {
+interface GenerationProgressProps {
+  expandedPrompts?: { music?: string; image?: string };
+}
+
+export default function GenerationProgress({ expandedPrompts }: GenerationProgressProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
       {/* Animated waveform */}
@@ -61,6 +65,31 @@ export default function GenerationProgress() {
           This usually takes about 1–2 minutes
         </p>
       </motion.div>
+
+      {/* Enriched Prompts Display */}
+      {expandedPrompts && (expandedPrompts.music || expandedPrompts.image) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mt-8 w-full max-w-2xl"
+        >
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 space-y-4">
+            {expandedPrompts.music && (
+              <div>
+                <p className="text-pink-400 text-sm font-semibold mb-2">🎵 Music Prompt:</p>
+                <p className="text-white/90 text-sm">{expandedPrompts.music}</p>
+              </div>
+            )}
+            {expandedPrompts.image && (
+              <div>
+                <p className="text-cyan-400 text-sm font-semibold mb-2">🖼️ Image Prompt:</p>
+                <p className="text-white/90 text-sm">{expandedPrompts.image}</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

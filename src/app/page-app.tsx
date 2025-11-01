@@ -201,7 +201,7 @@ export default function Home() {
           console.error('Status check failed:', response.status, response.statusText);
           attempts++;
           if (attempts < maxAttempts) {
-            setTimeout(poll, 10000);
+            setTimeout(poll, 15000);
           } else {
             setError(`Generation check failed (${response.status}). Please try again.`);
             setIsGenerating(false);
@@ -242,9 +242,9 @@ export default function Home() {
         }
 
         // Still processing, continue polling
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000); // Poll every 10 seconds
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 15000); // Poll every 15 seconds
         } else {
           setError('Generation is taking longer than expected. Please try again.');
           setIsGenerating(false);
@@ -443,7 +443,7 @@ export default function Home() {
 
             {/* Generation Progress */}
             {isGenerating && (
-              <GenerationProgress />
+              <GenerationProgress expandedPrompts={expandedPrompts || undefined} />
             )}
           </motion.div>
         ) : (
