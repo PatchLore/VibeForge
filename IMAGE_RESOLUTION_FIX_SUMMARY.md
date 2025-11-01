@@ -78,7 +78,7 @@ const trackData = {
 };
 ```
 
-### After
+### After (Polling Paths)
 ```typescript
 const trackData = {
   audio_url: kieData.audio_url,
@@ -94,12 +94,39 @@ if (!existing?.image_url && kieData.image_url) {
 }
 ```
 
+### After (Callback Verification)
+```typescript
+// Validate URL is not undefined/null/empty
+if (!sourceImageUrl || typeof sourceImageUrl !== 'string' || sourceImageUrl.trim() === '') {
+  console.warn('[🖼️ Verification] Skipping image update: image URL is undefined, null, or empty');
+  // Regenerate with prompt if available
+}
+
+// Verify image is at least 2048px wide
+const checked = await verifyAndUpscaleTo2K(sourceImageUrl, { width: 2048, height: 1152 });
+if (checked.width >= 2048 && checked.height >= 1152) {
+  finalImageUrl = checked.url;
+  finalResolution = `${checked.width}x${checked.height}`;
+  console.log(`[🖼️ Verification] ✅ Image verified at ${finalResolution}`);
+} else {
+  console.warn(`[🖼️ Verification] ⚠️ Image too small (${checked.width}x${checked.height})`);
+  // Regenerate or skip
+}
+
+// CRITICAL: Only use verified images, never fallback to unverified
+const updateFields = {
+  image_url: finalImageUrl ?? null  // No fallback to completed.image_url!
+};
+```
+
 ## 🔒 Safeguards Added
 
 1. **Webhook-first approach**: 2K images generated and verified via Seedream
 2. **Polling preservation**: Polling paths check for existing images before overwriting
 3. **Rate limiting**: 30s minimum between Kie.ai API calls to prevent spam
 4. **Migration**: Added `resolution` column to track actual image dimensions
+5. **Strict image verification**: Callback route validates images are at least 2048px wide
+6. **Corruption protection**: Skips undefined/null/empty image URLs and failed verifications
 
 ## 📋 Next Steps
 
@@ -134,6 +161,8 @@ END $$;
 - [x] Added resolution column migration
 - [x] Added server-side rate limiting
 - [x] Added webhook support for image generation
+- [x] Added strict image verification in callback route
+- [x] Added corruption protection for null/empty/failed images
 - [ ] **TODO**: Run migration in Supabase
 - [ ] **TODO**: Generate test track to verify 2K preservation
 
@@ -148,7 +177,11 @@ After these changes:
 
 ---
 
-**Commit**: 38829bb  
+**Commits**: 
+- 38829bb: Prevent polling paths from overwriting verified 2K images
+- 6094453: Document image resolution fix
+- d2396f5: Add strict image verification in callback route
+
 **Date**: January 2025  
 **Status**: Ready to test
 
