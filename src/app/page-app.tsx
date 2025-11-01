@@ -22,6 +22,7 @@ import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
+import PricingModal from '@/components/PricingModal';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -47,6 +48,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
+  const [showPricingModal, setShowPricingModal] = useState(false);
 
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
@@ -61,6 +63,16 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
+    
+    // Listen for pricing modal open event
+    const handleOpenPricingModal = () => {
+      setShowPricingModal(true);
+    };
+    
+    window.addEventListener('openPricingModal', handleOpenPricingModal);
+    return () => {
+      window.removeEventListener('openPricingModal', handleOpenPricingModal);
+    };
   }, []);
 
   const handleGenerate = async () => {
@@ -409,7 +421,7 @@ export default function Home() {
                   <span>Composing your SoundPainting...</span>
                 </div>
               ) : (
-                '🎵 Forge My Vibe'
+                '✨ Create My Vibe'
               )}
             </motion.button>
 
@@ -488,6 +500,9 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Pricing Modal */}
+      <PricingModal isOpen={showPricingModal} onClose={() => setShowPricingModal(false)} />
     </div>
   );
 }

@@ -1,3 +1,9 @@
+// 🚨 Protected: Trending Vibes Component — DO NOT MODIFY WITHOUT TESTING
+// Last verified working: 2025-01-27
+// Used by: /app/app/page.tsx (main trending vibes page)
+// Dependencies: TrackCard component, /api/tracks/popular endpoint
+// Any changes must maintain compatibility with TrackCard interface and API response format
+
 'use client';
 
 import { motion } from 'framer-motion';

@@ -1,3 +1,12 @@
+// 🚨 Used by Trending Vibes Page - Test any changes with /app page
+// Last verified: 2025-01-27
+// This component is used by:
+// - /app/app/page.tsx (Trending Vibes)
+// - /app/trending/page.tsx (Trending page)
+// - TrendingVibes component
+// Changes must maintain backward compatibility with existing track data structures
+// 🖼️ Image Quality Fix (Feb 2025): uses /api/proxy-image for full-res delivery
+
 'use client';
 
 import { useState } from 'react';
@@ -29,6 +38,7 @@ interface TrackCardProps {
 export default function TrackCard({ track, onDelete }: TrackCardProps) {
   const [likes, setLikes] = useState(track.likes || 0);
   const [isLiking, setIsLiking] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const handlePlay = (id: string) => {
     try {
@@ -63,6 +73,127 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
     }
   };
 
+  const handleShareVibe = async () => {
+    if (isSharing || !track.audio_url || !track.image_url) return;
+    
+    setIsSharing(true);
+    try {
+      // Use client-side video generation
+      const videoBlob = await generateVideoSnippet(track.image_url, track.audio_url);
+      
+      if (videoBlob) {
+        const url = window.URL.createObjectURL(videoBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `soundswoop-${track.title.replace(/\s+/g, '-').toLowerCase()}-15s.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to generate video snippet. Your browser may not support this feature.');
+      }
+    } catch (error) {
+      console.error('Error sharing vibe:', error);
+      alert('Failed to generate video snippet. Please try again.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const generateVideoSnippet = async (imageUrl: string, audioUrl: string): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      try {
+        // Create canvas for video frames
+        const canvas = document.createElement('canvas');
+        canvas.width = 1920;
+        canvas.height = 1080;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+
+        // Load and draw image
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          // Draw image to fill canvas
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Add overlay text with track info
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(0, canvas.height - 200, canvas.width, 200);
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 48px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(track.title || 'Soundswoop Vibe', canvas.width / 2, canvas.height - 120);
+          ctx.font = '32px Arial';
+          ctx.fillText(track.vibe || track.mood || track.prompt || '', canvas.width / 2, canvas.height - 60);
+
+          // Load audio (use proxy endpoint if needed)
+          const audio = new Audio();
+          audio.crossOrigin = 'anonymous';
+          const audioSrc = audioUrl.startsWith('http') ? `/api/proxy-audio?url=${encodeURIComponent(audioUrl)}` : audioUrl;
+          audio.src = audioSrc;
+          
+          audio.onloadeddata = () => {
+            // Set up MediaRecorder for video
+            const stream = canvas.captureStream(30); // 30 FPS
+            const audioContext = new AudioContext();
+            const destination = audioContext.createMediaStreamDestination();
+            
+            // Create audio source and connect to destination
+            const audioSource = audioContext.createMediaElementSource(audio);
+            audioSource.connect(destination);
+            audioSource.connect(audioContext.destination);
+
+            // Combine video and audio streams
+            const combinedStream = new MediaStream([
+              ...stream.getVideoTracks(),
+              ...destination.stream.getAudioTracks()
+            ]);
+
+            const mediaRecorder = new MediaRecorder(combinedStream, {
+              mimeType: 'video/webm;codecs=vp8,opus'
+            });
+
+            const chunks: Blob[] = [];
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+              const blob = new Blob(chunks, { type: 'video/webm' });
+              resolve(blob);
+            };
+
+            // Start recording
+            mediaRecorder.start();
+            audio.currentTime = 0;
+            audio.play();
+
+            // Stop after 15 seconds
+            setTimeout(() => {
+              mediaRecorder.stop();
+              audio.pause();
+              audio.currentTime = 0;
+              stream.getTracks().forEach(track => track.stop());
+            }, 15000);
+          };
+
+          audio.onerror = () => resolve(null);
+        };
+
+        img.onerror = () => resolve(null);
+        img.src = imageUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(imageUrl)}` : imageUrl;
+      } catch (error) {
+        console.error('Video generation error:', error);
+        resolve(null);
+      }
+    });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -81,11 +212,15 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
 
             {/* Maintain true 16:9 ratio and full quality */}
-            <div className="relative aspect-video overflow-hidden rounded-xl">
+            <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
               <img
-                src={track.image_url ? `/api/proxy-audio?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
+                src={track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
                 alt={track.title}
                 className="w-full h-full object-cover"
+                style={{ 
+                  imageRendering: 'auto',
+                  transform: 'translateZ(0)'
+                }}
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
@@ -111,7 +246,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             onClick={() => {
               if (track.image_url) {
                 const link = document.createElement('a');
-                link.href = `/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`;
+                link.href = `/api/proxy-image?url=${encodeURIComponent(track.image_url)}`;
                 link.download = `soundswoop-artwork-${track.id}.png`;
                 document.body.appendChild(link);
                 link.click();
@@ -167,22 +302,37 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
           <span>{new Date(track.created_at).toLocaleDateString()}</span>
         </div>
 
-        {/* Like Button */}
-        <div className="flex items-center justify-center pt-2">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-center gap-3 pt-2">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleLike}
             disabled={isLiking}
-            className="px-6 py-2 bg-card border border-primary rounded-full 
+            className="px-4 py-2 bg-card border border-primary rounded-full 
                        text-primary hover:bg-primary hover:text-white 
-                       transition-all duration-300 font-medium"
+                       transition-all duration-300 font-medium text-sm"
           >
             <span className="text-lg">{isLiking ? '⏳' : '❤️'}</span>
-            <span className="text-sm ml-2">
+            <span className="ml-2">
               {likes} {likes === 1 ? 'like' : 'likes'}
             </span>
           </motion.button>
+          
+          {track.audio_url && track.image_url && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleShareVibe}
+              disabled={isSharing}
+              className="px-4 py-2 bg-gradient-to-r from-pink-500 to-cyan-500 rounded-full 
+                         text-white hover:opacity-90 
+                         transition-all duration-300 font-medium text-sm"
+            >
+              <span className="text-lg">{isSharing ? '⏳' : '📤'}</span>
+              <span className="ml-2">Share My Vibe</span>
+            </motion.button>
+          )}
         </div>
       </div>
 

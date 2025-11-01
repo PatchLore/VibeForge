@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     const priceMap: Record<string, string> = {
       pro: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO!,
       creator: process.env.NEXT_PUBLIC_STRIPE_PRICE_CREATOR!,
+      topup_1k: process.env.NEXT_PUBLIC_STRIPE_PRICE_TOPUP_1K || process.env.NEXT_PUBLIC_STRIPE_PRICE_1K || '',
     };
 
     const priceId = priceMap[plan];
@@ -85,11 +86,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine if this is a subscription or one-time payment
+    const isSubscription = plan !== 'topup_1k';
+    
     // Create Stripe checkout session
-    console.log('Creating Stripe checkout session with:', { priceId, userEmail: user.email });
+    console.log('Creating Stripe checkout session with:', { priceId, userEmail: user.email, mode: isSubscription ? 'subscription' : 'payment' });
     
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
+      mode: isSubscription ? 'subscription' : 'payment',
       payment_method_types: ['card'],
       line_items: [
         {

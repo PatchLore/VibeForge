@@ -95,14 +95,17 @@ export default function Navigation({
         🎧 Infinite Vibes
       </motion.a>
 
-      <motion.a
-        href="/pricing"
+      <motion.button
+        onClick={() => {
+          // Trigger pricing modal via custom event
+          window.dispatchEvent(new CustomEvent('openPricingModal'));
+        }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className="px-6 py-3 rounded-xl bg-white/20 text-gray-300 hover:bg-white/30 transition-all"
       >
         💎 Pricing
-      </motion.a>
+      </motion.button>
 
       {/* Auth-aware Navigation */}
       {loading ? (

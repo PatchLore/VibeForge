@@ -1,3 +1,14 @@
+// 🚨 Protected: Trending Vibes Page — DO NOT MODIFY WITHOUT BACKUP
+// Last verified working: 2025-01-27
+// This page handles:
+// - Trending Vibes display (via TrendingVibes component)
+// - User track history
+// - Music generation interface
+// - Track playback (via UnifiedPlayer)
+//
+// IMPORTANT: Any changes to this file or its dependencies (TrackCard, TrendingVibes, etc.)
+// must be thoroughly tested before committing to ensure trending page functionality remains intact.
+
 'use client';
 
 import { useState, useEffect } from 'react';

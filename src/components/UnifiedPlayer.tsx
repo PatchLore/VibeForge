@@ -201,9 +201,13 @@ export default function UnifiedPlayer({
                 />
               ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                 <img
-                  src={videoUrl}
+                  src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
                   alt="AI Generated Artwork"
                   className="w-full h-auto rounded-xl object-cover aspect-video"
+                  style={{ 
+                    imageRendering: 'auto',
+                    transform: 'translateZ(0)'
+                  }}
                   loading="lazy"
                 />
               ) : (

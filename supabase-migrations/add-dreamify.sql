@@ -9,3 +9,4 @@ BEGIN
     ALTER TABLE public.tracks ADD COLUMN dreamify boolean DEFAULT false;
   END IF;
 END $$;
+

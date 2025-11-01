@@ -1,10 +1,38 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+
+const moodExamples = [
+  "euphoric sunrise",
+  "melancholic rain",
+  "nostalgic memories",
+  "energetic workout",
+  "peaceful meditation",
+  "mysterious midnight",
+  "romantic sunset",
+  "anxious cityscape",
+];
 
 export default function Hero() {
+  const [currentMood, setCurrentMood] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMood((prev) => (prev + 1) % moodExamples.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center text-center overflow-hidden bg-gradient-to-b from-[#060510] via-[#0b0a18] to-[#100f24]">
+    <section className="relative min-h-[90vh] flex flex-col items-center justify-center text-center overflow-hidden">
+      {/* Animated Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-cyan-900">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-600/30 via-transparent to-transparent animate-pulse"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-600/30 via-transparent to-transparent animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-cyan-600/20 animate-gradient-xy"></div>
+      </div>
+
       {/* Painterly Background */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -29,19 +57,34 @@ export default function Hero() {
           transition={{ duration: 0.7 }}
           className="hero-title font-bold tracking-tight text-white leading-tight mb-6"
         >
-          Turn Your <span className="text-purple-400">Vibe</span> Into{" "}
-          <span className="text-cyan-400">Sound & Vision</span>
+          AI Mood <span className="text-purple-400">Music</span>{" "}
+          <span className="text-cyan-400">Studio</span>
         </motion.h1>
 
         <motion.p
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.9 }}
-          className="text-lg text-white/70 mb-8"
+          className="text-lg text-white/70 mb-6"
         >
-          Describe a feeling or mood — Soundswoop transforms it into
-          immersive music and artistic visuals within minutes.
+          Type how you feel — we'll turn your emotions into music and visuals.
         </motion.p>
+
+        {/* Rotating Mood Examples */}
+        <motion.div
+          key={currentMood}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.5 }}
+          className="text-xl md:text-2xl font-semibold text-white/90 mb-8 min-h-[3rem] flex items-center justify-center"
+        >
+          <span className="text-purple-300">✨ </span>
+          <span className="mx-2 bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+            {moodExamples[currentMood]}
+          </span>
+          <span className="text-cyan-300"> ✨</span>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

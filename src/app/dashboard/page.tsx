@@ -194,7 +194,7 @@ export default function DashboardPage() {
                   {track.image_url && track.image_url.startsWith('http') ? (
                     <div className="relative">
                       <img
-                        src={`/api/proxy-audio?url=${encodeURIComponent(track.image_url)}`}
+                        src={`/api/proxy-image?url=${encodeURIComponent(track.image_url)}`}
                         alt={track.title || "Generated art"}
                         className="w-full rounded-xl object-cover aspect-video mb-3"
                         onError={(e) => {
