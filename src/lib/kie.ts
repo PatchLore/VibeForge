@@ -88,7 +88,14 @@ export async function checkMusicStatus(taskId: string) {
   const data = await response.json();
   if (!response.ok || data.code !== 200) {
     console.error("🎵 Status check error:", data);
-    throw new Error(`Status check failed: ${data.msg}`);
+    const errorMsg = data.msg || 'Unknown error';
+    
+    // Check if this is a rate limit error
+    if (errorMsg.includes('frequency') || errorMsg.includes('rate limit') || errorMsg.includes('too high')) {
+      throw new Error('RATE_LIMIT');
+    }
+    
+    throw new Error(`Status check failed: ${errorMsg}`);
   }
   
   const result = data.data?.response?.sunoData?.[0];

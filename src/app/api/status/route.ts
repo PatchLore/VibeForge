@@ -7,6 +7,10 @@ import { CREDITS_PER_GENERATION } from "@/lib/config";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// In-memory rate limiting: track last poll time per taskId
+const lastPollTime = new Map<string, number>();
+const MIN_POLL_INTERVAL = 30000; // 30 seconds minimum between Kie.ai API calls per taskId
+
 export async function GET(req: Request) {
   try {
     // 🔧 CRITICAL FIX: Only respond to exact /api/status path
@@ -67,17 +71,19 @@ export async function GET(req: Request) {
     // Track is pending or doesn't exist - check Kie.ai status
     console.log("🔄 [POLL] Checking Kie.ai for task:", taskId);
 
-    // Temporary diagnostic: fetch and log raw Kie status
-    try {
-      const apiKey = process.env.KIE_MUSIC_API_KEY || process.env.VIBEFORGE_API_KEY;
-      const diagRes = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
-        headers: { Authorization: `Bearer ${apiKey || ''}` }
-      });
-      const diagJson = await diagRes.json().catch(() => ({}));
-      console.log("[DEBUG][KIE STATUS]", taskId, JSON.stringify(diagJson));
-    } catch (e) {
-      console.warn("[DEBUG][KIE STATUS] fetch failed", String(e));
+    // Rate limiting: only poll Kie.ai if enough time has passed since last poll for this taskId
+    const now = Date.now();
+    const lastPoll = lastPollTime.get(taskId) || 0;
+    const timeSinceLastPoll = now - lastPoll;
+
+    if (timeSinceLastPoll < MIN_POLL_INTERVAL) {
+      console.log(`⏭️ [POLL] Rate limited: ${Math.round(timeSinceLastPoll / 1000)}s since last poll (min: ${MIN_POLL_INTERVAL / 1000}s)`);
+      return NextResponse.json({ status: "PENDING" });
     }
+
+    // Update last poll time
+    lastPollTime.set(taskId, now);
+
     try {
       const kieData = await checkMusicStatus(taskId);
       
@@ -155,6 +161,15 @@ export async function GET(req: Request) {
       }
     } catch (pollError: any) {
       console.error("⚠️ [POLL] Kie.ai check failed:", pollError.message);
+      
+      // Handle rate limit errors by increasing poll interval for this task
+      if (pollError.message === 'RATE_LIMIT') {
+        console.warn("🚫 [POLL] Rate limit hit for taskId:", taskId);
+        // Set a longer wait time (2 minutes) before next poll for this task
+        lastPollTime.set(taskId, Date.now() + 120000);
+        return NextResponse.json({ status: "PENDING", rateLimited: true });
+      }
+      
       return NextResponse.json({ status: "PENDING" });
     }
   } catch (err: unknown) {
