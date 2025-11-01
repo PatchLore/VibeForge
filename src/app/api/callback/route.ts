@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     // Load the pending track with extended prompt
     const { data: pending, error: fetchErr } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt, extended_prompt_image')
+      .select('id, user_id, status, prompt, extended_prompt, extended_prompt_image, vibe')
       .eq('task_id', taskId)
       .maybeSingle();
 
@@ -187,17 +187,29 @@ export async function POST(request: NextRequest) {
       if (pending?.extended_prompt_image) {
         try {
           console.log('🎨 [CALLBACK] No valid image provided, generating new 2K image');
-          console.log('[IMAGE] Skipped: No image URL provided, regenerating synchronously');
+          console.log('[IMAGE] Sync fallback triggered');
           const gen = await generateImage(pending.extended_prompt_image);
-          finalImageUrl = gen.imageUrl;
-          finalResolution = gen.resolution;
-          console.log('[IMAGE] Regenerating synchronously after missing image');
+          
+          if (gen.imageUrl) {
+            // Verify the regenerated image
+            const verified = await verifyAndUpscaleTo2K(gen.imageUrl, TARGET);
+            if (verified.width >= TARGET.width && verified.height >= TARGET.height) {
+              finalImageUrl = verified.url;
+              finalResolution = `${verified.width}x${verified.height}`;
+              console.log('[IMAGE] Verified:', `${verified.width}x${verified.height}`);
+              console.log('[IMAGE] Final image saved');
+            } else {
+              console.log('[IMAGE] All generation attempts failed — image_url not saved');
+            }
+          } else {
+            console.log('[IMAGE] All generation attempts failed — image_url not saved');
+          }
         } catch (e) {
           console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
-          console.log('[IMAGE] Skipped: Generation failed');
+          console.log('[IMAGE] All generation attempts failed — image_url not saved');
         }
       } else {
-        console.log('[IMAGE] Skipped: No image URL and no prompt to regenerate');
+        console.log('[IMAGE] All generation attempts failed — image_url not saved');
       }
     } else if (sourceImageUrl) {
       try {
@@ -210,20 +222,34 @@ export async function POST(request: NextRequest) {
           finalResolution = `${checked.width}x${checked.height}`;
           console.log(`[🖼️ Verification] ✅ Image verified at ${finalResolution}`);
           console.log('[IMAGE] Verified:', `${checked.width}x${checked.height}`);
+          console.log('[IMAGE] Final image saved');
         } else if (pending?.extended_prompt_image) {
           console.warn(`[🖼️ Verification] ⚠️ Image too small (${checked.width}x${checked.height}); regenerating at 2K with stored prompt`);
-          console.log('[IMAGE] Skipped: URL invalid or too small, regenerating synchronously');
+          console.log('[IMAGE] Sync fallback triggered');
           const regen = await generateImage(pending.extended_prompt_image);
-          finalImageUrl = regen.imageUrl;
-          finalResolution = regen.resolution;
+          
+          if (regen.imageUrl) {
+            // Verify the regenerated image
+            const verified = await verifyAndUpscaleTo2K(regen.imageUrl, TARGET);
+            if (verified.width >= TARGET.width && verified.height >= TARGET.height) {
+              finalImageUrl = verified.url;
+              finalResolution = `${verified.width}x${verified.height}`;
+              console.log('[IMAGE] Verified:', `${verified.width}x${verified.height}`);
+              console.log('[IMAGE] Final image saved');
+            } else {
+              console.log('[IMAGE] All generation attempts failed — image_url not saved');
+            }
+          } else {
+            console.log('[IMAGE] All generation attempts failed — image_url not saved');
+          }
         } else {
           console.warn(`[🖼️ Verification] ⚠️ Skipping image update: image too small (${checked.width}x${checked.height}) and no prompt to regenerate`);
-          console.log('[IMAGE] Skipped: URL invalid or too small, no prompt to regenerate');
+          console.log('[IMAGE] All generation attempts failed — image_url not saved');
         }
       } catch (e) {
         console.error('❌ [CALLBACK] Image verify/upscale failed:', e);
         console.warn('[🖼️ Verification] Skipping image update due to verification error');
-        console.log('[IMAGE] Skipped: URL invalid or too small, verification failed');
+        console.log('[IMAGE] All generation attempts failed — image_url not saved');
       }
     }
 
@@ -237,9 +263,18 @@ export async function POST(request: NextRequest) {
 
     console.log("🎵 [TITLE AUTO] Generated unique title:", safeTitle);
 
+    // Handle mood metadata
+    const safeMood = pending?.vibe || 'Unknown Mood';
+    if (!pending?.vibe) {
+      console.log("[MOOD] Missing, defaulted to 'Unknown Mood'");
+    } else {
+      console.log(`[MOOD] Saved: ${safeMood}`);
+    }
+
     const updateFields: any = {
       title: safeTitle,
       prompt: safePrompt,
+      vibe: safeMood, // Preserve mood/vibe
       audio_url: completed.audio_url,
       image_url: finalImageUrl ?? null, // Only use verified/regenerated image, never fallback to unverified
       resolution: finalResolution ?? null,
@@ -248,6 +283,11 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
     
+    if (finalResolution) {
+      console.log(`[RESOLUTION] Set: ${finalResolution}`);
+    } else {
+      console.log('[RESOLUTION] Skipped — no valid image found');
+    }
     console.log('🖼️ [CALLBACK] Final image resolution:', finalResolution);
 
     console.log('💾 [CALLBACK] Updating track:', updateFields);
