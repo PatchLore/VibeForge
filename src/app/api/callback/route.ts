@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     console.log('📌 taskId:', taskId, 'status:', status, 'completed?', !!completed);
     if (isImageOnly) {
       console.log('🖼️ [CALLBACK] Image-only callback detected (Seedream)');
+      console.log('[IMAGE] Callback received for image generation');
     }
 
     if (!taskId) {
@@ -186,12 +187,17 @@ export async function POST(request: NextRequest) {
       if (pending?.extended_prompt_image) {
         try {
           console.log('🎨 [CALLBACK] No valid image provided, generating new 2K image');
+          console.log('[IMAGE] Skipped: No image URL provided, regenerating synchronously');
           const gen = await generateImage(pending.extended_prompt_image);
           finalImageUrl = gen.imageUrl;
           finalResolution = gen.resolution;
+          console.log('[IMAGE] Regenerating synchronously after missing image');
         } catch (e) {
           console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
+          console.log('[IMAGE] Skipped: Generation failed');
         }
+      } else {
+        console.log('[IMAGE] Skipped: No image URL and no prompt to regenerate');
       }
     } else if (sourceImageUrl) {
       try {
@@ -203,17 +209,21 @@ export async function POST(request: NextRequest) {
           finalImageUrl = checked.url;
           finalResolution = `${checked.width}x${checked.height}`;
           console.log(`[🖼️ Verification] ✅ Image verified at ${finalResolution}`);
+          console.log('[IMAGE] Verified:', `${checked.width}x${checked.height}`);
         } else if (pending?.extended_prompt_image) {
           console.warn(`[🖼️ Verification] ⚠️ Image too small (${checked.width}x${checked.height}); regenerating at 2K with stored prompt`);
+          console.log('[IMAGE] Skipped: URL invalid or too small, regenerating synchronously');
           const regen = await generateImage(pending.extended_prompt_image);
           finalImageUrl = regen.imageUrl;
           finalResolution = regen.resolution;
         } else {
           console.warn(`[🖼️ Verification] ⚠️ Skipping image update: image too small (${checked.width}x${checked.height}) and no prompt to regenerate`);
+          console.log('[IMAGE] Skipped: URL invalid or too small, no prompt to regenerate');
         }
       } catch (e) {
         console.error('❌ [CALLBACK] Image verify/upscale failed:', e);
         console.warn('[🖼️ Verification] Skipping image update due to verification error');
+        console.log('[IMAGE] Skipped: URL invalid or too small, verification failed');
       }
     }
 
