@@ -96,17 +96,26 @@ export async function GET(req: Request) {
           duration: kieData.duration
         });
         
-        // Update or insert the track with both audio and image
+        // Update or insert the track - ONLY update audio_url, preserve existing image_url if present
         const trackData: any = {
           task_id: taskId,
           title: kieData.title || `Generated Track`,
           prompt: data?.prompt || 'Generated',
           audio_url: kieData.audio_url,
-          image_url: kieData.image_url || null,
+          // CRITICAL: Don't overwrite existing image_url (likely 2K from callback)
+          // Only set if image_url doesn't exist yet
           duration: kieData.duration || 600,
           status: 'completed',
           updated_at: new Date().toISOString()
         };
+
+        // Only set image_url from Suno if track doesn't have one yet
+        if (!data?.image_url && kieData.image_url) {
+          trackData.image_url = kieData.image_url;
+          console.log("📸 [POLL] Setting Suno image_url (no existing image)");
+        } else if (data?.image_url) {
+          console.log("🖼️ [POLL] Preserving existing image_url (not overwriting with Suno thumbnail)");
+        }
 
         if (data?.user_id) {
           trackData.user_id = data.user_id;

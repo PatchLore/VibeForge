@@ -135,14 +135,30 @@ export async function POST(request: NextRequest) {
           if (retryData?.data?.response?.sunoData?.[0]?.audio_url) {
             console.log("✅ [CALLBACK RETRY SUCCESS] Audio ready, updating DB.");
             if (supabaseServer) {
+              // Check if track already has image_url before overwriting
+              const { data: existing } = await supabaseServer
+                .from("tracks")
+                .select("image_url")
+                .eq("task_id", taskId)
+                .maybeSingle();
+              
+              const updateData: any = {
+                audio_url: retryData.data.response.sunoData[0].audio_url,
+                status: "completed",
+                updated_at: new Date().toISOString(),
+              };
+              
+              // Only set image_url if track doesn't already have one
+              if (!existing?.image_url && retryData.data.response.sunoData[0].image_url) {
+                updateData.image_url = retryData.data.response.sunoData[0].image_url;
+                console.log("📸 [CALLBACK RETRY] Setting Suno image_url (no existing image)");
+              } else {
+                console.log("🖼️ [CALLBACK RETRY] Preserving existing image_url");
+              }
+              
               await supabaseServer
                 .from("tracks")
-                .update({
-                  audio_url: retryData.data.response.sunoData[0].audio_url,
-                  image_url: retryData.data.response.sunoData[0].image_url || null,
-                  status: "completed",
-                  updated_at: new Date().toISOString(),
-                })
+                .update(updateData)
                 .eq("task_id", taskId);
               console.log("✅ [CALLBACK RETRY] Track completed successfully");
             }

@@ -20,14 +20,30 @@ async function startFallbackPolling(taskId: string) {
       if (pollData.status === "SUCCESS" && pollData.track?.audioUrl) {
         console.log("✅ [POLL SUCCESS] Audio ready from /api/status");
         if (supabaseAdmin) {
+          // Check if track already has image_url before overwriting
+          const { data: existing } = await supabaseAdmin
+            .from("tracks")
+            .select("image_url")
+            .eq("task_id", taskId)
+            .maybeSingle();
+          
+          const updateData: any = {
+            audio_url: pollData.track.audioUrl,
+            status: "completed",
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Only set image_url if track doesn't already have one
+          if (!existing?.image_url && pollData.track.imageUrl) {
+            updateData.image_url = pollData.track.imageUrl;
+            console.log("📸 [FALLBACK POLLING] Setting image_url (no existing image)");
+          } else {
+            console.log("🖼️ [FALLBACK POLLING] Preserving existing image_url");
+          }
+          
           await supabaseAdmin
             .from("tracks")
-            .update({
-              audio_url: pollData.track.audioUrl,
-              image_url: pollData.track.imageUrl || null,
-              status: "completed",
-              updated_at: new Date().toISOString(),
-            })
+            .update(updateData)
             .eq("task_id", taskId);
           console.log("✅ [FALLBACK POLLING] Track completed successfully");
           return;
@@ -54,14 +70,30 @@ async function startFallbackPolling(taskId: string) {
       if (checkData?.data?.response?.sunoData?.[0]?.audio_url) {
         console.log("✅ [POLL FALLBACK SUCCESS] Retrieved final audio_url directly.");
         if (supabaseAdmin) {
+          // Check if track already has image_url before overwriting
+          const { data: existing } = await supabaseAdmin
+            .from("tracks")
+            .select("image_url")
+            .eq("task_id", taskId)
+            .maybeSingle();
+          
+          const updateData: any = {
+            audio_url: checkData.data.response.sunoData[0].audio_url,
+            status: "completed",
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Only set image_url if track doesn't already have one
+          if (!existing?.image_url && checkData.data.response.sunoData[0].image_url) {
+            updateData.image_url = checkData.data.response.sunoData[0].image_url;
+            console.log("📸 [POLL FALLBACK] Setting image_url (no existing image)");
+          } else {
+            console.log("🖼️ [POLL FALLBACK] Preserving existing image_url");
+          }
+          
           await supabaseAdmin
             .from("tracks")
-            .update({
-              audio_url: checkData.data.response.sunoData[0].audio_url,
-              image_url: checkData.data.response.sunoData[0].image_url || null,
-              status: "completed",
-              updated_at: new Date().toISOString(),
-            })
+            .update(updateData)
             .eq("task_id", taskId);
           console.log("✅ [FALLBACK POLLING] Track completed via direct API check");
         }
