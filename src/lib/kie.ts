@@ -113,14 +113,11 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   const apiKey = KIE_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
-  const callBackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
-  console.log("🔔 [KIE IMAGE] Callback URL:", callBackUrl);
-
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
   const model = "bytedance/seedream-v4-text-to-image";
   const resolution = "2048x1152"; // 2K resolution for highest quality
   
-  // Optimal 2K parameters for highest quality with callback support
+  // Optimal 2K parameters for highest quality (SYNCHRONOUS - no callback)
   const imageParams = {
     model: model,
     prompt: finalPrompt,
@@ -129,17 +126,16 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     quality: "high",
     steps: 30,
     cfg_scale: 8,
-    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
-    callBackUrl: callBackUrl
+    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
+    // ❌ REMOVED: callBackUrl to make this synchronous
   };
   
-  console.log("🖼️ [KIE IMAGE] Model:", model, "| Resolution:", resolution, "| Callback:", callBackUrl);
-  console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
-  console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
+  console.log("🖼️ [SYNC IMAGE] Model:", model, "| Resolution:", resolution);
+  console.log("🎨 [SYNC IMAGE] Prompt:", finalPrompt);
+  console.log("🎨 [SYNC IMAGE] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
 
   try {
-    console.log("🧠 [DEBUG IMAGE] Sending imagePrompt:", finalPrompt);
-    console.log("🧠 [DEBUG IMAGE] Request params:", imageParams);
+    console.log("🧠 [SYNC IMAGE] Sending request for 2K image generation");
     
     const response = await fetch(`${BASE_URL}/generate/image`, {
       method: "POST",
@@ -150,15 +146,14 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       body: JSON.stringify(imageParams),
     });
 
-    console.log("🧠 [DEBUG IMAGE] Kie.ai response status:", response.status);
-    console.log("🧠 [DEBUG IMAGE] Kie.ai response headers:", Object.fromEntries(response.headers.entries()));
+    console.log("🧠 [SYNC IMAGE] Response status:", response.status);
 
     const data = await response.json();
     if (!response.ok || data.code !== 200) {
-      console.error("🖼️ [IMAGE GEN] Error response:", data);
+      console.error("🖼️ [SYNC IMAGE] Error response:", data);
       
       // Retry once with explicit 2K parameters if first attempt fails
-      console.log("🖼️ [KIE IMAGE] Retrying at 2K");
+      console.log("🔄 [SYNC IMAGE] Retrying once with adjusted parameters");
       const retryParams = {
         model: "bytedance/seedream-v4-text-to-image",
         prompt: finalPrompt,
@@ -167,11 +162,8 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         quality: "high",
         steps: 25,
         cfg_scale: 7,
-        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
-        callBackUrl: callBackUrl
+        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
       };
-      
-      console.log("🧠 [DEBUG IMAGE] Sending retry request with params:", retryParams);
       
       const retryResponse = await fetch(`${BASE_URL}/generate/image`, {
         method: "POST",
@@ -182,136 +174,58 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         body: JSON.stringify(retryParams),
       });
       
-      console.log("🧠 [DEBUG IMAGE] Retry response status:", retryResponse.status);
-      
       const retryData = await retryResponse.json();
       if (!retryResponse.ok || retryData.code !== 200) {
-        console.error("🖼️ [IMAGE GEN] Retry also failed:", retryData);
-        
-        // Final fallback to lower resolution only if 2K completely fails
-        console.log("🔄 [IMAGE GEN] Final fallback to 1024x576 resolution");
-        const fallbackParams = {
-          ...imageParams,
-          resolution: "1024x576",
-          quality: "high"
-        };
-        
-        console.log("🧠 [DEBUG IMAGE] Sending fallback request with params:", fallbackParams);
-        
-        const fallbackResponse = await fetch(`${BASE_URL}/generate/image`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(fallbackParams),
-        });
-        
-        console.log("🧠 [DEBUG IMAGE] Fallback response status:", fallbackResponse.status);
-        
-        const fallbackData = await fallbackResponse.json();
-        if (!fallbackResponse.ok || fallbackData.code !== 200) {
-          console.error("🖼️ [IMAGE GEN] All attempts failed:", fallbackData);
-          throw new Error(`Image generation failed: ${fallbackData.msg}`);
-        }
-        
-        console.log("✅ [IMAGE GEN] Image generated successfully (fallback resolution)");
-        console.log("🖼️ [DEBUG IMAGE SAVED] Fallback Image URL received:", fallbackData.data?.response?.imageUrl);
-        return { imageUrl: fallbackData.data?.response?.imageUrl, resolution: "1024x576" };
+        console.error("🖼️ [SYNC IMAGE] Retry failed:", retryData);
+        throw new Error(`Image generation failed after retry: ${retryData.msg || data.msg}`);
       }
       
-      console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution (retry)");
-      console.log("🎨 [IMAGE GEN] Image URL:", retryData.data?.response?.imageUrl);
-      console.log("🖼️ [DEBUG IMAGE SAVED] Retry Image URL received:", retryData.data?.response?.imageUrl);
-      return { imageUrl: retryData.data?.response?.imageUrl, resolution: "2048x1152" };
+      const retryImageUrl = retryData.data?.response?.imageUrl;
+      if (!retryImageUrl) {
+        throw new Error("No image URL received from Kie.ai (retry)");
+      }
+      
+      // Verify retry image is at least 2048x1152
+      try {
+        const verified = await verifyAndUpscaleTo2K(retryImageUrl, { width: 2048, height: 1152 });
+        console.log(`🖼️ [SYNC IMAGE] Retry image verified at ${verified.width}x${verified.height}`);
+        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${retryImageUrl}`);
+        return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+      } catch (verifyErr) {
+        console.warn("⚠️ [SYNC IMAGE] Retry image verification failed:", verifyErr);
+        console.log(`🖼️ [SYNC IMAGE] Returning retry image without verification: ${retryImageUrl}`);
+        return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+      }
     }
 
     const imageUrl = data.data?.response?.imageUrl;
-    console.log("✅ [KIE IMAGE] Received:", imageUrl);
+    console.log("✅ [SYNC IMAGE] Received image URL:", imageUrl);
     
-    if (imageUrl) {
-      try {
-        // Enhanced 2K quality verification with size checking
-        const head = await fetch(imageUrl, { method: "HEAD" });
-        const size = head.headers.get("content-length");
-        const widthCheck = imageUrl.includes("2048") || imageUrl.includes("1152") || imageUrl.includes("2k");
-        
-        console.log("🔍 [IMAGE CHECK] Size:", size, "bytes, Width check:", widthCheck);
-        
-        // Check if image is < 2K resolution and needs upscaling
-        const isLowRes = (size && parseInt(size) < 800000) || !widthCheck;
-        
-        if (isLowRes) {
-          console.warn("⚠️ [IMAGE CHECK] Low-res detected (< 2K or < 800KB), attempting upscale retry...");
-          console.warn("⚠️ [IMAGE CHECK] Image size:", size, "bytes | Width check:", widthCheck);
-          await new Promise(r => setTimeout(r, 1500));
-          
-          // Upscaler fallback: request explicitly at 2K resolution with enhanced quality
-          const upscalerParams = {
-            model: "bytedance/seedream-v4-text-to-image",
-            prompt: finalPrompt,
-            resolution: "2048x1152", // Explicit 2K resolution
-            aspect_ratio: "16:9",
-            quality: "high",
-            steps: 35, // Increased steps for better quality
-            cfg_scale: 8.5, // Slightly higher guidance
-            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality, upscaled",
-            callBackUrl: callBackUrl
-          };
-          
-          console.log("🔄 [UPSCALER] Sending upscaler request with enhanced 2K params:", upscalerParams);
-          
-          const upscalerResponse = await fetch(`${BASE_URL}/generate/image`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(upscalerParams),
-          });
-          
-          console.log("🔄 [UPSCALER] Upscaler response status:", upscalerResponse.status);
-          
-          const upscalerData = await upscalerResponse.json();
-          if (!upscalerResponse.ok || upscalerData.code !== 200) {
-            console.error("❌ [UPSCALER] Upscaler retry failed:", upscalerData);
-            console.log("⚠️ [IMAGE GEN] Returning original image despite low resolution");
-            return { imageUrl, resolution: "2048x1152" };
-          }
-          
-          const upscaledImageUrl = upscalerData.data?.response?.imageUrl;
-          if (upscaledImageUrl) {
-            // Verify upscaled image quality
-            const upscaledHead = await fetch(upscaledImageUrl, { method: "HEAD" }).catch(() => null);
-            const upscaledSize = upscaledHead?.headers.get("content-length");
-            const upscaledWidthCheck = upscaledImageUrl.includes("2048") || upscaledImageUrl.includes("1152") || upscaledImageUrl.includes("2k");
-            
-            if ((upscaledSize && parseInt(upscaledSize) >= 800000) || upscaledWidthCheck) {
-              console.log("✅ [UPSCALER] Successfully upscaled to 2K | Size:", upscaledSize, "bytes");
-              return { imageUrl: upscaledImageUrl, resolution: "2048x1152" };
-            } else {
-              console.warn("⚠️ [UPSCALER] Upscaled image still appears low-res, using original");
-              return { imageUrl, resolution: "2048x1152" };
-            }
-          }
-        }
-        
-        console.log("✅ [IMAGE GEN] Image generated successfully at 2K resolution");
-        console.log("🎨 [IMAGE GEN] Image URL:", imageUrl);
-        console.log("🖼️ [DEBUG IMAGE SAVED] Image URL received:", imageUrl);
-        return { imageUrl, resolution: "2048x1152" };
-        
-      } catch (err) {
-        console.error("❌ [IMAGE CHECK] Verification failed:", err);
-        console.log("⚠️ [IMAGE GEN] Returning image without verification");
-        return { imageUrl, resolution: "2048x1152" };
-      }
+    if (!imageUrl) {
+      throw new Error("No image URL received from Kie.ai");
     }
     
-    throw new Error("No image URL received from Kie.ai");
+    // Verify image is at least 2048x1152 before returning
+    try {
+      const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
+      console.log(`🖼️ [SYNC IMAGE] Image verified at ${verified.width}x${verified.height}`);
+      
+      if (verified.width >= 2048 && verified.height >= 1152) {
+        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${imageUrl}`);
+        return { imageUrl, resolution: "2048x1152" };
+      } else {
+        console.warn(`⚠️ [SYNC IMAGE] Image too small (${verified.width}x${verified.height}), returning anyway`);
+        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${imageUrl}`);
+        return { imageUrl, resolution: "2048x1152" };
+      }
+    } catch (verifyErr) {
+      console.warn("⚠️ [SYNC IMAGE] Verification failed:", verifyErr);
+      console.log(`🖼️ [SYNC IMAGE] Returning image without verification: ${imageUrl}`);
+      return { imageUrl, resolution: "2048x1152" };
+    }
     
   } catch (error) {
-    console.error("❌ [IMAGE GEN] Generation error:", error);
+    console.error("❌ [SYNC IMAGE] Generation error:", error);
     throw error;
   }
 }
