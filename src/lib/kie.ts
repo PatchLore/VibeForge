@@ -131,11 +131,19 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   };
   
   console.log("🖼️ [SYNC IMAGE] Model:", model, "| Resolution:", resolution);
-  console.log("🎨 [SYNC IMAGE] Prompt:", finalPrompt);
+  console.log("🎨 [SYNC IMAGE] Prompt length:", finalPrompt.length, "characters");
+  console.log("🎨 [SYNC IMAGE] Prompt preview:", finalPrompt.substring(0, 150) + (finalPrompt.length > 150 ? '...' : ''));
   console.log("🎨 [SYNC IMAGE] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
+  console.log("🔑 [SYNC IMAGE] API Key present:", !!apiKey, "(length:", apiKey?.length || 0, ")");
 
   try {
     console.log("🧠 [SYNC IMAGE] Sending request for 2K image generation");
+    console.log("🌐 [SYNC IMAGE] URL:", `${BASE_URL}/generate/image`);
+    console.log("📤 [SYNC IMAGE] Headers:", {
+      Authorization: `Bearer ${apiKey?.substring(0, 10)}...`,
+      ContentType: "application/json"
+    });
+    console.log("📦 [SYNC IMAGE] Request body:", JSON.stringify(imageParams, null, 2));
     
     const response = await fetch(`${BASE_URL}/generate/image`, {
       method: "POST",
@@ -147,8 +155,10 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     });
 
     console.log("🧠 [SYNC IMAGE] Response status:", response.status);
+    console.log("🧠 [SYNC IMAGE] Response headers:", Object.fromEntries(response.headers.entries()));
 
     const data = await response.json();
+    console.log("📥 [SYNC IMAGE] Response data:", JSON.stringify(data, null, 2));
     if (!response.ok || data.code !== 200) {
       console.error("🖼️ [SYNC IMAGE] Error response:", data);
       
@@ -174,14 +184,21 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         body: JSON.stringify(retryParams),
       });
       
+      console.log("🔄 [SYNC IMAGE] Retry response status:", retryResponse.status);
       const retryData = await retryResponse.json();
+      console.log("📥 [SYNC IMAGE] Retry response data:", JSON.stringify(retryData, null, 2));
+      
       if (!retryResponse.ok || retryData.code !== 200) {
         console.error("🖼️ [SYNC IMAGE] Retry failed:", retryData);
         throw new Error(`Image generation failed after retry: ${retryData.msg || data.msg}`);
       }
       
+      console.log("🔍 [SYNC IMAGE] Retry success, extracting image URL...");
       const retryImageUrl = retryData.data?.response?.imageUrl;
+      console.log("🔍 [SYNC IMAGE] Retry image URL:", retryImageUrl ? retryImageUrl.substring(0, 100) + '...' : 'NULL');
+      
       if (!retryImageUrl) {
+        console.error("❌ [SYNC IMAGE] Retry data structure:", JSON.stringify(retryData, null, 2));
         throw new Error("No image URL received from Kie.ai (retry)");
       }
       
@@ -198,10 +215,21 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       }
     }
 
+    console.log("🔍 [SYNC IMAGE] Extracting image URL from response...");
+    console.log("🔍 [SYNC IMAGE] Data structure:", {
+      hasData: !!data.data,
+      hasResponse: !!data.data?.response,
+      hasImageUrl: !!data.data?.response?.imageUrl,
+      dataKeys: Object.keys(data),
+      dataDataKeys: data.data ? Object.keys(data.data) : null,
+      dataResponseKeys: data.data?.response ? Object.keys(data.data.response) : null
+    });
+    
     const imageUrl = data.data?.response?.imageUrl;
     console.log("✅ [SYNC IMAGE] Received image URL:", imageUrl);
     
     if (!imageUrl) {
+      console.error("❌ [SYNC IMAGE] Data structure dump:", JSON.stringify(data, null, 2));
       throw new Error("No image URL received from Kie.ai");
     }
     

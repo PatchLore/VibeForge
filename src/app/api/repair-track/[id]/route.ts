@@ -61,20 +61,40 @@ export async function GET(
     }
     
     console.log(`🎨 [REPAIR] Using prompt: ${track.extended_prompt_image.substring(0, 100)}...`);
+    console.log(`📝 [REPAIR] Full prompt length: ${track.extended_prompt_image.length} characters`);
     
     // Generate new image synchronously
-    console.log(`🖼️ [REPAIR] Generating new image...`);
+    console.log(`🖼️ [REPAIR] Calling generateImage() with prompt...`);
     const result = await generateImage(track.extended_prompt_image);
     
-    if (!result.imageUrl) {
-      console.log(`❌ [REPAIR] No image URL returned from generator`);
+    console.log(`📦 [REPAIR] generateImage() returned:`, {
+      hasImageUrl: !!result.imageUrl,
+      hasResolution: !!result.resolution,
+      imageUrl: result.imageUrl ? result.imageUrl.substring(0, 100) + '...' : null,
+      resolution: result.resolution
+    });
+    
+    if (!result) {
+      console.log(`❌ [REPAIR] generateImage() returned undefined/null`);
       return NextResponse.json({
         success: false,
-        error: "Image generation failed - no URL returned"
+        error: "Image generation failed - no result returned"
       }, { status: 500 });
     }
     
-    console.log(`✅ [REPAIR] Image generated: ${result.imageUrl}`);
+    if (!result.imageUrl) {
+      console.log(`❌ [REPAIR] No image URL in result object`);
+      console.log(`🔍 [REPAIR] Full result:`, JSON.stringify(result, null, 2));
+      return NextResponse.json({
+        success: false,
+        error: "Image generation failed - no URL returned",
+        details: { result }
+      }, { status: 500 });
+    }
+    
+    console.log(`✅ [REPAIR] Image generated successfully`);
+    console.log(`🔗 [REPAIR] Image URL: ${result.imageUrl}`);
+    console.log(`📐 [REPAIR] Resolution: ${result.resolution}`);
     
     // Verify the image dimensions
     console.log(`🔍 [REPAIR] Verifying image dimensions...`);
