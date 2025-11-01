@@ -130,21 +130,7 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     // ❌ REMOVED: callBackUrl to make this synchronous
   };
   
-  console.log("🖼️ [SYNC IMAGE] Model:", model, "| Resolution:", resolution);
-  console.log("🎨 [SYNC IMAGE] Prompt length:", finalPrompt.length, "characters");
-  console.log("🎨 [SYNC IMAGE] Prompt preview:", finalPrompt.substring(0, 150) + (finalPrompt.length > 150 ? '...' : ''));
-  console.log("🎨 [SYNC IMAGE] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
-  console.log("🔑 [SYNC IMAGE] API Key present:", !!apiKey, "(length:", apiKey?.length || 0, ")");
-
   try {
-    console.log("🧠 [SYNC IMAGE] Sending request for 2K image generation");
-    console.log("🌐 [SYNC IMAGE] URL:", `${BASE_URL}/generate/image`);
-    console.log("📤 [SYNC IMAGE] Headers:", {
-      Authorization: `Bearer ${apiKey?.substring(0, 10)}...`,
-      ContentType: "application/json"
-    });
-    console.log("📦 [SYNC IMAGE] Request body:", JSON.stringify(imageParams, null, 2));
-    
     const response = await fetch(`${BASE_URL}/generate/image`, {
       method: "POST",
       headers: {
@@ -154,16 +140,11 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
       body: JSON.stringify(imageParams),
     });
 
-    console.log("🧠 [SYNC IMAGE] Response status:", response.status);
-    console.log("🧠 [SYNC IMAGE] Response headers:", Object.fromEntries(response.headers.entries()));
-
     const data = await response.json();
-    console.log("📥 [SYNC IMAGE] Response data:", JSON.stringify(data, null, 2));
     if (!response.ok || data.code !== 200) {
-      console.error("🖼️ [SYNC IMAGE] Error response:", data);
+      console.error("🖼️ [SYNC IMAGE] Failed, retrying:", data.msg || data);
       
-      // Retry once with explicit 2K parameters if first attempt fails
-      console.log("🔄 [SYNC IMAGE] Retrying once with adjusted parameters");
+      // Retry once with adjusted parameters
       const retryParams = {
         model: "bytedance/seedream-v4-text-to-image",
         prompt: finalPrompt,
@@ -184,73 +165,43 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         body: JSON.stringify(retryParams),
       });
       
-      console.log("🔄 [SYNC IMAGE] Retry response status:", retryResponse.status);
       const retryData = await retryResponse.json();
-      console.log("📥 [SYNC IMAGE] Retry response data:", JSON.stringify(retryData, null, 2));
       
       if (!retryResponse.ok || retryData.code !== 200) {
         console.error("🖼️ [SYNC IMAGE] Retry failed:", retryData);
         throw new Error(`Image generation failed after retry: ${retryData.msg || data.msg}`);
       }
       
-      console.log("🔍 [SYNC IMAGE] Retry success, extracting image URL...");
       const retryImageUrl = retryData.data?.response?.imageUrl;
-      console.log("🔍 [SYNC IMAGE] Retry image URL:", retryImageUrl ? retryImageUrl.substring(0, 100) + '...' : 'NULL');
       
       if (!retryImageUrl) {
-        console.error("❌ [SYNC IMAGE] Retry data structure:", JSON.stringify(retryData, null, 2));
+        console.error("❌ [SYNC IMAGE] No URL in retry response:", retryData);
         throw new Error("No image URL received from Kie.ai (retry)");
       }
       
-      // Verify retry image is at least 2048x1152
+      // Verify retry image
       try {
-        const verified = await verifyAndUpscaleTo2K(retryImageUrl, { width: 2048, height: 1152 });
-        console.log(`🖼️ [SYNC IMAGE] Retry image verified at ${verified.width}x${verified.height}`);
-        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${retryImageUrl}`);
-        return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+        await verifyAndUpscaleTo2K(retryImageUrl, { width: 2048, height: 1152 });
       } catch (verifyErr) {
-        console.warn("⚠️ [SYNC IMAGE] Retry image verification failed:", verifyErr);
-        console.log(`🖼️ [SYNC IMAGE] Returning retry image without verification: ${retryImageUrl}`);
-        return { imageUrl: retryImageUrl, resolution: "2048x1152" };
+        console.warn("⚠️ [SYNC IMAGE] Retry verification failed:", verifyErr);
       }
+      return { imageUrl: retryImageUrl, resolution: "2048x1152" };
     }
-
-    console.log("🔍 [SYNC IMAGE] Extracting image URL from response...");
-    console.log("🔍 [SYNC IMAGE] Data structure:", {
-      hasData: !!data.data,
-      hasResponse: !!data.data?.response,
-      hasImageUrl: !!data.data?.response?.imageUrl,
-      dataKeys: Object.keys(data),
-      dataDataKeys: data.data ? Object.keys(data.data) : null,
-      dataResponseKeys: data.data?.response ? Object.keys(data.data.response) : null
-    });
     
     const imageUrl = data.data?.response?.imageUrl;
-    console.log("✅ [SYNC IMAGE] Received image URL:", imageUrl);
     
     if (!imageUrl) {
-      console.error("❌ [SYNC IMAGE] Data structure dump:", JSON.stringify(data, null, 2));
+      console.error("❌ [SYNC IMAGE] No URL in response:", data);
       throw new Error("No image URL received from Kie.ai");
     }
     
     // Verify image is at least 2048x1152 before returning
     try {
-      const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
-      console.log(`🖼️ [SYNC IMAGE] Image verified at ${verified.width}x${verified.height}`);
-      
-      if (verified.width >= 2048 && verified.height >= 1152) {
-        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${imageUrl}`);
-        return { imageUrl, resolution: "2048x1152" };
-      } else {
-        console.warn(`⚠️ [SYNC IMAGE] Image too small (${verified.width}x${verified.height}), returning anyway`);
-        console.log(`🖼️ [SYNC IMAGE] Image generated at: ${imageUrl}`);
-        return { imageUrl, resolution: "2048x1152" };
-      }
+      await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
     } catch (verifyErr) {
       console.warn("⚠️ [SYNC IMAGE] Verification failed:", verifyErr);
-      console.log(`🖼️ [SYNC IMAGE] Returning image without verification: ${imageUrl}`);
-      return { imageUrl, resolution: "2048x1152" };
     }
+    return { imageUrl, resolution: "2048x1152" };
     
   } catch (error) {
     console.error("❌ [SYNC IMAGE] Generation error:", error);
