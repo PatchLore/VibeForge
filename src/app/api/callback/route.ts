@@ -179,29 +179,41 @@ export async function POST(request: NextRequest) {
     let finalResolution: string | null = null;
 
     const sourceImageUrl: string | null = (completed?.image_url as string) || null;
-    if (sourceImageUrl) {
+    
+    // Validate sourceImageUrl is not undefined, null, or empty
+    if (!sourceImageUrl || typeof sourceImageUrl !== 'string' || sourceImageUrl.trim() === '') {
+      console.warn('[🖼️ Verification] Skipping image update: image URL is undefined, null, or empty');
+      if (pending?.extended_prompt_image) {
+        try {
+          console.log('🎨 [CALLBACK] No valid image provided, generating new 2K image');
+          const gen = await generateImage(pending.extended_prompt_image);
+          finalImageUrl = gen.imageUrl;
+          finalResolution = gen.resolution;
+        } catch (e) {
+          console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
+        }
+      }
+    } else if (sourceImageUrl) {
       try {
+        console.log('[🖼️ Verification] Verifying image size:', sourceImageUrl);
         const checked = await verifyAndUpscaleTo2K(sourceImageUrl, TARGET);
+        console.log(`[🖼️ Verification] Detected size: ${checked.width}x${checked.height}, target: ${TARGET.width}x${TARGET.height}`);
+        
         if (checked.width >= TARGET.width && checked.height >= TARGET.height) {
           finalImageUrl = checked.url;
           finalResolution = `${checked.width}x${checked.height}`;
+          console.log(`[🖼️ Verification] ✅ Image verified at ${finalResolution}`);
         } else if (pending?.extended_prompt_image) {
-          console.warn('⚠️ [CALLBACK] Incoming image below 2K; regenerating at 2K with stored prompt');
+          console.warn(`[🖼️ Verification] ⚠️ Image too small (${checked.width}x${checked.height}); regenerating at 2K with stored prompt`);
           const regen = await generateImage(pending.extended_prompt_image);
           finalImageUrl = regen.imageUrl;
           finalResolution = regen.resolution;
+        } else {
+          console.warn(`[🖼️ Verification] ⚠️ Skipping image update: image too small (${checked.width}x${checked.height}) and no prompt to regenerate`);
         }
       } catch (e) {
         console.error('❌ [CALLBACK] Image verify/upscale failed:', e);
-      }
-    } else if (pending?.extended_prompt_image) {
-      try {
-        console.log('🎨 [CALLBACK] No image provided, generating new 2K image');
-        const gen = await generateImage(pending.extended_prompt_image);
-        finalImageUrl = gen.imageUrl;
-        finalResolution = gen.resolution;
-      } catch (e) {
-        console.error('❌ [CALLBACK] Image generation failed (no incoming image):', e);
+        console.warn('[🖼️ Verification] Skipping image update due to verification error');
       }
     }
 
@@ -219,7 +231,7 @@ export async function POST(request: NextRequest) {
       title: safeTitle,
       prompt: safePrompt,
       audio_url: completed.audio_url,
-      image_url: finalImageUrl ?? completed.image_url ?? null,
+      image_url: finalImageUrl ?? null, // Only use verified/regenerated image, never fallback to unverified
       resolution: finalResolution ?? null,
       duration: completed.duration ?? null,
       status: 'completed',
