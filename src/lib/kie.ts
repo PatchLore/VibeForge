@@ -106,11 +106,14 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   const apiKey = KIE_KEYS.image;
   if (!apiKey) throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
 
+  const callBackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
+  console.log("🔔 [KIE IMAGE] Callback URL:", callBackUrl);
+
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ''}`;
   const model = "bytedance/seedream-v4-text-to-image";
   const resolution = "2048x1152"; // 2K resolution for highest quality
   
-  // Optimal 2K parameters for highest quality
+  // Optimal 2K parameters for highest quality with callback support
   const imageParams = {
     model: model,
     prompt: finalPrompt,
@@ -119,10 +122,11 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
     quality: "high",
     steps: 30,
     cfg_scale: 8,
-    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
+    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
+    callBackUrl: callBackUrl
   };
   
-  console.log("🖼️ [KIE IMAGE] Model:", model, "| Resolution:", resolution, "| Confirmed: 2K");
+  console.log("🖼️ [KIE IMAGE] Model:", model, "| Resolution:", resolution, "| Callback:", callBackUrl);
   console.log("🎨 [IMAGE GEN] Prompt:", finalPrompt);
   console.log("🎨 [IMAGE GEN] Quality:", imageParams.quality, "| Steps:", imageParams.steps);
 
@@ -156,7 +160,8 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
         quality: "high",
         steps: 25,
         cfg_scale: 7,
-        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus"
+        guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
+        callBackUrl: callBackUrl
       };
       
       console.log("🧠 [DEBUG IMAGE] Sending retry request with params:", retryParams);
@@ -243,7 +248,8 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
             quality: "high",
             steps: 35, // Increased steps for better quality
             cfg_scale: 8.5, // Slightly higher guidance
-            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality, upscaled"
+            guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus, 2K resolution, professional quality, upscaled",
+            callBackUrl: callBackUrl
           };
           
           console.log("🔄 [UPSCALER] Sending upscaler request with enhanced 2K params:", upscalerParams);

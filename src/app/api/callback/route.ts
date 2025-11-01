@@ -10,6 +10,12 @@ export const dynamic = "force-dynamic";
 // Allow this endpoint to be public (no auth required)
 export const runtime = "nodejs";
 
+/**
+ * Unified webhook/callback handler for Kie.ai asynchronous generation callbacks
+ * Handles both audio (Suno) and image (Seedream) generation completions
+ * Reduces need for polling and eliminates rate limiting issues
+ */
+
 export async function GET() {
   return NextResponse.json({ 
     message: 'Callback endpoint is active and ready to receive API callbacks',
@@ -50,14 +56,22 @@ export async function POST(request: NextRequest) {
 
     const topLevelAudio = payload?.audio_url ?? raw?.audio_url;
     const topLevelImage = payload?.image_url ?? raw?.image_url;
+    
+    // Check if this is an image-only callback (Seedream)
+    const isImageOnly = topLevelImage && !topLevelAudio;
+    const hasResultUrl = payload?.result_urls || payload?.info?.result_urls;
 
     // Prefer explicit audio/image on the top level; else look in songs[]
     const completed =
       (topLevelAudio ? { audio_url: topLevelAudio, image_url: topLevelImage, title: payload?.title, duration: payload?.duration, prompt: payload?.prompt } : null) ||
+      (isImageOnly ? { image_url: topLevelImage, audio_url: null, title: payload?.title, duration: payload?.duration, prompt: payload?.prompt } : null) ||
       candidateSongs.find((s: any) => s?.audio_url) ||
       null;
 
     console.log('📌 taskId:', taskId, 'status:', status, 'completed?', !!completed);
+    if (isImageOnly) {
+      console.log('🖼️ [CALLBACK] Image-only callback detected (Seedream)');
+    }
 
     if (!taskId) {
       console.error('❌ [CALLBACK] Missing task_id');
