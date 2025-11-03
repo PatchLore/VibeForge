@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
-import { generateImage, verifyAndUpscaleTo2K } from '@/lib/kie';
+import { generateImage } from '@/lib/kie';
 import { buildImagePrompt } from '@/lib/enrichPrompt';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
@@ -9,12 +9,6 @@ export const dynamic = "force-dynamic";
 
 // Allow this endpoint to be public (no auth required)
 export const runtime = "nodejs";
-
-/**
- * Unified webhook/callback handler for Kie.ai asynchronous generation callbacks
- * Handles both audio (Suno) and image (Seedream) generation completions
- * Reduces need for polling and eliminates rate limiting issues
- */
 
 export async function GET() {
   return NextResponse.json({ 
@@ -38,9 +32,6 @@ export async function POST(request: NextRequest) {
       payload?.taskId ??
       raw?.task_id ??
       raw?.taskId;
-    if (taskId) {
-      console.log('[CALLBACK RECEIVED]', taskId, new Date().toISOString());
-    }
 
     const status =
       payload?.status ??
@@ -56,23 +47,14 @@ export async function POST(request: NextRequest) {
 
     const topLevelAudio = payload?.audio_url ?? raw?.audio_url;
     const topLevelImage = payload?.image_url ?? raw?.image_url;
-    
-    // Check if this is an image-only callback (Seedream)
-    const isImageOnly = topLevelImage && !topLevelAudio;
-    const hasResultUrl = payload?.result_urls || payload?.info?.result_urls;
 
     // Prefer explicit audio/image on the top level; else look in songs[]
     const completed =
       (topLevelAudio ? { audio_url: topLevelAudio, image_url: topLevelImage, title: payload?.title, duration: payload?.duration, prompt: payload?.prompt } : null) ||
-      (isImageOnly ? { image_url: topLevelImage, audio_url: null, title: payload?.title, duration: payload?.duration, prompt: payload?.prompt } : null) ||
       candidateSongs.find((s: any) => s?.audio_url) ||
       null;
 
     console.log('📌 taskId:', taskId, 'status:', status, 'completed?', !!completed);
-    if (isImageOnly) {
-      console.log('🖼️ [CALLBACK] Image-only callback detected (Seedream)');
-      console.log('[IMAGE] Callback received for image generation');
-    }
 
     if (!taskId) {
       console.error('❌ [CALLBACK] Missing task_id');
@@ -87,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Load the pending track with extended prompt
     const { data: pending, error: fetchErr } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt, extended_prompt_image, vibe')
+      .select('id, user_id, status, prompt, extended_prompt')
       .eq('task_id', taskId)
       .maybeSingle();
 
@@ -123,124 +105,7 @@ export async function POST(request: NextRequest) {
     // If not failed and not completed yet, acknowledge but don't update
     if (!completed) {
       console.log('⏳ [CALLBACK] Not ready yet, no audio_url in payload.');
-      
-      // Schedule a retry after 20 seconds
-      setTimeout(async () => {
-        try {
-          console.log("⏳ [CALLBACK RETRY] Audio not ready, retrying in 20s...");
-          const retryRes = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
-            headers: { Authorization: `Bearer ${process.env.VIBEFORGE_API_KEY}` },
-          });
-          const retryData = await retryRes.json();
-
-          if (retryData?.data?.response?.sunoData?.[0]?.audio_url) {
-            console.log("✅ [CALLBACK RETRY SUCCESS] Audio ready, updating DB.");
-            if (supabaseServer) {
-              // Check if track already has image_url before overwriting
-              const { data: existing } = await supabaseServer
-                .from("tracks")
-                .select("image_url")
-                .eq("task_id", taskId)
-                .maybeSingle();
-              
-              const updateData: any = {
-                audio_url: retryData.data.response.sunoData[0].audio_url,
-                status: "completed",
-                updated_at: new Date().toISOString(),
-              };
-              
-              // Only set image_url if track doesn't already have one
-              if (!existing?.image_url && retryData.data.response.sunoData[0].image_url) {
-                updateData.image_url = retryData.data.response.sunoData[0].image_url;
-                console.log("📸 [CALLBACK RETRY] Setting Suno image_url (no existing image)");
-              } else {
-                console.log("🖼️ [CALLBACK RETRY] Preserving existing image_url");
-              }
-              
-              await supabaseServer
-                .from("tracks")
-                .update(updateData)
-                .eq("task_id", taskId);
-              console.log("✅ [CALLBACK RETRY] Track completed successfully");
-            }
-          } else {
-            console.warn("❌ [CALLBACK RETRY] Still no audio_url after 20s.");
-          }
-        } catch (e) {
-          console.error("❌ [CALLBACK RETRY ERROR]", e);
-        }
-      }, 20000);
-      
       return NextResponse.json({ ok: true, message: 'processing' }, { status: 200 });
-    }
-
-    // --- Resolve final image (verify/upscale/regenerate) BEFORE updating track ---
-    const TARGET = { width: 2048, height: 1152 };
-    let finalImageUrl: string | null = null;
-    let finalResolution: string | null = null;
-
-    const sourceImageUrl: string | null = (completed?.image_url as string) || null;
-    
-    // Helper function to attempt regeneration and verification
-    const attemptImageRegeneration = async (prompt: string): Promise<{ url: string | null, resolution: string | null }> => {
-      try {
-        console.log('🎨 [CALLBACK] Regenerating 2K image');
-        const gen = await generateImage(prompt);
-        
-        if (!gen.imageUrl) {
-          console.warn('[IMAGE] ❌ Generation returned no URL');
-          return { url: null, resolution: null };
-        }
-        
-        const verified = await verifyAndUpscaleTo2K(gen.imageUrl, TARGET);
-        if (verified.width >= TARGET.width && verified.height >= TARGET.height) {
-          console.log(`[IMAGE] ✅ Verified and saved: ${verified.width}x${verified.height}`);
-          return { url: verified.url, resolution: `${verified.width}x${verified.height}` };
-        }
-        
-        console.warn(`[IMAGE] ❌ Regenerated image too small: ${verified.width}x${verified.height}`);
-        return { url: null, resolution: null };
-      } catch (e) {
-        console.error('❌ [CALLBACK] Regeneration failed:', e);
-        return { url: null, resolution: null };
-      }
-    };
-
-    // Handle empty or undefined image URL
-    if (!sourceImageUrl || typeof sourceImageUrl !== 'string' || sourceImageUrl.trim() === '') {
-      console.warn('[🖼️] No image provided in callback');
-      if (pending?.extended_prompt_image) {
-        const result = await attemptImageRegeneration(pending.extended_prompt_image);
-        finalImageUrl = result.url;
-        finalResolution = result.resolution;
-      }
-    } 
-    // Verify existing image URL
-    else {
-      try {
-        const checked = await verifyAndUpscaleTo2K(sourceImageUrl, TARGET);
-        
-        if (checked.width >= TARGET.width && checked.height >= TARGET.height) {
-          finalImageUrl = checked.url;
-          finalResolution = `${checked.width}x${checked.height}`;
-          console.log(`[IMAGE] ✅ Verified: ${finalResolution}`);
-        } else if (pending?.extended_prompt_image) {
-          console.warn(`[IMAGE] ⚠️ Too small (${checked.width}x${checked.height}), regenerating`);
-          const result = await attemptImageRegeneration(pending.extended_prompt_image);
-          finalImageUrl = result.url;
-          finalResolution = result.resolution;
-        } else {
-          console.warn(`[IMAGE] ⚠️ Too small (${checked.width}x${checked.height}) and no prompt available`);
-        }
-      } catch (e) {
-        console.error('❌ [CALLBACK] Verification failed:', e);
-        // Attempt regeneration as fallback
-        if (pending?.extended_prompt_image) {
-          const result = await attemptImageRegeneration(pending.extended_prompt_image);
-          finalImageUrl = result.url;
-          finalResolution = result.resolution;
-        }
-      }
     }
 
     // --- Update track with results ---
@@ -253,20 +118,18 @@ export async function POST(request: NextRequest) {
 
     console.log("🎵 [TITLE AUTO] Generated unique title:", safeTitle);
 
-    // Handle mood metadata - always set a default value
-    const safeMood = pending?.vibe || 'Unknown Mood';
-
     const updateFields: any = {
       title: safeTitle,
       prompt: safePrompt,
-      vibe: safeMood,
       audio_url: completed.audio_url,
-      image_url: finalImageUrl ?? null,
-      resolution: finalResolution ?? null,
+      image_url: completed.image_url ?? null,
+      resolution: "2048x1152", // Default to 2K resolution
       duration: completed.duration ?? null,
       status: 'completed',
       updated_at: new Date().toISOString(),
     };
+
+    console.log('💾 [CALLBACK] Updating track:', updateFields);
 
     const { error: updateErr } = await supabaseServer
       .from('tracks')
@@ -278,7 +141,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'track update failed' }, { status: 500 });
     }
 
-    console.log(`✅ [CALLBACK] Track updated for task_id: ${taskId}`);
+    console.log('✅ [CALLBACK] Track updated →', taskId);
+
+    // --- Generate image using enriched prompt if no image was provided ---
+    let generatedImageUrl = completed.image_url;
+    if (!generatedImageUrl && pending.prompt) {
+      try {
+        console.log('🎨 [IMAGE CALLBACK] Generating image for track:', taskId);
+        
+        // Use literal image prompt based on user's theme
+        const imagePrompt = buildImagePrompt(pending.prompt);
+        
+        // Add explicit guards
+        if (!imagePrompt || imagePrompt.length < 12) {
+          console.error("❌ [IMAGE PROMPT MISSING]", { prompt: pending.prompt, imagePrompt });
+        }
+        
+        console.log('🎨 [IMAGE CALLBACK] Model: bytedance/seedream-v4-text-to-image');
+        console.log('🎨 [IMAGE CALLBACK] Resolution: 2048x1152 (2K 16:9)');
+        console.log('🎨 [IMAGE CALLBACK] Literal image prompt:', imagePrompt);
+        console.log('🔍 [DEBUG] Image prompt length:', imagePrompt.length);
+        console.log("[IMAGE PROMPT SENT]", imagePrompt);
+        
+        // Generate image
+        const imageResult = await generateImage(imagePrompt);
+        
+        if (imageResult && imageResult.imageUrl) {
+          console.log('🎨 [IMAGE CALLBACK] Image generated successfully');
+          console.log('🎨 [IMAGE CALLBACK] Image URL:', imageResult.imageUrl);
+          console.log('🎨 [IMAGE CALLBACK] Resolution:', imageResult.resolution);
+          
+          // Update track with generated image and resolution
+          const { error: imageUpdateErr } = await supabaseServer
+            .from('tracks')
+            .update({ 
+              image_url: imageResult.imageUrl,
+              resolution: imageResult.resolution || "2048x1152",
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', taskId);
+            
+          if (imageUpdateErr) {
+            console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
+          } else {
+            console.log('✅ [IMAGE CALLBACK] Track updated with generated image and resolution');
+            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: imageResult.imageUrl, resolution: imageResult.resolution });
+          }
+        }
+      } catch (imageErr) {
+        console.error('❌ [CALLBACK] Image generation failed:', imageErr);
+        // Continue without image - don't fail the whole callback
+      }
+    }
 
     // --- Deduct credits atomically via RPC (idempotent with status check above) ---
     const { data: deducted, error: rpcErr } = await supabaseServer.rpc(
