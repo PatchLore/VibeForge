@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       title: safeTitle,
       prompt: safePrompt,
       audio_url: completed.audio_url,
-      image_url: completed.image_url ?? null,
+      ...(completed.image_url ? { image_url: completed.image_url } : {}),
       resolution: "2048x1152", // Default to 2K resolution
       duration: completed.duration ?? null,
       status: 'completed',
@@ -142,6 +142,30 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ [CALLBACK] Track updated →', taskId);
+
+    // ✅ Verify image_url was not overwritten or left empty
+    const { data: verify } = await supabaseServer
+      .from('tracks')
+      .select('image_url, prompt')
+      .eq('task_id', taskId)
+      .maybeSingle();
+
+    if (!verify?.image_url && verify?.prompt) {
+      console.warn('⚠️ [CALLBACK] image_url missing after update, regenerating fallback image...');
+      try {
+        const fallbackPrompt = buildImagePrompt(verify.prompt);
+        const regenerated = await generateImage(fallbackPrompt);
+        if (regenerated) {
+          await supabaseServer
+            .from('tracks')
+            .update({ image_url: regenerated, resolution: "2048x1152" })
+            .eq('task_id', taskId);
+          console.log('✅ [CALLBACK] Fallback image regenerated and saved.');
+        }
+      } catch (err) {
+        console.error('❌ [CALLBACK] Failed to regenerate fallback image:', err);
+      }
+    }
 
     // --- Generate image using enriched prompt if no image was provided ---
     let generatedImageUrl = completed.image_url;
