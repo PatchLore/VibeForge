@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,8 +20,10 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
+  const didFetchRef = useRef(false);
   useEffect(() => {
-    if (user) {
+    if (user && !didFetchRef.current) {
+      didFetchRef.current = true; // fetch once on mount/auth ready
       fetchUserTracks();
     }
   }, [user]);
