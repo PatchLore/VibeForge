@@ -12,7 +12,24 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 // Using regular img instead of Next.js Image due to proxy URL
-const FALLBACK_IMG = "/images/placeholders/track-fallback-16x9.jpg";
+// Inline data URL fallback to avoid 403s and missing asset issues
+const FALLBACK_IMG = "data:image/svg+xml;charset=UTF-8,"
+  + encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'>
+      <defs>
+        <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+          <stop offset='0%' stop-color='#22003e'/>
+          <stop offset='100%' stop-color='#4c007d'/>
+        </linearGradient>
+      </defs>
+      <rect width='1600' height='900' fill='url(#g)'/>
+      <g fill='none' stroke='rgba(255,255,255,0.25)'>
+        <rect x='80' y='45' width='1440' height='810' rx='24'/>
+      </g>
+      <text x='50%' y='50%' fill='white' font-family='Arial, Helvetica, sans-serif' font-size='56' text-anchor='middle' dominant-baseline='middle'>Soundswoop Artwork</text>
+      <text x='50%' y='58%' fill='rgba(255,255,255,0.75)' font-family='Arial, Helvetica, sans-serif' font-size='24' text-anchor='middle' dominant-baseline='middle'>16:9 Placeholder</text>
+    </svg>`
+  );
 import PromptReveal from './PromptReveal';
 
 interface TrackCardProps {
@@ -214,7 +231,7 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             {/* Maintain true 16:9 ratio and full quality */}
             <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
               <img
-                src={track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
+                src={track.image_url || FALLBACK_IMG}
                 alt={track.title}
                 className="w-full h-full object-cover"
                 style={{ 
@@ -223,13 +240,11 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
                 }}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  console.log(`🖼️ [TrackCard] Image loaded: ${track.title} | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
-                }}
                 onError={(e) => {
-                  console.error('❌ [TrackCard] Image failed to load:', track.image_url);
-                  (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (img.dataset.fallbackApplied === '1') return;
+                  img.src = FALLBACK_IMG;
+                  img.dataset.fallbackApplied = '1';
                 }}
               />
               {track?.resolution === "2048x1152" && (

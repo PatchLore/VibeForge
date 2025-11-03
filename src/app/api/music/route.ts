@@ -201,6 +201,15 @@ export async function POST(req: Request) {
     const generatedTitle = generateTrackTitle(userVibe);
     console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
     
+    // Generate image synchronously and store pending record WITH image_url
+    let imageUrlForInsert: string | null = null;
+    try {
+      const imageResult = await generateImage(imagePrompt);
+      imageUrlForInsert = imageResult?.imageUrl || null;
+    } catch (e) {
+      console.warn("⚠️ [IMAGE SYNC] Failed to generate image before insert:", e);
+    }
+
     // Store pending generation in tracks table for tracking
     try {
       await supabaseAdmin
@@ -212,14 +221,14 @@ export async function POST(req: Request) {
           prompt: userVibe,
           extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
           audio_url: null,
-          image_url: null,
+          image_url: imageUrlForInsert,
           status: 'pending',
           created_at: new Date().toISOString()
         });
-      console.log("📝 [GENERATION START] Pending track stored with extended prompt and generated title");
+      console.log("📝 [GENERATION START] Pending track stored (with image if available)");
     } catch (trackErr) {
       console.error("⚠️ [GENERATION START] Failed to store pending track:", trackErr);
-      // Continue anyway - callback will create the final track
+      // Continue anyway - callback will update the final track
     }
     
     remainingCredits = currentCredits; // Return current credits, not deducted yet
