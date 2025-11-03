@@ -27,7 +27,7 @@ export async function GET() {
 
     const { data: brokenTracks, error } = await supabaseAdmin
       .from("tracks")
-      .select("id, prompt")
+      .select("id, prompt, extended_prompt_image")
       .is("image_url", null)
       .limit(10);
 
@@ -39,9 +39,16 @@ export async function GET() {
     const results: any[] = [];
 
     for (const track of brokenTracks) {
-      const imagePrompt = buildImagePrompt(track.prompt);
+      const primaryPrompt = (track.extended_prompt_image && typeof track.extended_prompt_image === 'string' && track.extended_prompt_image.length > 8)
+        ? track.extended_prompt_image
+        : buildImagePrompt(track.prompt || '');
       try {
-        const imageUrl = await generateImage(imagePrompt);
+        // Try with primary prompt, then fallback to built prompt if needed
+        let imageUrl = await generateImage(primaryPrompt);
+        if (!imageUrl && primaryPrompt !== buildImagePrompt(track.prompt || '')) {
+          const fallbackPrompt = buildImagePrompt(track.prompt || '');
+          imageUrl = await generateImage(fallbackPrompt);
+        }
         if (imageUrl) {
           await supabaseAdmin
             .from("tracks")
