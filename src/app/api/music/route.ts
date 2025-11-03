@@ -20,32 +20,47 @@ async function startFallbackPolling(taskId: string) {
       if (pollData.status === "SUCCESS" && pollData.track?.audioUrl) {
         console.log("✅ [POLL SUCCESS] Audio ready from /api/status");
         if (supabaseAdmin) {
-          // Check if track already has image_url before overwriting
+          // Fetch existing track details we need for image generation
           const { data: existing } = await supabaseAdmin
             .from("tracks")
-            .select("image_url")
+            .select("image_url, extended_prompt_image")
             .eq("task_id", taskId)
             .maybeSingle();
-          
+
           const updateData: any = {
             audio_url: pollData.track.audioUrl,
             status: "completed",
             updated_at: new Date().toISOString(),
           };
-          
-          // Only set image_url if track doesn't already have one
+
+          // Attach image from Kie (if provided by status endpoint)
           if (!existing?.image_url && pollData.track.imageUrl) {
             updateData.image_url = pollData.track.imageUrl;
-            console.log("📸 [FALLBACK POLLING] Setting image_url (no existing image)");
-          } else {
-            console.log("🖼️ [FALLBACK POLLING] Preserving existing image_url");
+            console.log("📸 [FALLBACK POLLING] Setting image_url from status (no existing image)");
           }
-          
+
+          // If we still don't have an image_url, generate one synchronously using the stored prompt
+          if (!updateData.image_url && !existing?.image_url && existing?.extended_prompt_image) {
+            try {
+              console.log("🎨 [FALLBACK POLLING] Generating image synchronously (no callback)");
+              const gen = await generateImage(existing.extended_prompt_image);
+              if (gen?.imageUrl) {
+                updateData.image_url = gen.imageUrl;
+                updateData.resolution = gen.resolution || "2048x1152";
+                console.log("✅ [FALLBACK POLLING] Image generated and attached");
+              } else {
+                console.warn("⚠️ [FALLBACK POLLING] Image generation returned no URL");
+              }
+            } catch (e) {
+              console.error("❌ [FALLBACK POLLING] Image generation failed:", e);
+            }
+          }
+
           await supabaseAdmin
             .from("tracks")
             .update(updateData)
             .eq("task_id", taskId);
-          console.log("✅ [FALLBACK POLLING] Track completed successfully");
+          console.log("✅ [FALLBACK POLLING] Track completed successfully (audio + image if available)");
           return;
         }
       }

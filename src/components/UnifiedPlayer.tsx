@@ -199,36 +199,45 @@ export default function UnifiedPlayer({
                   className="w-full h-full border-0"
                   allow="autoplay"
                 />
-              ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                <img
-                  src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
-                  alt="AI Generated Artwork"
-                  className="w-full h-auto rounded-xl object-cover aspect-video"
-                  style={{ 
-                    imageRendering: 'auto',
-                    transform: 'translateZ(0)'
-                  }}
-                  loading="lazy"
-                  onLoad={(e) => {
-                    const img = e.currentTarget;
-                    console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
-                  }}
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="w-full h-full object-cover"
-                  loop
-                  muted
-                  playsInline
-                  autoPlay
-                />
-              )}
+              ) : (() => {
+                // Heuristic: treat as image if it has an image extension OR if it does not have a known video extension
+                const hasImageExt = /\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl);
+                const hasVideoExt = /\.(mp4|webm|mov|m3u8)$/i.test(videoUrl);
+                const isLikelyImage = hasImageExt || !hasVideoExt;
+                if (isLikelyImage) {
+                  return (
+                    <img
+                      src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
+                      alt="AI Generated Artwork"
+                      className="w-full h-auto rounded-xl object-cover aspect-video"
+                      style={{ 
+                        imageRendering: 'auto',
+                        transform: 'translateZ(0)'
+                      }}
+                      loading="lazy"
+                      onLoad={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="w-full h-full object-cover"
+                    loop
+                    muted
+                    playsInline
+                    autoPlay
+                  />
+                );
+              })()}
             </div>
             
             {/* Download Button */}
-            {videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+            {(/\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl) || !(/\.(mp4|webm|mov|m3u8)$/i.test(videoUrl))) && (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
