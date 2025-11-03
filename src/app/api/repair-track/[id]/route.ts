@@ -65,16 +65,14 @@ export async function GET(
     
     // Generate new image synchronously
     console.log(`🖼️ [REPAIR] Calling generateImage() with prompt...`);
-    const result = await generateImage(track.extended_prompt_image);
+    const imageUrl = await generateImage(track.extended_prompt_image);
     
     console.log(`📦 [REPAIR] generateImage() returned:`, {
-      hasImageUrl: !!result.imageUrl,
-      hasResolution: !!result.resolution,
-      imageUrl: result.imageUrl ? result.imageUrl.substring(0, 100) + '...' : null,
-      resolution: result.resolution
+      hasImageUrl: !!imageUrl,
+      preview: imageUrl ? imageUrl.substring(0, 100) + '...' : null
     });
     
-    if (!result) {
+    if (!imageUrl) {
       console.log(`❌ [REPAIR] generateImage() returned undefined/null`);
       return NextResponse.json({
         success: false,
@@ -82,23 +80,12 @@ export async function GET(
       }, { status: 500 });
     }
     
-    if (!result.imageUrl) {
-      console.log(`❌ [REPAIR] No image URL in result object`);
-      console.log(`🔍 [REPAIR] Full result:`, JSON.stringify(result, null, 2));
-      return NextResponse.json({
-        success: false,
-        error: "Image generation failed - no URL returned",
-        details: { result }
-      }, { status: 500 });
-    }
-    
     console.log(`✅ [REPAIR] Image generated successfully`);
-    console.log(`🔗 [REPAIR] Image URL: ${result.imageUrl}`);
-    console.log(`📐 [REPAIR] Resolution: ${result.resolution}`);
+    console.log(`🔗 [REPAIR] Image URL: ${imageUrl}`);
     
     // Verify the image dimensions
     console.log(`🔍 [REPAIR] Verifying image dimensions...`);
-    const verified = await verifyAndUpscaleTo2K(result.imageUrl, { width: 2048, height: 1152 });
+    const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
     
     console.log(`📏 [REPAIR] Verified size: ${verified.width}x${verified.height}`);
     
@@ -109,7 +96,7 @@ export async function GET(
       const { error: updateError } = await supabaseServer
         .from('tracks')
         .update({
-          image_url: result.imageUrl,
+          image_url: imageUrl,
           resolution: '2048x1152',
           updated_at: new Date().toISOString()
         })
@@ -134,7 +121,7 @@ export async function GET(
           title: track.title,
           oldImageUrl: track.image_url,
           oldResolution: track.resolution,
-          newImageUrl: result.imageUrl,
+          newImageUrl: imageUrl,
           newResolution: '2048x1152',
           verifiedDimensions: `${verified.width}x${verified.height}`
         }

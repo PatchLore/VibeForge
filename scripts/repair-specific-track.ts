@@ -66,18 +66,18 @@ async function repairSpecificTrack() {
     
     // Generate new image synchronously
     console.log(`🖼️ [REPAIR] Generating new image...`);
-    const result = await generateImage(track.extended_prompt_image);
+    const imageUrl = await generateImage(track.extended_prompt_image);
     
-    if (!result.imageUrl) {
+    if (!imageUrl) {
       console.log(`❌ [REPAIR] No image URL returned from generator`);
       process.exit(1);
     }
     
-    console.log(`✅ [REPAIR] Image generated: ${result.imageUrl}`);
+    console.log(`✅ [REPAIR] Image generated: ${imageUrl}`);
     
     // Verify the image dimensions
     console.log(`🔍 [REPAIR] Verifying image dimensions...`);
-    const verified = await verifyAndUpscaleTo2K(result.imageUrl, { width: 2048, height: 1152 });
+    const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
     
     console.log(`📏 [REPAIR] Verified size: ${verified.width}x${verified.height}`);
     
@@ -88,7 +88,7 @@ async function repairSpecificTrack() {
       const { error: updateError } = await supabase
         .from('tracks')
         .update({
-          image_url: result.imageUrl,
+          image_url: imageUrl,
           resolution: '2048x1152',
           updated_at: new Date().toISOString()
         })
@@ -102,7 +102,7 @@ async function repairSpecificTrack() {
       console.log(`✅ [REPAIR] Track ${TRACK_ID} successfully repaired!`);
       console.log(`\n📊 Summary:`);
       console.log(`   Old image: ${track.image_url || 'NULL'}`);
-      console.log(`   New image: ${result.imageUrl}`);
+      console.log(`   New image: ${imageUrl}`);
       console.log(`   Old resolution: ${track.resolution || 'NULL'}`);
       console.log(`   New resolution: 2048x1152`);
       console.log(`   Verified: ${verified.width}x${verified.height}`);

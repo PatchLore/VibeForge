@@ -37,19 +37,18 @@ export async function POST(req: Request) {
     console.log("[IMAGE PROMPT SENT]", imagePrompt);
 
     // Generate image using enriched prompt
-    const imageResult = await generateImage(imagePrompt);
+    const imageUrl = await generateImage(imagePrompt);
 
-    if (!imageResult || !imageResult.imageUrl) {
+    if (!imageUrl) {
       throw new Error("Image generation failed");
     }
 
-    console.log("✅ [VISUAL] Image generated successfully:", imageResult.imageUrl);
-    console.log("🎨 [VISUAL] Image resolution:", imageResult.resolution);
+    console.log("✅ [VISUAL] Image generated successfully:", imageUrl);
 
     return NextResponse.json({
       success: true,
-      imageUrl: imageResult.imageUrl,
-      resolution: imageResult.resolution,
+      imageUrl: imageUrl,
+      resolution: "2048x1152",
       prompt: prompt,
       literalPrompt: imagePrompt,
       timestamp: new Date().toISOString()

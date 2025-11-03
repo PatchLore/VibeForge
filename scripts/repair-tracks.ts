@@ -69,22 +69,22 @@ async function repairTrackImage(track: any) {
   
   try {
     // Generate new image synchronously
-    const result = await generateImage(track.extended_prompt_image);
+    const imageUrl = await generateImage(track.extended_prompt_image);
     
-    if (!result.imageUrl) {
+    if (!imageUrl) {
       console.log(`[REPAIR] ❌ Skipped — image invalid for track ${track.id}`);
       return false;
     }
     
     // Verify the image dimensions
-    const verified = await verifyAndUpscaleTo2K(result.imageUrl, { width: 2048, height: 1152 });
+    const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
     
     if (verified.width >= 2048 && verified.height >= 1152) {
       // Update the track with the new image
       const { error: updateError } = await supabase
         .from('tracks')
         .update({
-          image_url: result.imageUrl,
+          image_url: imageUrl,
           resolution: '2048x1152',
           updated_at: new Date().toISOString()
         })
