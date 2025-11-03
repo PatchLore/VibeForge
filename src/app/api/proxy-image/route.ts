@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 /**
@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Accept': 'image/png, image/jpeg, image/webp, image/*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://www.soundswoop.com',
       },
+      cache: 'no-store',
     });
 
     if (!imageResponse.ok) {
@@ -46,14 +49,14 @@ export async function GET(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer();
     const contentType = imageResponse.headers.get('content-type') || 'image/png';
 
-    console.log('✅ [IMAGE PROXY] Successfully fetched image, size:', imageBuffer.byteLength, 'bytes');
+    console.log('✅ [IMAGE PROXY] Successfully fetched image, status:', imageResponse.status, 'size:', imageBuffer.byteLength, 'bytes');
 
     // Return image with proper headers for full-quality delivery
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
+        'Cache-Control': 'public, max-age=86400',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET',
         // Disable compression to preserve quality

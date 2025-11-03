@@ -230,6 +230,8 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
 
             {/* Maintain true 16:9 ratio and full quality */}
             <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
+              {/* Debug render log */}
+              {(() => { try { console.log("🎨 Rendering:", track.title, track.image_url); } catch(_) {} return null; })()}
               <img
                 src={track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
                 alt={track.title}
