@@ -2,124 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
-import { generateTrackTitle, generateCreativeTitleTwoWords, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
+import { generateTrackTitle } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
-
-// Fallback polling mechanism for slow Kie.ai completions
-async function startFallbackPolling(taskId: string) {
-  console.log("🔄 [FALLBACK POLLING] Starting background polling for task:", taskId);
-  
-  const maxRetries = 60; // 60 x 10s = 10 minutes
-  let pollData: any = null;
-  
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const pollRes = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/status?taskId=${taskId}`);
-      pollData = await pollRes.json();
-
-      if (pollData.status === "SUCCESS" && pollData.track?.audioUrl) {
-        console.log("✅ [POLL SUCCESS] Audio ready from /api/status");
-        if (supabaseAdmin) {
-          // Fetch existing track details we need for image generation
-          const { data: existing } = await supabaseAdmin
-            .from("tracks")
-            .select("image_url, extended_prompt_image")
-            .eq("task_id", taskId)
-            .maybeSingle();
-
-          const updateData: any = {
-            audio_url: pollData.track.audioUrl,
-            status: "completed",
-            updated_at: new Date().toISOString(),
-          };
-
-          // Attach image from Kie (if provided by status endpoint)
-          if (!existing?.image_url && pollData.track.imageUrl) {
-            updateData.image_url = pollData.track.imageUrl;
-            console.log("📸 [FALLBACK POLLING] Setting image_url from status (no existing image)");
-          }
-
-          // If we still don't have an image_url, generate one synchronously using the stored prompt
-          if (!updateData.image_url && !existing?.image_url && existing?.extended_prompt_image) {
-            try {
-              console.log("🎨 [FALLBACK POLLING] Generating image synchronously (no callback)");
-              const gen = await generateImage(existing.extended_prompt_image);
-              if (gen?.imageUrl) {
-                updateData.image_url = gen.imageUrl;
-                updateData.resolution = gen.resolution || "2048x1152";
-                console.log("✅ [FALLBACK POLLING] Image generated and attached");
-              } else {
-                console.warn("⚠️ [FALLBACK POLLING] Image generation returned no URL");
-              }
-            } catch (e) {
-              console.error("❌ [FALLBACK POLLING] Image generation failed:", e);
-            }
-          }
-
-          await supabaseAdmin
-            .from("tracks")
-            .update(updateData)
-            .eq("task_id", taskId);
-          console.log("✅ [FALLBACK POLLING] Track completed successfully (audio + image if available)");
-          return;
-        }
-      }
-
-      console.log("⏳ [POLL] Still waiting for Kie.ai completion...", i + 1);
-      await new Promise(r => setTimeout(r, 15000)); // 15s wait
-    } catch (error) {
-      console.error("❌ [POLL ERROR]", error);
-      await new Promise(r => setTimeout(r, 15000)); // Continue polling even on error
-    }
-  }
-
-  // If still not completed after retries, do a direct API check
-  if (!pollData?.track?.audioUrl) {
-    console.log("⚠️ [POLL FALLBACK] Checking Kie.ai directly...");
-    try {
-      const check = await fetch(`https://api.kie.ai/api/v1/generate/record-info?taskId=${taskId}`, {
-        headers: { Authorization: `Bearer ${process.env.VIBEFORGE_API_KEY}` },
-      });
-      const checkData = await check.json();
-
-      if (checkData?.data?.response?.sunoData?.[0]?.audio_url) {
-        console.log("✅ [POLL FALLBACK SUCCESS] Retrieved final audio_url directly.");
-        if (supabaseAdmin) {
-          // Check if track already has image_url before overwriting
-          const { data: existing } = await supabaseAdmin
-            .from("tracks")
-            .select("image_url")
-            .eq("task_id", taskId)
-            .maybeSingle();
-          
-          const updateData: any = {
-            audio_url: checkData.data.response.sunoData[0].audio_url,
-            status: "completed",
-            updated_at: new Date().toISOString(),
-          };
-          
-          // Only set image_url if track doesn't already have one
-          if (!existing?.image_url && checkData.data.response.sunoData[0].image_url) {
-            updateData.image_url = checkData.data.response.sunoData[0].image_url;
-            console.log("📸 [POLL FALLBACK] Setting image_url (no existing image)");
-          } else {
-            console.log("🖼️ [POLL FALLBACK] Preserving existing image_url");
-          }
-          
-          await supabaseAdmin
-            .from("tracks")
-            .update(updateData)
-            .eq("task_id", taskId);
-          console.log("✅ [FALLBACK POLLING] Track completed via direct API check");
-        }
-      } else {
-        console.warn("❌ [POLL FALLBACK] Still no result after direct check.");
-      }
-    } catch (error) {
-      console.error("❌ [POLL FALLBACK ERROR]", error);
-    }
-  }
-}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -253,20 +137,23 @@ export async function POST(req: Request) {
       console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
     }
 
-    // Create creative, narrative-style display prompts (never allowed to throw)
+    // Non-blocking display prompt creation (never allowed to throw)
     let displayMusicPrompt = null;
     let displayImagePrompt = null;
 
     try {
-      // Use the creative music and image prompts directly for display
-      // They're already enriched with narrative descriptions
-      displayMusicPrompt = musicPrompt;
+      const detectedStyle =
+        /game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass/i.test(userVibe) ? "high-energy electronic"
+        : /cinematic|orchestral|film/i.test(userVibe) ? "cinematic orchestral"
+        : /lofi|chill/i.test(userVibe) ? "lofi / chill"
+        : "creative";
+
+      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${detectedStyle}.`;
+      
+      // Use enriched image prompt for display (more detailed and descriptive)
       displayImagePrompt = imagePrompt;
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
-      // Fallback to basic prompts
-      displayMusicPrompt = musicPrompt || `Creating music inspired by "${userVibe}"`;
-      displayImagePrompt = imagePrompt || `Visualizing "${userVibe}"`;
     }
     
     // Clean music prompt to remove any remaining bias phrases
@@ -295,11 +182,24 @@ export async function POST(req: Request) {
     // DON'T deduct credits yet - wait for callback confirmation
     // Credits will be deducted in the callback route when generation succeeds
     
-    // Generate enforced two-word TitleCase title, vibe and summary
-    const generatedTitle = generateCreativeTitleTwoWords(userVibe);
-    const generatedVibe = detectVibe(userVibe);
-    const generatedSummary = generateSummary(userVibe);
-    console.log("🎵 [MUSIC API] Generated creative title for pending track:", generatedTitle);
+    // Generate dynamic track title based on user vibe
+    const generateTrackTitle = (vibe: string) => {
+      const wordBank = [
+        "Dream", "Pulse", "Horizons", "Odyssey", "Voyage", "Frequency",
+        "Aurora", "Neon", "Drift", "Echo", "Vision", "Frontier",
+        "Flux", "Motion", "Skies", "Euphoria", "Spectrum", "Phantom"
+      ];
+      const baseWords = vibe
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .split(" ")
+        .filter(w => w.length > 2)
+        .slice(0, 2);
+      const suffix = wordBank[Math.floor(Math.random() * wordBank.length)];
+      return `${baseWords.join(" ")} ${suffix}`.trim();
+    };
+    
+    const generatedTitle = generateTrackTitle(userVibe);
+    console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
     
     // Store pending generation in tracks table for tracking
     try {
@@ -310,10 +210,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           title: generatedTitle,
           prompt: userVibe,
-          vibe: generatedVibe,
-          summary: generatedSummary,
           extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
-          extended_prompt_image: imagePrompt,
           audio_url: null,
           image_url: null,
           status: 'pending',
@@ -343,18 +240,8 @@ export async function POST(req: Request) {
       }
     };
 
-    // Log expanded prompts to console for verification
-    console.log("🎨 Enriched Image Prompt:", payload.expandedPrompts.image);
-    console.log("🎵 Enriched Music Prompt:", payload.expandedPrompts.music);
-    console.log("🎨 [EXPANDED PROMPTS] Title:", payload.expandedPrompts.title);
-
     // Add diagnostic logging
     console.log("🎨 [EXPANDED PROMPTS SENT]", payload.expandedPrompts);
-
-    // Start fallback polling mechanism in background (non-blocking)
-    if (taskId) {
-      startFallbackPolling(taskId);
-    }
 
     return NextResponse.json(payload, { status: 200 });
 
