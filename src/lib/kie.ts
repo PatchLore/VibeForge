@@ -289,6 +289,16 @@ export async function generateImage(prompt: string, styleSuffix: string = "") {
   }
 }
 
+// Convenience helper: returns a direct image URL string for callers that
+// only need the URL. Preserves existing generateImage() return type elsewhere.
+export async function generateImageUrl(prompt: string, styleSuffix: string = ""): Promise<string | null> {
+  const result: any = await generateImage(prompt, styleSuffix);
+  if (!result) return null;
+  if (typeof result === 'string') return result;
+  if (typeof result?.imageUrl === 'string') return result.imageUrl;
+  return null;
+}
+
 // Compatibility helper: lightweight verifier to satisfy existing imports.
 // Returns the original URL and assumes 2K resolution when requested.
 export async function verifyAndUpscaleTo2K(

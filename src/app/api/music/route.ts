@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
+import { generateMusic, checkMusicStatus, generateImageUrl } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
-import { generateTrackTitle } from "@/lib/generateTrackTitle";
+import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -174,78 +174,79 @@ export async function POST(req: Request) {
     console.log("🖼️ [GENERATION START] literal image prompt:", imagePrompt);
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
-    // Generate music using the cleaned prompt
+    // Generate music task and then poll for audio while generating image concurrently
     taskId = await generateMusic(cleanedMusicPrompt);
-    
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
 
-    // DON'T deduct credits yet - wait for callback confirmation
-    // Credits will be deducted in the callback route when generation succeeds
-    
-    // Generate dynamic track title based on user vibe
-    const generateTrackTitle = (vibe: string) => {
-      const wordBank = [
-        "Dream", "Pulse", "Horizons", "Odyssey", "Voyage", "Frequency",
-        "Aurora", "Neon", "Drift", "Echo", "Vision", "Frontier",
-        "Flux", "Motion", "Skies", "Euphoria", "Spectrum", "Phantom"
-      ];
-      const baseWords = vibe
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .split(" ")
-        .filter(w => w.length > 2)
-        .slice(0, 2);
-      const suffix = wordBank[Math.floor(Math.random() * wordBank.length)];
-      return `${baseWords.join(" ")} ${suffix}`.trim();
+    const waitForAudio = async (id: string): Promise<string> => {
+      const started = Date.now();
+      const timeoutMs = 2 * 60 * 1000; // 2 minutes
+      const intervalMs = 2000; // 2s
+      while (Date.now() - started < timeoutMs) {
+        try {
+          const status = await checkMusicStatus(id);
+          const audio = status?.audio_url;
+          if (audio && typeof audio === 'string') return audio;
+        } catch (_) {
+          // ignore transient errors
+        }
+        await new Promise(r => setTimeout(r, intervalMs));
+      }
+      throw new Error("Timed out waiting for audio generation");
     };
-    
-    const generatedTitle = generateTrackTitle(userVibe);
-    console.log("🎵 [MUSIC API] Generated title for pending track:", generatedTitle);
-    
-    // Generate image synchronously and store pending record WITH image_url
-    let imageUrlForInsert: string | null = null;
-    try {
-      const imageResult = await generateImage(imagePrompt);
-      imageUrlForInsert = imageResult?.imageUrl || null;
-    } catch (e) {
-      console.warn("⚠️ [IMAGE SYNC] Failed to generate image before insert:", e);
+
+    if (!taskId) {
+      throw new Error("Missing taskId from music generation");
     }
 
-    // Store pending generation in tracks table for tracking
-    try {
-      await supabaseAdmin
-        .from('tracks')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          title: generatedTitle,
-          prompt: userVibe,
-          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
-          audio_url: null,
-          image_url: imageUrlForInsert,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        });
-      console.log("📝 [GENERATION START] Pending track stored (with image if available)");
-    } catch (trackErr) {
-      console.error("⚠️ [GENERATION START] Failed to store pending track:", trackErr);
-      // Continue anyway - callback will update the final track
-    }
+    const [audioUrl, imageUrl] = await Promise.all([
+      waitForAudio(taskId as string),
+      generateImageUrl(imagePrompt)
+    ]);
+
+    const vibe = detectVibe(userVibe);
+    const summary = generateSummary(userVibe);
+    const generatedTitle = generateTrackTitle(userVibe);
+
+    // Insert completed track only after both are available
+    await supabaseAdmin
+      .from('tracks')
+      .insert({
+        user_id: user.id,
+        title: generatedTitle,
+        prompt: userVibe,
+        extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+        audio_url: audioUrl,
+        image_url: imageUrl,
+        mood: vibe,
+        summary: summary,
+        resolution: "2048x1152",
+        status: 'completed',
+        created_at: new Date().toISOString()
+      });
+    console.log("✅ [GENERATION COMPLETE] Track inserted with audio & image");
     
-    remainingCredits = currentCredits; // Return current credits, not deducted yet
+    remainingCredits = currentCredits; // Credits handled separately if desired
 
     // Response structure with expandedPrompts for frontend display
     const payload: any = { 
-      success: true, 
+      success: true,
       provider: "suno-api",
-      taskId: taskId,
-      message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
+      message: "🎶 Your SoundPainting is ready!",
       prompt: userVibe,
-      title: generatedTitle, // Include the generated track title
+      title: generatedTitle,
       remainingCredits: remainingCredits,
+      track: {
+        audio_url: audioUrl,
+        image_url: imageUrl,
+        mood: vibe,
+        summary,
+        resolution: "2048x1152"
+      },
       expandedPrompts: {
         music: displayMusicPrompt || cleanedMusicPrompt || "",
         image: displayImagePrompt || imagePrompt || "",
-        title: generatedTitle // Include title in expandedPrompts for frontend visibility
+        title: generatedTitle
       }
     };
 
