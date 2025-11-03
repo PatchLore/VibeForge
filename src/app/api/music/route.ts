@@ -208,6 +208,10 @@ export async function POST(req: Request) {
     const summary = generateSummary(userVibe);
     const generatedTitle = generateTrackTitle(userVibe);
 
+    // ✅ Normalize (harmless safeguard even though imageUrl is now always a string)
+    const imageUrlString =
+      typeof imageUrl === "string" ? imageUrl : (imageUrl as any)?.imageUrl ?? null;
+
     // Insert completed track only after both are available
     await supabaseAdmin
       .from('tracks')
@@ -217,14 +221,14 @@ export async function POST(req: Request) {
         prompt: userVibe,
         extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
         audio_url: audioUrl,
-        image_url: imageUrl,
+        image_url: imageUrlString,
         mood: vibe,
         summary: summary,
         resolution: "2048x1152",
         status: 'completed',
         created_at: new Date().toISOString()
       });
-    console.log("✅ [GENERATION COMPLETE] Track inserted with audio & image");
+    console.log("✅ [GENERATION COMPLETE] Track inserted with audio & image:", imageUrlString);
     
     remainingCredits = currentCredits; // Credits handled separately if desired
 

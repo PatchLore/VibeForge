@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Load the pending track with extended prompt
     const { data: pending, error: fetchErr } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt')
+      .select('id, user_id, status, prompt, extended_prompt, image_url')
       .eq('task_id', taskId)
       .maybeSingle();
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       title: safeTitle,
       prompt: safePrompt,
       audio_url: completed.audio_url,
-      ...(completed.image_url ? { image_url: completed.image_url } : {}),
+      image_url: completed.image_url ?? pending.image_url, // ✅ preserve the image from initial insert
       resolution: "2048x1152", // Default to 2K resolution
       duration: completed.duration ?? null,
       status: 'completed',
