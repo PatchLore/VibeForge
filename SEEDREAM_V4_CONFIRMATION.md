@@ -133,3 +133,6 @@ const resolution = "4096x2304"; // 4K
 **Resolution**: 2K (2048x1152)  
 **Status**: ✅ Latest and Greatest
 
+
+
+

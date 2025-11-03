@@ -137,127 +137,16 @@ export function generateTrackTitle(prompt?: string): string {
   const options = titleThemes[theme];
   const base = options[Math.floor(Math.random() * options.length)];
 
-  console.log(`🎵 [TITLE GEN] Theme: ${theme}, Base: ${base}`);
+  // Create a short, unique hash from the prompt + timestamp
+  const hash = crypto
+    .createHash("md5")
+    .update((prompt || "") + Date.now().toString())
+    .digest("hex")
+    .slice(0, 4);
+
+  console.log(`🎵 [TITLE GEN] Theme: ${theme}, Base: ${base}, Hash: ${hash}`);
   
-  return base;
-}
-
-/**
- * Generate a creative title based on user prompt with proper capitalization
- * Examples:
- * - "geometry dash frontier" → "Geometry Dash Frontier"
- * - "roblox dubstep anthem" → "Roblox Dubstep Anthem"
- * - "lofi chill vibes" → "Lofi Chill Vibes"
- */
-export function generateCreativeTitle(userPrompt: string): string {
-  if (!userPrompt || userPrompt.trim().length === 0) {
-    return generateTrackTitle(); // Fallback to theme-based title
-  }
-
-  // Clean and normalize the prompt
-  const cleaned = userPrompt
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
-
-  if (cleaned.length === 0) {
-    return generateTrackTitle();
-  }
-
-  // Split into words and capitalize each word properly
-  const words = cleaned.split(' ');
-  const capitalized = words.map(word => {
-    // Preserve hyphens
-    if (word.includes('-')) {
-      return word.split('-').map(part => 
-        part.charAt(0).toUpperCase() + part.slice(1)
-      ).join('-');
-    }
-    return word.charAt(0).toUpperCase() + word.slice(1);
-  });
-
-  // Join words back together
-  let creativeTitle = capitalized.join(' ');
-
-  // Ensure it's not too long (max 50 chars)
-  if (creativeTitle.length > 50) {
-    creativeTitle = creativeTitle.slice(0, 47) + '...';
-  }
-
-  console.log(`🎨 [CREATIVE TITLE] "${userPrompt}" → "${creativeTitle}"`);
-  
-  return creativeTitle;
-}
-
-/**
- * Detect primary mood/vibe from user prompt
- * Examples:
- * - "melodic trance sunrise" → "Euphoric / Uplifting"
- * - "dark dnb bassline" → "Aggressive / Intense"
- * - "ambient forest soundscape" → "Calm / Reflective"
- */
-export function detectVibe(userPrompt: string): string {
-  const p = (userPrompt || "").toLowerCase();
-  if (/trance|euphoria|uplift|sunrise|anthem/.test(p)) return "Euphoric / Uplifting";
-  if (/(dark|dnb|drum and bass|neuro|industrial|hard)/.test(p)) return "Aggressive / Intense";
-  if (/(ambient|forest|rain|nature|calm|meditat|chill|lofi)/.test(p)) return "Calm / Reflective";
-  if (/(game|gaming|roblox|geometry dash|edm|synthwave|arcade|8-bit|chip)/.test(p)) return "Energetic / Gaming";
-  if (/(cinematic|orchestral|film|epic|trailer)/.test(p)) return "Cinematic / Dramatic";
-  if (/(jazzy|jazz|sax|blues)/.test(p)) return "Smooth / Jazzy";
-  if (/(pop|upbeat|dance)/.test(p)) return "Upbeat / Pop";
-  return "Creative / Expressive";
-}
-
-/**
- * Generate a short vivid summary for the track
- */
-export function generateSummary(userPrompt: string): string {
-  const vibe = detectVibe(userPrompt);
-  const p = userPrompt.trim();
-  // Simple templated narrative
-  if (/trance|euphor/i.test(p)) {
-    return "An atmospheric trance anthem inspired by sunrise energy — glowing pads, shimmering synths, and euphoric build-ups.";
-  }
-  if (/dnb|drum and bass|neuro|bassline|dark/i.test(p)) {
-    return "A high-velocity DnB drive — razor bass, rapid-fire drums, and tension-filled drops with cinematic impact.";
-  }
-  if (/ambient|forest|rain|nature/i.test(p)) {
-    return "A serene ambient journey — misty textures, gentle swells, and organic field tones evoking tranquil nature.";
-  }
-  if (/game|gaming|roblox|geometry dash|edm|synthwave/i.test(p)) {
-    return "A high-energy electronic rush — playful synths, neon textures, and glitch-tinted drops built for fast-paced worlds.";
-  }
-  if (/cinematic|orchestral|film|epic/i.test(p)) {
-    return "A sweeping cinematic piece — soaring strings, bold brass, and dramatic crescendos glowing with emotion.";
-  }
-  return `${vibe} piece — expressive melodies, modern production, and immersive atmosphere.`;
-}
-
-// --- Two-word, TitleCase title enforcement ---
-export function toTitleCaseTwoWords(s: string): string {
-  if (!s) return "Untitled Track";
-  const words = s
-    .replace(/[^a-zA-Z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(w => w.toLowerCase());
-
-  const ranked = [...new Set(words)].sort((a,b) => b.length - a.length);
-  const base = ranked.slice(0, 2).length ? ranked.slice(0, 2) : words.slice(0, 2);
-  const chosen = base.map(w => w.charAt(0).toUpperCase() + w.slice(1));
-
-  const title = chosen.join(" ").trim();
-  return title || "Untitled Track";
-}
-
-export function generateCreativeTitleTwoWords(userPrompt: string, genreHint?: string): string {
-  const flair = ["Pulse","Echo","Horizon","Rush","Dream","Flux","Nova","Glide","Shift","Spark"];
-  const base = toTitleCaseTwoWords(userPrompt);
-  if (base.split(" ").length >= 2) return base;
-  const add = flair.find(f => f !== base);
-  return `${base} ${add || "Pulse"}`;
+  return `${base} — ${hash}`;
 }
 
 /**

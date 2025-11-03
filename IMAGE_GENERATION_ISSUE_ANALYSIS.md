@@ -160,3 +160,6 @@ This will make images appear reliably while keeping the code simple.
 **Status**: Root cause identified, fix pending  
 **Priority**: HIGH (core feature broken)
 
+
+
+
