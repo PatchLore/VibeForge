@@ -174,79 +174,61 @@ export async function POST(req: Request) {
     console.log("🖼️ [GENERATION START] literal image prompt:", imagePrompt);
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
-    // Generate music task and then poll for audio while generating image concurrently
+    // Generate music task and insert pending record immediately for callback linkage
     taskId = await generateMusic(cleanedMusicPrompt);
     console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
-
-    const waitForAudio = async (id: string): Promise<string> => {
-      const started = Date.now();
-      const timeoutMs = 2 * 60 * 1000; // 2 minutes
-      const intervalMs = 2000; // 2s
-      while (Date.now() - started < timeoutMs) {
-        try {
-          const status = await checkMusicStatus(id);
-          const audio = status?.audio_url;
-          if (audio && typeof audio === 'string') return audio;
-        } catch (_) {
-          // ignore transient errors
-        }
-        await new Promise(r => setTimeout(r, intervalMs));
-      }
-      throw new Error("Timed out waiting for audio generation");
-    };
 
     if (!taskId) {
       throw new Error("Missing taskId from music generation");
     }
 
-    const [audioUrl, imageUrl] = await Promise.all([
-      waitForAudio(taskId as string),
-      generateImage(imagePrompt)
-    ]);
-
     const vibe = detectVibe(userVibe);
     const summary = generateSummary(userVibe);
     const generatedTitle = generateTrackTitle(userVibe);
 
-    // ✅ Normalize (harmless safeguard even though imageUrl is now always a string)
-    const imageUrlString =
-      typeof imageUrl === "string" ? imageUrl : (imageUrl as any)?.imageUrl ?? null;
+    try {
+      // Ensure task_id is unique before insert
+      const { data: existing, error: existingErr } = await supabaseAdmin
+        .from('tracks')
+        .select('id')
+        .eq('task_id', taskId)
+        .maybeSingle();
 
-    // Insert completed track only after both are available
-    await supabaseAdmin
-      .from('tracks')
-      .insert({
-        user_id: user.id,
-        title: generatedTitle,
-        prompt: userVibe,
-        extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
-        audio_url: audioUrl,
-        image_url: imageUrlString,
-        mood: vibe,
-        summary: summary,
-        resolution: "2048x1152",
-        status: 'completed',
-        created_at: new Date().toISOString()
-      });
-    console.log("✅ [GENERATION COMPLETE] Track inserted with audio & image:", imageUrlString);
-    
-    remainingCredits = currentCredits; // Credits handled separately if desired
+      if (existingErr) {
+        console.warn('⚠️ [GENERATION START] task check error:', existingErr.message);
+      }
 
-    // Response structure with expandedPrompts for frontend display
+      if (existing?.id) {
+        console.warn(`⚠️ Duplicate task_id skipped: ${taskId}`);
+        return NextResponse.json({ error: 'Duplicate task_id detected', taskId }, { status: 409 });
+      }
+
+      await supabaseAdmin
+        .from('tracks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          title: generatedTitle,
+          prompt: userVibe,
+          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+          status: 'processing',
+          created_at: new Date().toISOString()
+        });
+      console.log("📝 [GENERATION START] Pending track inserted for task linkage");
+    } catch (e) {
+      console.warn("⚠️ [GENERATION START] Failed to insert pending track:", e);
+    }
+
+    remainingCredits = currentCredits;
+
     const payload: any = { 
       success: true,
       provider: "suno-api",
-      message: "🎶 Your SoundPainting is ready!",
+      taskId: taskId,
+      message: "🎶 Composing your SoundPainting… this usually takes about 1–2 minutes.",
       prompt: userVibe,
       title: generatedTitle,
       remainingCredits: remainingCredits,
-      track: {
-        audio_url: audioUrl,
-        image_url: imageUrl,
-        mood: vibe,
-        summary,
-        resolution: "2048x1152"
-      },
       expandedPrompts: {
         music: displayMusicPrompt || cleanedMusicPrompt || "",
         image: displayImagePrompt || imagePrompt || "",
@@ -254,9 +236,7 @@ export async function POST(req: Request) {
       }
     };
 
-    // Add diagnostic logging
     console.log("🎨 [EXPANDED PROMPTS SENT]", payload.expandedPrompts);
-
     return NextResponse.json(payload, { status: 200 });
 
   } catch (err: any) {

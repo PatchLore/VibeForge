@@ -108,7 +108,7 @@ export async function generateImage(
     guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
   };
 
-  try {
+  const callOnce = async (): Promise<string | null> => {
     const response = await fetch(`${BASE_URL}/generate/image`, {
       method: "POST",
       headers: {
@@ -117,14 +117,25 @@ export async function generateImage(
       },
       body: JSON.stringify(imageParams),
     });
-
-    const data = await response.json();
+    const data = await response.json().catch(() => ({} as any));
     if (!response.ok || (data as any)?.code !== 200) {
       console.error("❌ [IMAGE GEN] Failed:", data);
       return null;
     }
-
     const imageUrl = (data as any)?.data?.response?.imageUrl || null;
+    return imageUrl;
+  };
+
+  try {
+    let imageUrl = await callOnce();
+    if (!imageUrl) {
+      console.warn("🧪 [IMAGE GEN] Attempt 1 failed, retrying…");
+      imageUrl = await callOnce();
+      if (imageUrl) {
+        console.log("✅ [IMAGE GEN] Success on retry.");
+      }
+    }
+    if (!imageUrl) return null;
     console.log("✅ [IMAGE GEN] 2K image generated:", imageUrl);
     return imageUrl;
   } catch (error) {

@@ -372,15 +372,15 @@ export default function Home() {
                 rows={3}
               />
               
-              {/* Display expanded prompts when generating */}
-              {isGenerating && expandedPrompts && (
+              {/* Display expanded prompts (show as soon as available) */}
+              {expandedPrompts && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-4 space-y-2 text-sm"
                 >
                   <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                    <div className="text-pink-400 font-medium mb-1">🎵 Generating:</div>
+                    <div className="text-pink-400 font-medium mb-1">🎵 Enriched Music Prompt:</div>
                     <div className="text-gray-300 italic">{expandedPrompts.music}</div>
                   </div>
                   {(() => {
@@ -390,12 +390,18 @@ export default function Home() {
                     console.log("🔍 [UI DEBUG] expandedPrompts.art:", expandedPrompts.art);
                     return hasImagePrompt && (
                       <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                        <div className="text-cyan-400 font-medium mb-1">🎨 Creating:</div>
+                        <div className="text-cyan-400 font-medium mb-1">🎨 Enriched Image Prompt:</div>
                         <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
                       </div>
                     );
                   })()}
                 </motion.div>
+              )}
+
+              {isGenerating && (
+                <div className="mt-3 text-xs text-white/70">
+                  🎨 Generating artwork… this may take up to 60 seconds.
+                </div>
               )}
             </div>
 
