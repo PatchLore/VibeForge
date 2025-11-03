@@ -95,48 +95,79 @@ export async function generateImage(
 
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ""}`;
   const model = "bytedance/seedream-v4-text-to-image";
-  const resolution = "2048x1152";
+  const resolution = "3840x2160"; // 4K UHD
   
   const imageParams = {
     model: model,
     prompt: finalPrompt,
-    resolution: resolution,
+    resolution: resolution,      // 4K UHD
     aspect_ratio: "16:9",
-    quality: "high",
-    steps: 30,
-    cfg_scale: 8,
-    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
+    quality: "ultra",
+    steps: 45,                   // higher for more detail
+    cfg_scale: 9.5,              // stronger guidance
+    guidance:
+      "cinematic composition, volumetric lighting, ultra sharp, high contrast, detailed textures",
   };
 
-  const callOnce = async (): Promise<string | null> => {
-    const response = await fetch(`${BASE_URL}/generate/image`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(imageParams),
-    });
-    const data = await response.json().catch(() => ({} as any));
-    if (!response.ok || (data as any)?.code !== 200) {
-      console.error("❌ [IMAGE GEN] Failed:", data);
-      return null;
-    }
-    const imageUrl = (data as any)?.data?.response?.imageUrl || null;
-    return imageUrl;
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    Referer: "https://www.soundswoop.com",
+  } as Record<string, string>;
+
+  const parseUrl = (data: any): string | null => {
+    // Support multiple shapes
+    return (
+      data?.data?.response?.imageUrl ||
+      data?.data?.imageUrl ||
+      data?.data?.url ||
+      (Array.isArray(data?.data) ? data.data[0]?.url : null) ||
+      data?.image_url ||
+      data?.url ||
+      null
+    );
   };
 
   try {
-    let imageUrl = await callOnce();
-    if (!imageUrl) {
-      console.warn("🧪 [IMAGE GEN] Attempt 1 failed, retrying…");
-      imageUrl = await callOnce();
-      if (imageUrl) {
-        console.log("✅ [IMAGE GEN] Success on retry.");
+    // Primary 4K request
+    const response = await fetch(`${BASE_URL}/generate/image`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(imageParams),
+    });
+    const json = await response.json().catch(() => ({} as any));
+
+    let imageUrl = response.ok && (json as any)?.code === 200 ? parseUrl(json) : null;
+    const returnedRes: string | undefined = (json as any)?.data?.response?.resolution || (Array.isArray((json as any)?.data) ? (json as any).data[0]?.resolution : undefined);
+
+    if (!imageUrl || (returnedRes && returnedRes !== "3840x2160")) {
+      console.log("🪄 [UPSCALE] Retrying with Seedream v4 Upscaler");
+      const upscaleBody = {
+        model: "bytedance/seedream-v4-upscaler",
+        prompt: finalPrompt,
+        resolution: "3840x2160",
+        quality: "ultra",
+      };
+      const upscale = await fetch(`${BASE_URL}/generate`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(upscaleBody),
+      });
+      const upscaled = await upscale.json().catch(() => ({} as any));
+      const upscaledUrl = upscale.ok ? parseUrl(upscaled) : null;
+      if (upscaledUrl) {
+        console.log("✅ [IMAGE GEN] 4K upscaled image generated:", upscaledUrl);
+        return upscaledUrl;
       }
     }
-    if (!imageUrl) return null;
-    console.log("✅ [IMAGE GEN] 2K image generated:", imageUrl);
+
+    if (!imageUrl) {
+      console.error("❌ [IMAGE GEN] No image returned from both base and upscaler calls");
+      return null;
+    }
+
+    console.log("✅ [IMAGE GEN] 4K image generated:", imageUrl);
     return imageUrl;
   } catch (error) {
     console.error("❌ [IMAGE GEN] Exception:", error);

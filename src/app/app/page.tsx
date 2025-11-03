@@ -496,6 +496,8 @@ export default function AppPage() {
                     setVibe('');
                     setAudioSource(null);
                     setCurrentTrackTitle('');
+                    setExpandedPrompts(null);
+                    setIsGenerating(false);
                   }}
                   source={audioSource}
                   onCreditsUpdate={(credits) => setRemainingCredits(credits)}
