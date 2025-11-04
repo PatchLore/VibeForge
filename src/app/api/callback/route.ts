@@ -239,41 +239,52 @@ export async function POST(request: NextRequest) {
           console.log("🔗 [CALLBACK] Confirmed full-resolution URL:", finalUrl);
         }
 
-        // Fetch actual image buffer for verification
+        // ⏳ Poll the presigned URL until full 2K image is ready (max ~15s)
+        let verified: { width: number; height: number } | null = null;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          await new Promise(r => setTimeout(r, 3000));
+          verified = await getImageDimensions(finalUrl);
+          if (verified && verified.width >= 2048) {
+            console.log(`🖼️ [IMAGE DIM] Verified 2K+ on attempt ${attempt}: ${verified.width}x${verified.height}`);
+            break;
+          }
+          console.log(`⏳ [IMAGE DIM] Attempt ${attempt}: got ${verified?.width || "unknown"}px width — retrying...`);
+        }
+
+        if (!verified || verified.width < 2048) {
+          console.warn("⚠️ [IMAGE GEN] Full-res image not ready after polling — saving skipped for safety.");
+          return NextResponse.json({ ok: false, error: "image not ready" });
+        }
+
+        console.log(`🖼️ [IMAGE DIM] Image dimensions: ${verified.width}x${verified.height}`);
+        console.log(`🖼️ [IMAGE GEN] Verified 2K+ ✅`);
+
+        // Fetch actual image buffer for verification & storage
         const finalRes = await fetch(finalUrl);
         const buffer = Buffer.from(await finalRes.arrayBuffer());
 
-        // Use buffer-level verification
-        const verified = await getImageDimensionsFromBuffer(buffer);
-        if (!verified || verified.width < 2048) {
-          console.warn("⚠️ [IMAGE GEN] Image still below 2K or undetectable; skipping unsafe save");
-        } else {
-          console.log(`🖼️ [IMAGE DIM] ${verified.width}x${verified.height}`);
-          console.log(`🖼️ [IMAGE GEN] Verified 2K+ ✅`);
+        // Upload the verified image buffer to Supabase
+        const path = `tracks/${taskId}_${Date.now()}.png`;
+        const { error: upErr } = await supabaseServer.storage.from("images").upload(path, buffer, {
+          contentType: "image/png",
+          upsert: true,
+        });
+        if (upErr) console.error("❌ [CALLBACK] Supabase upload failed:", upErr);
 
-          // Upload the verified image buffer to Supabase
-          const path = `tracks/${taskId}_${Date.now()}.png`;
-          const { error: upErr } = await supabaseServer.storage.from("images").upload(path, buffer, {
-            contentType: "image/png",
-            upsert: true,
-          });
-          if (upErr) console.error("❌ [CALLBACK] Supabase upload failed:", upErr);
+        const { data: pub } = supabaseServer.storage.from("images").getPublicUrl(path);
+        const pubUrl = `${pub.publicUrl}?v=${Date.now()}`;
 
-          const { data: pub } = supabaseServer.storage.from("images").getPublicUrl(path);
-          const pubUrl = `${pub.publicUrl}?v=${Date.now()}`;
+        const { error: updErr } = await supabaseServer
+          .from("tracks")
+          .update({
+            image_url: pubUrl,
+            resolution: `${verified.width}x${verified.height}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("task_id", taskId);
 
-          const { error: updErr } = await supabaseServer
-            .from("tracks")
-            .update({
-              image_url: pubUrl,
-              resolution: `${verified.width}x${verified.height}`,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("task_id", taskId);
-
-          if (updErr) console.error("❌ [CALLBACK] DB update failed:", updErr);
-          else console.log("✅ [CALLBACK] Stored verified full-res image in Supabase");
-        }
+        if (updErr) console.error("❌ [CALLBACK] DB update failed:", updErr);
+        else console.log("✅ [CALLBACK] Stored verified full-res image in Supabase");
       } catch (err) {
         console.error('❌ [CALLBACK] Presigned download flow failed:', err);
         return NextResponse.json({ ok: false, error: 'presigned download flow failed' }, { status: 500 });
