@@ -220,6 +220,7 @@ export async function POST(request: NextRequest) {
           console.error('❌ [CALLBACK] Failed to get presigned download URL:', dlJson);
           return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
         }
+        console.log('🔍 [DEBUG] Presigned URL received:', presignedUrl);
 
         // --- Get final full-size URL with polling ---
         let finalUrl: string | null = null;
@@ -239,15 +240,38 @@ export async function POST(request: NextRequest) {
           }
 
           const check = await getImageDimensions(candidate);
+          console.log('🔍 [DEBUG] Verification result:', check);
           console.log(`🖼️ [IMAGE DIM] Attempt ${i}: ${check?.width || "?"}x${check?.height || "?"}`);
           if (check && check.width >= 2048) {
             finalUrl = candidate;
             console.log(`✅ [IMAGE GEN] Verified full-res on attempt ${i}: ${check.width}x${check.height}`);
-            await supabaseServer.from("tracks").update({
-              image_url: finalUrl,
-              resolution: `${check.width}x${check.height}`,
-              updated_at: new Date().toISOString(),
-            }).eq("task_id", taskId);
+            try {
+              console.log('🔍 [DEBUG] Updating track with taskId:', taskId);
+              const updateRes = await supabaseServer
+                .from("tracks")
+                .update({
+                  image_url: finalUrl,
+                  resolution: `${check.width}x${check.height}`,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("task_id", taskId)
+                .select();
+              console.log('🔍 [DEBUG] Update result:', updateRes);
+            } catch (err) {
+              console.error('🔥 [DEBUG ERROR] Supabase update failed:', err);
+            }
+
+            try {
+              const { data: postCheck, error: postErr } = await supabaseServer
+                .from('tracks')
+                .select('id, image_url, resolution, status, task_id, created_at')
+                .eq('task_id', taskId)
+                .maybeSingle();
+              if (postErr) console.error('🔥 [DEBUG ERROR] Post-update DB check failed:', postErr);
+              console.log('🔍 [DEBUG] Post-update DB check:', postCheck);
+            } catch (err) {
+              console.error('🔥 [DEBUG ERROR] Supabase select failed:', err);
+            }
             break;
           }
 
@@ -256,11 +280,21 @@ export async function POST(request: NextRequest) {
 
         if (!finalUrl) {
           console.warn("⚠️ [CALLBACK] Could not verify 2K image after polling — saving latest candidate to avoid nulls.");
-          await supabaseServer.from("tracks").update({
-            image_url: imageUrl || null,
-            resolution: "unknown",
-            updated_at: new Date().toISOString(),
-          }).eq("task_id", taskId);
+          try {
+            console.log('🔍 [DEBUG] Fallback update for taskId (avoid nulls):', taskId, 'imageUrl:', imageUrl);
+            const fbRes = await supabaseServer
+              .from("tracks")
+              .update({
+                image_url: imageUrl || null,
+                resolution: "unknown",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("task_id", taskId)
+              .select();
+            console.log('🔍 [DEBUG] Fallback update result:', fbRes);
+          } catch (err) {
+            console.error('🔥 [DEBUG ERROR] Fallback update failed:', err);
+          }
         }
       } catch (err) {
         console.error('❌ [CALLBACK] Presigned download flow failed:', err);
@@ -302,11 +336,21 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Final Check: Only mark complete and deduct credits when both audio and image exist ---
-    const { data: finalTrack } = await supabaseServer
-      .from('tracks')
-      .select('audio_url, image_url, user_id, status')
-      .eq('id', track.id)
-      .single();
+    let finalTrack: { audio_url: string | null; image_url: string | null; user_id: string | null; status: string | null } | null = null;
+    try {
+      const finalSel = await supabaseServer
+        .from('tracks')
+        .select('audio_url, image_url, user_id, status')
+        .eq('id', track.id)
+        .single();
+      if (finalSel.error) {
+        console.error('🔥 [DEBUG ERROR] Final select failed:', finalSel.error);
+      }
+      finalTrack = finalSel.data as any;
+      console.log('🔍 [DEBUG] Final select state:', finalSel);
+    } catch (err) {
+      console.error('🔥 [DEBUG ERROR] Final select exception:', err);
+    }
 
     if (!finalTrack) {
       console.error('❌ [CALLBACK] Failed to fetch final track state');
@@ -317,13 +361,20 @@ export async function POST(request: NextRequest) {
     if (finalTrack.audio_url && finalTrack.image_url && finalTrack.status !== 'completed') {
       console.log('✅ [CALLBACK] Both audio and image present, marking as completed');
       
-      await supabaseServer
-        .from('tracks')
-        .update({
-          status: 'completed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', track.id);
+      try {
+        console.log('🔍 [DEBUG] Marking completed for id:', track.id);
+        const doneRes = await supabaseServer
+          .from('tracks')
+          .update({
+            status: 'completed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', track.id)
+          .select();
+        console.log('🔍 [DEBUG] Completed update result:', doneRes);
+      } catch (err) {
+        console.error('🔥 [DEBUG ERROR] Completed update failed:', err);
+      }
 
       // Deduct credits atomically via RPC (only once when both are ready)
       const { data: deducted, error: rpcErr } = await supabaseServer.rpc(
@@ -345,6 +396,15 @@ export async function POST(request: NextRequest) {
         status: finalTrack.status
       });
     }
+
+    // 🧩 Final debug summary
+    console.log('🧩 [DEBUG SUMMARY]', {
+      taskId,
+      finalImage: finalTrack?.image_url,
+      finalResolution: undefined, // resolution included in earlier logs; DB schema available above
+      hasAudio: !!finalTrack?.audio_url,
+      status: finalTrack?.status,
+    });
 
     return NextResponse.json({ ok: true, taskId });
   } catch (e: any) {
