@@ -18,7 +18,7 @@ export interface EnrichedPrompts {
 export function mapEmotionToStyle(emotion: string): { music: string; image: string } {
   const normalized = emotion.toLowerCase();
 
-  if (normalized.includes("calm") || normalized.includes("dream")) {
+  if (normalized.includes("calm") || normalized.includes("dream") || normalized.includes("peace") || normalized.includes("peaceful") || normalized.includes("serene") || normalized.includes("tranquil")) {
     return {
       music: "ambient cinematic with soft synths, gentle textures, and smooth progression",
       image: "misty ethereal landscape, pastel colors, soft lighting, dreamy atmosphere"
@@ -72,6 +72,9 @@ export function mapEmotionToStyle(emotion: string): { music: string; image: stri
  */
 export function generateEnrichedPrompts(userPrompt: string): { music: string; image: string } {
   const style = mapEmotionToStyle(userPrompt);
+  
+  console.log("🎭 [ENRICHMENT] Input prompt:", userPrompt);
+  console.log("🎭 [ENRICHMENT] Mapped style:", style);
 
   const enrichedMusicPrompt = `Create a ${style.music} that captures the feeling of "${userPrompt}". Include emotional depth and dynamic structure.`;
   const enrichedImagePrompt = `A ${style.image} representing "${userPrompt}", with cinematic lighting, ultra-sharp detail, and professional 16:9 composition.`;

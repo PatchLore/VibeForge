@@ -150,14 +150,20 @@ export async function POST(req: Request) {
 
     try {
       // Use centralized enrichment function
+      console.log("🔍 [API] Calling generateEnrichedPrompts with:", userVibe);
       const expandedPrompts = generateEnrichedPrompts(userVibe);
       displayMusicPrompt = expandedPrompts.music;
       displayImagePrompt = expandedPrompts.image;
+      console.log("✅ [API] Enriched prompts generated successfully");
+      console.log("✅ [API] Music prompt:", displayMusicPrompt);
+      console.log("✅ [API] Image prompt:", displayImagePrompt);
     } catch (e) {
+      console.error("❌ [API] Enrichment error:", e);
       console.warn("⚠️ Non-blocking display prompt error:", e);
       // Fallback to technical prompts if emotion mapping fails
       displayMusicPrompt = cleanedMusicPrompt;
       displayImagePrompt = imagePrompt;
+      console.log("⚠️ [API] Using fallback prompts");
     }
 
     console.log("🎵 Generating:", cleanedMusicPrompt);
