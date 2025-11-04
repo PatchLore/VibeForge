@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
-import { generateImage } from '@/lib/kie';
+import { generateImage, getImageDimensions } from '@/lib/kie';
 import { buildImagePrompt } from '@/lib/enrichPrompt';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
@@ -163,16 +163,57 @@ export async function POST(request: NextRequest) {
     if (!completed) {
       // If this is an image callback with resultJson, extract and update image
       if (isImageCallback && topLevelImage) {
-        console.log('🖼️ [CALLBACK] Image-only callback, updating image URL:', topLevelImage);
+        console.log('🖼️ [CALLBACK] Image-only callback, verifying resolution:', topLevelImage);
+        
+        // Verify image dimensions before saving
+        const dimensions = await getImageDimensions(topLevelImage);
+        
+        if (!dimensions) {
+          console.error('❌ [CALLBACK] Failed to get image dimensions, cannot verify');
+          return NextResponse.json({ ok: false, error: 'image dimension verification failed' }, { status: 500 });
+        }
+        
+        // Check if image meets 2K requirement (width >= 2048px)
+        if (dimensions.width < 2048) {
+          console.warn(`⚠️ [CALLBACK] Image too small: ${dimensions.width}x${dimensions.height}, retrying with 4K`);
+          
+          // Retry with 4K resolution
+          if (pending.prompt) {
+            const imagePrompt = buildImagePrompt(pending.prompt);
+            const retryTaskId = await generateImage(imagePrompt, "", "4K");
+            
+            if (retryTaskId) {
+              // Store retry taskId for matching
+              await supabaseServer
+                .from('tracks')
+                .update({ 
+                  extended_prompt: `${pending.extended_prompt || pending.prompt} | image_task_id: ${retryTaskId} | retry_4k: true`,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', pending.id);
+              console.log('🔄 [CALLBACK] 4K retry task created:', retryTaskId);
+              return NextResponse.json({ ok: true, message: 'retrying with 4K' });
+            }
+          }
+          
+          // If retry failed, don't save the small image
+          console.error('❌ [CALLBACK] 4K retry failed, not saving small image');
+          return NextResponse.json({ ok: false, error: 'image too small and retry failed' }, { status: 500 });
+        }
+        
+        // Image meets 2K requirement, save it
+        const resolution = `${dimensions.width}x${dimensions.height}`;
+        console.log(`🖼️ [IMAGE GEN] Verified resolution: ${resolution} ✅`);
+        
         await supabaseServer
           .from('tracks')
           .update({
             image_url: topLevelImage,
-            resolution: "2048x1152",
+            resolution: resolution,
             updated_at: new Date().toISOString()
           })
           .eq('id', pending.id);
-        console.log('✅ [CALLBACK] Track updated with image URL');
+        console.log('✅ [CALLBACK] Track updated with verified 2K+ image URL');
         return NextResponse.json({ ok: true, message: 'image updated' });
       }
       
@@ -190,12 +231,62 @@ export async function POST(request: NextRequest) {
 
     console.log("🎵 [TITLE AUTO] Generated unique title:", safeTitle);
 
+    // Verify image resolution if image_url is provided
+    let finalImageUrl = completed.image_url ?? pending.image_url;
+    let finalResolution: string | null = "2048x1152"; // Default
+    
+    if (finalImageUrl) {
+      console.log('🖼️ [CALLBACK] Verifying image resolution before saving:', finalImageUrl);
+      const dimensions = await getImageDimensions(finalImageUrl);
+      
+      if (dimensions) {
+        if (dimensions.width < 2048) {
+          console.warn(`⚠️ [CALLBACK] Image too small: ${dimensions.width}x${dimensions.height}, retrying with 4K`);
+          
+          // Retry with 4K if we have a prompt
+          if (pending.prompt) {
+            const imagePrompt = buildImagePrompt(pending.prompt);
+            const retryTaskId = await generateImage(imagePrompt, "", "4K");
+            
+            if (retryTaskId) {
+              // Store retry taskId for matching
+              await supabaseServer
+                .from('tracks')
+                .update({ 
+                  extended_prompt: `${pending.extended_prompt || pending.prompt} | image_task_id: ${retryTaskId} | retry_4k: true`,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('task_id', taskId);
+              console.log('🔄 [CALLBACK] 4K retry task created:', retryTaskId);
+              // Don't save the small image, wait for 4K callback
+              finalImageUrl = null;
+              finalResolution = null;
+            } else {
+              // Retry failed, but keep the small image rather than losing it
+              finalResolution = `${dimensions.width}x${dimensions.height}`;
+              console.warn(`⚠️ [CALLBACK] 4K retry failed, saving small image: ${finalResolution}`);
+            }
+          } else {
+            // No prompt available, save what we have
+            finalResolution = `${dimensions.width}x${dimensions.height}`;
+            console.warn(`⚠️ [CALLBACK] No prompt for retry, saving small image: ${finalResolution}`);
+          }
+        } else {
+          // Image meets 2K requirement
+          finalResolution = `${dimensions.width}x${dimensions.height}`;
+          console.log(`🖼️ [IMAGE GEN] Verified resolution: ${finalResolution} ✅`);
+        }
+      } else {
+        console.warn('⚠️ [CALLBACK] Could not verify image dimensions, using default resolution');
+      }
+    }
+
     const updateFields: any = {
       title: safeTitle,
       prompt: safePrompt,
       audio_url: completed.audio_url,
-      image_url: completed.image_url ?? pending.image_url, // ✅ preserve the image from initial insert
-      resolution: "2048x1152", // Default to 2K resolution
+      image_url: finalImageUrl, // Use verified image or null if retrying
+      resolution: finalResolution,
       duration: completed.duration ?? null,
       status: 'completed',
       updated_at: new Date().toISOString(),
@@ -226,13 +317,17 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ [CALLBACK] image_url missing after update, regenerating fallback image...');
       try {
         const fallbackPrompt = buildImagePrompt(verify.prompt);
-        const regenerated = await generateImage(fallbackPrompt);
-        if (regenerated) {
+        const imageTaskId = await generateImage(fallbackPrompt);
+        if (imageTaskId) {
+          // Store taskId in extended_prompt for callback matching (image comes via callback)
           await supabaseServer
             .from('tracks')
-            .update({ image_url: regenerated, resolution: "2048x1152" })
+            .update({ 
+              extended_prompt: `${verify.prompt} | image_task_id: ${imageTaskId} | fallback_regeneration: true`,
+              updated_at: new Date().toISOString()
+            })
             .eq('task_id', taskId);
-          console.log('✅ [CALLBACK] Fallback image regenerated and saved.');
+          console.log('✅ [CALLBACK] Fallback image generation task created, will arrive via callback:', imageTaskId);
         }
       } catch (err) {
         console.error('❌ [CALLBACK] Failed to regenerate fallback image:', err);

@@ -88,7 +88,8 @@ export async function checkMusicStatus(taskId: string) {
 // Based on official API docs: /api/v1/jobs/createTask
 export async function generateImage(
   prompt: string,
-  styleSuffix: string = ""
+  styleSuffix: string = "",
+  resolution: "2K" | "4K" = "2K"
 ): Promise<string | null> {
   const apiKey = KIE_KEYS.image;
   if (!apiKey)
@@ -108,17 +109,17 @@ export async function generateImage(
     input: {
       prompt: finalPrompt,
       image_size: "landscape_16_9",  // 16:9 aspect ratio
-      image_resolution: "2K",         // 2K resolution (with 16:9 = 2048x1152px)
+      image_resolution: resolution,   // 2K or 4K resolution
       max_images: 1,
     }
   };
   
-  console.log(`🖼️ [IMAGE GEN] Using correct API endpoint: /api/v1/jobs/createTask`);
+  console.log(`🖼️ [IMAGE GEN] Using correct API endpoint: https://api.kie.ai/api/v1/jobs/createTask`);
   console.log(`🖼️ [IMAGE GEN] Request body:`, JSON.stringify(requestBody, null, 2));
 
   try {
-    // Use correct endpoint from documentation
-    const response = await fetch(`${BASE_URL}/api/v1/jobs/createTask`, {
+    // Use correct endpoint from documentation: https://api.kie.ai/api/v1/jobs/createTask
+    const response = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -146,7 +147,7 @@ export async function generateImage(
     
     console.log(`✅ [IMAGE GEN] Task created: ${taskId}`);
     console.log(`🖼️ [IMAGE GEN] Image will be delivered via callback at: ${callBackUrl}`);
-    console.log(`🖼️ [IMAGE GEN] Expected resolution: 2K with landscape_16_9 = 2048x1152px`);
+    console.log(`🖼️ [IMAGE GEN] Requested resolution: ${resolution} with landscape_16_9`);
     
     // Return taskId - the actual image URL will come via callback
     // The callback will contain resultJson with resultUrls array
@@ -159,7 +160,86 @@ export async function generateImage(
   }
 }
 
-// ✅ Simple verifier for old imports
+// 🖼️ Get actual image dimensions by fetching and parsing image metadata
+// Works in Node.js by parsing image binary headers
+export async function getImageDimensions(
+  imageUrl: string
+): Promise<{ width: number; height: number } | null> {
+  try {
+    // Fetch the image to get its actual dimensions
+    const response = await fetch(imageUrl, { method: "GET" });
+    if (!response.ok) {
+      console.error(`❌ [IMAGE DIM] Failed to fetch image: ${response.status}`);
+      return null;
+    }
+
+    // Get image as array buffer for parsing
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Check Content-Type to determine format
+    const contentType = response.headers.get("content-type") || "";
+    
+    let width = 0;
+    let height = 0;
+    
+    // Parse JPEG (starts with FF D8)
+    if (contentType.includes("jpeg") || contentType.includes("jpg") || 
+        (buffer[0] === 0xFF && buffer[1] === 0xD8)) {
+      // JPEG: Look for SOF markers (FF C0, FF C1, FF C2, etc.)
+      let i = 2;
+      while (i < buffer.length - 8) {
+        if (buffer[i] === 0xFF && buffer[i + 1] >= 0xC0 && buffer[i + 1] <= 0xC3) {
+          height = (buffer[i + 5] << 8) | buffer[i + 6];
+          width = (buffer[i + 7] << 8) | buffer[i + 8];
+          break;
+        }
+        i++;
+      }
+    }
+    // Parse PNG (starts with 89 50 4E 47)
+    else if (contentType.includes("png") || 
+             (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47)) {
+      // PNG: Width and height are at bytes 16-23
+      if (buffer.length >= 24) {
+        width = buffer.readUInt32BE(16);
+        height = buffer.readUInt32BE(20);
+      }
+    }
+    // Parse WebP (starts with RIFF...WEBP)
+    else if (contentType.includes("webp") || 
+             (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+              buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50)) {
+      // WebP: Look for VP8 or VP8L chunk
+      if (buffer.length >= 30) {
+        // VP8 format (simple format)
+        if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x20) {
+          width = ((buffer[26] | (buffer[27] << 8)) & 0x3FFF) + 1;
+          height = ((buffer[28] | (buffer[29] << 8)) & 0x3FFF) + 1;
+        }
+        // VP8L format (lossless)
+        else if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x4C) {
+          const bits = buffer[21];
+          width = (bits & 0x3F) + 1;
+          height = ((bits >> 6) | ((buffer[20] & 0xF) << 2)) + 1;
+        }
+      }
+    }
+    
+    if (width > 0 && height > 0) {
+      console.log(`🖼️ [IMAGE DIM] Image dimensions: ${width}x${height}`);
+      return { width, height };
+    } else {
+      console.warn(`⚠️ [IMAGE DIM] Could not parse dimensions from image: ${imageUrl}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`❌ [IMAGE DIM] Exception getting dimensions:`, error);
+    return null;
+  }
+}
+
+// ✅ Simple verifier for old imports (kept for backward compatibility)
 export async function verifyAndUpscaleTo2K(
   imageUrl: string,
   target: { width: number; height: number } = { width: 2048, height: 1152 }
