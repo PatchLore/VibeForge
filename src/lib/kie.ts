@@ -128,25 +128,62 @@ export async function generateImage(
     }
 
     // Try multiple possible response paths for image URL
-    const imageUrl = (data as any)?.data?.response?.imageUrl || 
+    // Check for full-resolution URL first, then fall back to thumbnail
+    const fullResUrl = (data as any)?.data?.response?.fullImageUrl ||
+                       (data as any)?.data?.response?.highResUrl ||
+                       (data as any)?.data?.response?.originalUrl ||
+                       (data as any)?.data?.fullImageUrl ||
+                       (data as any)?.fullImageUrl ||
+                       null;
+    
+    const imageUrl = fullResUrl ||
+                     (data as any)?.data?.response?.imageUrl || 
                      (data as any)?.data?.imageUrl || 
                      (data as any)?.imageUrl ||
                      (data as any)?.data?.response?.url ||
                      (data as any)?.url ||
                      null;
     
-    console.log("✅ [IMAGE GEN] 2048x1152 image generated:", imageUrl);
+    // If we got a URL, try to convert thumbnail URLs to full-res
+    let finalImageUrl = imageUrl;
+    if (imageUrl) {
+      // Try common URL modifications to get full resolution
+      // Replace common thumbnail paths with full-res paths
+      const modifiedUrl = imageUrl
+        .replace(/\/thumb\//g, '/full/')
+        .replace(/\/thumbnail\//g, '/original/')
+        .replace(/\/preview\//g, '/full/')
+        .replace(/\/360x360\//g, '/2048x1152/')
+        .replace(/\/small\//g, '/large/')
+        .replace(/w=360&h=360/g, 'w=2048&h=1152')
+        .replace(/width=360&height=360/g, 'width=2048&height=1152')
+        .replace(/size=360/g, 'size=2048')
+        .replace(/scale=thumbnail/g, 'scale=full')
+        .replace(/quality=low/g, 'quality=high');
+      
+      // Only use modified URL if it's different (meaning we found a pattern to replace)
+      if (modifiedUrl !== imageUrl) {
+        console.log("🔄 [IMAGE GEN] Attempting to convert thumbnail to full-res URL");
+        console.log("🔄 [IMAGE GEN] Original:", imageUrl);
+        console.log("🔄 [IMAGE GEN] Modified:", modifiedUrl);
+        finalImageUrl = modifiedUrl;
+      }
+    }
+    
+    console.log("✅ [IMAGE GEN] 2048x1152 image generated:", finalImageUrl);
     console.log(`🖼️ [IMAGE GEN] Params used: resolution=${resolution}, steps=40, cfg_scale=8.5`);
     console.log(`🖼️ [IMAGE GEN] Response structure:`, {
       hasData: !!data?.data,
       hasResponse: !!data?.data?.response,
       hasImageUrl: !!data?.data?.response?.imageUrl,
+      hasFullResUrl: !!fullResUrl,
       hasDirectImageUrl: !!data?.data?.imageUrl,
       topLevelUrl: data?.url,
-      code: data?.code
+      code: data?.code,
+      allKeys: Object.keys(data?.data?.response || {}),
     });
     
-    return imageUrl;
+    return finalImageUrl;
   } catch (error) {
     console.error("❌ [IMAGE GEN] Exception:", error);
     return null;
