@@ -178,9 +178,19 @@ export async function POST(req: Request) {
     console.log("🖼️ [GENERATION START] literal image prompt:", imagePrompt);
     console.log("[PROMPT FIXED]", { musicPrompt: cleanedMusicPrompt, imagePrompt });
 
-    // Generate music task and insert pending record immediately for callback linkage
-    taskId = await generateMusic(cleanedMusicPrompt);
-    console.log("🎵 [GENERATION START] task_id:", taskId, "model: V5");
+    // Generate music and image concurrently using new API structure
+    console.log("🚀 [GENERATION START] Starting concurrent music + image generation");
+    const [musicTaskId, imageTaskId] = await Promise.all([
+      generateMusic(cleanedMusicPrompt),
+      generateImage(imagePrompt).catch((e) => {
+        console.warn("⚠️ [GENERATION START] Image generation failed, continuing without image:", e);
+        return null;
+      })
+    ]);
+    
+    taskId = musicTaskId;
+    console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
+    console.log("🖼️ [GENERATION START] image task_id:", imageTaskId || "none");
 
     if (!taskId) {
       throw new Error("Missing taskId from music generation");
@@ -207,6 +217,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Duplicate task_id detected', taskId }, { status: 409 });
       }
 
+      // Store both music and image taskIds in extended_prompt for callback matching
+      const extendedPrompt = `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}${imageTaskId ? ` | image_task_id: ${imageTaskId}` : ''}`;
+      
       await supabaseAdmin
         .from('tracks')
         .insert({
@@ -214,7 +227,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           title: generatedTitle,
           prompt: userVibe,
-          extended_prompt: `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`,
+          extended_prompt: extendedPrompt,
           status: 'processing',
           created_at: new Date().toISOString()
         });
