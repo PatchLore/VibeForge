@@ -120,15 +120,32 @@ export async function generateImage(
 
     const data = await response.json();
     console.log(`🖼️ [IMAGE GEN] status: ${response.status} ok: ${response.ok}`);
+    console.log(`🖼️ [IMAGE GEN] Full response:`, JSON.stringify(data, null, 2));
     
     if (!response.ok || (data as any)?.code !== 200) {
       console.error("❌ [IMAGE GEN] Failed:", data);
       return null;
     }
 
-    const imageUrl = (data as any)?.data?.response?.imageUrl || null;
+    // Try multiple possible response paths for image URL
+    const imageUrl = (data as any)?.data?.response?.imageUrl || 
+                     (data as any)?.data?.imageUrl || 
+                     (data as any)?.imageUrl ||
+                     (data as any)?.data?.response?.url ||
+                     (data as any)?.url ||
+                     null;
+    
     console.log("✅ [IMAGE GEN] 2048x1152 image generated:", imageUrl);
     console.log(`🖼️ [IMAGE GEN] Params used: resolution=${resolution}, steps=40, cfg_scale=8.5`);
+    console.log(`🖼️ [IMAGE GEN] Response structure:`, {
+      hasData: !!data?.data,
+      hasResponse: !!data?.data?.response,
+      hasImageUrl: !!data?.data?.response?.imageUrl,
+      hasDirectImageUrl: !!data?.data?.imageUrl,
+      topLevelUrl: data?.url,
+      code: data?.code
+    });
+    
     return imageUrl;
   } catch (error) {
     console.error("❌ [IMAGE GEN] Exception:", error);
