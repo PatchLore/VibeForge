@@ -371,32 +371,6 @@ export default function Home() {
                 className="w-full p-4 rounded-2xl bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none"
                 rows={3}
               />
-              
-              {/* Display expanded prompts (show as soon as available) */}
-              {expandedPrompts && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 space-y-2 text-sm"
-                >
-                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                    <div className="text-pink-400 font-medium mb-1">🎵 Enriched Music Prompt:</div>
-                    <div className="text-gray-300 italic">{expandedPrompts.music}</div>
-                  </div>
-                  {(() => {
-                    const hasImagePrompt = expandedPrompts.image || expandedPrompts.art;
-                    console.log("🔍 [UI DEBUG] hasImagePrompt:", hasImagePrompt);
-                    console.log("🔍 [UI DEBUG] expandedPrompts.image:", expandedPrompts.image);
-                    console.log("🔍 [UI DEBUG] expandedPrompts.art:", expandedPrompts.art);
-                    return hasImagePrompt && (
-                      <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                        <div className="text-cyan-400 font-medium mb-1">🎨 Enriched Image Prompt:</div>
-                        <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
-                      </div>
-                    );
-                  })()}
-                </motion.div>
-              )}
 
               {isGenerating && (
                 <div className="mt-3 text-xs text-white/70">

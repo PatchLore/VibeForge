@@ -388,23 +388,6 @@ export default function AppPage() {
                            focus:outline-none transition-all duration-300 resize-none"
                 rows={3}
               />
-
-              {expandedPrompts && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 space-y-2 text-sm"
-                >
-                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                    <div className="text-pink-400 font-medium mb-1">🎵 Enriched Music Prompt:</div>
-                    <div className="text-gray-300 italic">{expandedPrompts.music}</div>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                    <div className="text-cyan-400 font-medium mb-1">🎨 Enriched Image Prompt:</div>
-                    <div className="text-gray-300 italic">{expandedPrompts.image || expandedPrompts.art}</div>
-                  </div>
-                </motion.div>
-              )}
             </div>
 
             <div className="mb-8">
