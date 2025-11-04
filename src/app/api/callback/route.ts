@@ -221,70 +221,47 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
         }
 
-        // Wait longer for CDN propagation
-        await new Promise(r => setTimeout(r, 2000));
+        // --- Get final full-size URL with polling ---
+        let finalUrl: string | null = null;
+        for (let i = 1; i <= 5; i++) {
+          const dlRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ taskId, url: imageUrl, resolution: "2K" }),
+          });
 
-        // Force direct re-fetch of the download URL (can avoid cached preview)
-        const dlRetryRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ taskId, url: imageUrl, resolution: "2K" })
-        });
+          const dlJson = await dlRes.json();
+          const candidate: string | undefined = dlJson?.data;
+          if (!candidate) {
+            console.log(`⏳ [CALLBACK] Attempt ${i}: no download-url yet`);
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+          }
 
-        const dlRetryJson = await dlRetryRes.json();
-        const finalUrl = dlRetryJson?.data || presignedUrl;
-        if (!finalUrl) {
-          console.error("❌ [CALLBACK] No valid finalUrl from Kie.ai download-url");
-        } else {
-          console.log("🔗 [CALLBACK] Confirmed full-resolution URL:", finalUrl);
-        }
-
-        // ⏳ Poll the presigned URL until full 2K image is ready (max ~15s)
-        let verified: { width: number; height: number } | null = null;
-        for (let attempt = 1; attempt <= 5; attempt++) {
-          await new Promise(r => setTimeout(r, 3000));
-          verified = await getImageDimensions(finalUrl);
-          if (verified && verified.width >= 2048) {
-            console.log(`🖼️ [IMAGE DIM] Verified 2K+ on attempt ${attempt}: ${verified.width}x${verified.height}`);
+          const check = await getImageDimensions(candidate);
+          console.log(`🖼️ [IMAGE DIM] Attempt ${i}: ${check?.width || "?"}x${check?.height || "?"}`);
+          if (check && check.width >= 2048) {
+            finalUrl = candidate;
+            console.log(`✅ [IMAGE GEN] Verified full-res on attempt ${i}: ${check.width}x${check.height}`);
+            await supabaseServer.from("tracks").update({
+              image_url: finalUrl,
+              resolution: `${check.width}x${check.height}`,
+              updated_at: new Date().toISOString(),
+            }).eq("task_id", taskId);
             break;
           }
-          console.log(`⏳ [IMAGE DIM] Attempt ${attempt}: got ${verified?.width || "unknown"}px width — retrying...`);
+
+          await new Promise(r => setTimeout(r, 3000));
         }
 
-        if (!verified || verified.width < 2048) {
-          console.warn("⚠️ [IMAGE GEN] Full-res image not ready after polling — saving skipped for safety.");
-          return NextResponse.json({ ok: false, error: "image not ready" });
-        }
-
-        console.log(`🖼️ [IMAGE DIM] Image dimensions: ${verified.width}x${verified.height}`);
-        console.log(`🖼️ [IMAGE GEN] Verified 2K+ ✅`);
-
-        // Fetch actual image buffer for verification & storage
-        const finalRes = await fetch(finalUrl);
-        const buffer = Buffer.from(await finalRes.arrayBuffer());
-
-        // Upload the verified image buffer to Supabase
-        const path = `tracks/${taskId}_${Date.now()}.png`;
-        const { error: upErr } = await supabaseServer.storage.from("images").upload(path, buffer, {
-          contentType: "image/png",
-          upsert: true,
-        });
-        if (upErr) console.error("❌ [CALLBACK] Supabase upload failed:", upErr);
-
-        const { data: pub } = supabaseServer.storage.from("images").getPublicUrl(path);
-        const pubUrl = `${pub.publicUrl}?v=${Date.now()}`;
-
-        const { error: updErr } = await supabaseServer
-          .from("tracks")
-          .update({
-            image_url: pubUrl,
-            resolution: `${verified.width}x${verified.height}`,
+        if (!finalUrl) {
+          console.warn("⚠️ [CALLBACK] Could not verify 2K image after polling — saving latest candidate to avoid nulls.");
+          await supabaseServer.from("tracks").update({
+            image_url: imageUrl || null,
+            resolution: "unknown",
             updated_at: new Date().toISOString(),
-          })
-          .eq("task_id", taskId);
-
-        if (updErr) console.error("❌ [CALLBACK] DB update failed:", updErr);
-        else console.log("✅ [CALLBACK] Stored verified full-res image in Supabase");
+          }).eq("task_id", taskId);
+        }
       } catch (err) {
         console.error('❌ [CALLBACK] Presigned download flow failed:', err);
         return NextResponse.json({ ok: false, error: 'presigned download flow failed' }, { status: 500 });
