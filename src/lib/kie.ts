@@ -147,6 +147,30 @@ export async function generateImage(
     // If we got a URL, try to convert thumbnail URLs to full-res
     let finalImageUrl = imageUrl;
     if (imageUrl) {
+      // For musicfile.kie.ai URLs, try to verify actual image dimensions
+      // The API might be returning thumbnails, so we'll verify the actual image
+      if (imageUrl.includes('musicfile.kie.ai') || imageUrl.includes('kie.ai')) {
+        try {
+          // Fetch image headers to check actual dimensions
+          const headResponse = await fetch(imageUrl, { method: 'HEAD' });
+          const contentType = headResponse.headers.get('content-type');
+          const contentLength = headResponse.headers.get('content-length');
+          
+          console.log(`🔍 [IMAGE GEN] Image headers:`, {
+            contentType,
+            contentLength,
+            url: imageUrl
+          });
+          
+          // If content length is very small (< 100KB), it's likely a thumbnail
+          if (contentLength && parseInt(contentLength) < 100000) {
+            console.warn("⚠️ [IMAGE GEN] Image appears to be thumbnail (small file size)");
+          }
+        } catch (e) {
+          console.warn("⚠️ [IMAGE GEN] Could not verify image dimensions:", e);
+        }
+      }
+      
       // Try common URL modifications to get full resolution
       // Replace common thumbnail paths with full-res paths
       const modifiedUrl = imageUrl
