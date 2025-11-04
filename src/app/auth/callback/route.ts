@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorUrl);
   }
 
-  // Success - redirect to app
-  return NextResponse.redirect(`${origin}${next}`);
+  // Success - redirect to app with cookies preserved
+  return response;
 }
 
