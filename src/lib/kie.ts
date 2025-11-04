@@ -106,7 +106,12 @@ export async function generateImage(
     steps: 40,
     cfg_scale: 8.5,
     guidance: "cinematic lighting, ultra sharp detail, high contrast, realistic textures, professional composition",
-  };
+    // Try to explicitly request full resolution (not thumbnail)
+    return_full_resolution: true,
+    thumbnail: false,
+  } as Record<string, any>;
+  
+  console.log(`🖼️ [IMAGE GEN] Request params:`, JSON.stringify(imageParams, null, 2));
 
   try {
     const response = await fetch(`${BASE_URL}/generate/image`, {
