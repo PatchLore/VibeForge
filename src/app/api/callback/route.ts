@@ -182,6 +182,15 @@ export async function POST(request: NextRequest) {
 
     // Check if this is an image callback (taskId matches image_task_id stored in extended_prompt)
     const isImageCallback = track.extended_prompt?.includes(`image_task_id: ${taskId}`);
+    console.log('🧩 [DEBUG] Incoming taskId:', taskId);
+    console.log('🧩 [DEBUG] Track matched:', {
+      id: track.id,
+      user_id: track.user_id,
+      task_id: track.task_id,
+      has_image_url: !!track.image_url,
+      status: track.status,
+      matchedBy: track.task_id === taskId ? 'task_id' : 'extended_prompt:image_task_id'
+    });
     
     // If already completed, be idempotent (allow image updates if image is missing)
     if (track.status === 'completed' && !(isImageCallback && !track.image_url)) {
@@ -254,7 +263,7 @@ export async function POST(request: NextRequest) {
                   resolution: `${check.width}x${check.height}`,
                   updated_at: new Date().toISOString(),
                 })
-                .eq("task_id", taskId)
+                .eq("id", track.id)
                 .select();
               console.log('🔍 [DEBUG] Update result:', updateRes);
             } catch (err) {
@@ -289,7 +298,7 @@ export async function POST(request: NextRequest) {
                 resolution: "unknown",
                 updated_at: new Date().toISOString(),
               })
-              .eq("task_id", taskId)
+              .eq("id", track.id)
               .select();
             console.log('🔍 [DEBUG] Fallback update result:', fbRes);
           } catch (err) {
