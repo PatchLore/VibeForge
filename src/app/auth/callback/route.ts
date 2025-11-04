@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             value,
             ...options,
           });
-          response = NextResponse.redirect(`${origin}${next}`, {
+          response = NextResponse.next({
             request: {
               headers: request.headers,
             },
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
             value: '',
             ...options,
           });
-          response = NextResponse.redirect(`${origin}${next}`, {
+          response = NextResponse.next({
             request: {
               headers: request.headers,
             },
@@ -87,6 +87,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Success - redirect to app
-  return response;
+  return NextResponse.redirect(`${origin}${next}`);
 }
 
