@@ -49,18 +49,31 @@ export async function POST(request: NextRequest) {
     let topLevelImage = payload?.image_url ?? raw?.image_url;
     
     // Extract image URL from resultJson.resultUrls if available (new API structure)
-    if (!topLevelImage && payload?.resultJson) {
+    // Check both payload.resultJson and payload.data.resultJson (depending on structure)
+    const resultJsonString = payload?.resultJson ?? payload?.data?.resultJson ?? raw?.data?.resultJson;
+    
+    if (!topLevelImage && resultJsonString) {
       try {
-        const resultJson = typeof payload.resultJson === 'string' 
-          ? JSON.parse(payload.resultJson) 
-          : payload.resultJson;
+        console.log('🔍 [CALLBACK] Found resultJson, attempting to parse:', resultJsonString.substring(0, 200));
+        const resultJson = typeof resultJsonString === 'string' 
+          ? JSON.parse(resultJsonString) 
+          : resultJsonString;
+        
+        console.log('🔍 [CALLBACK] Parsed resultJson:', JSON.stringify(resultJson, null, 2));
+        
         if (resultJson?.resultUrls && Array.isArray(resultJson.resultUrls) && resultJson.resultUrls.length > 0) {
           topLevelImage = resultJson.resultUrls[0];
-          console.log('🖼️ [CALLBACK] Extracted image URL from resultJson.resultUrls:', topLevelImage);
+          console.log('✅ [CALLBACK] Extracted image URL from resultJson.resultUrls:', topLevelImage);
+        } else {
+          console.log('⚠️ [CALLBACK] resultJson found but resultUrls is missing or empty:', resultJson);
         }
       } catch (e) {
-        console.warn('⚠️ [CALLBACK] Failed to parse resultJson:', e);
+        console.error('❌ [CALLBACK] Failed to parse resultJson:', e);
+        console.error('❌ [CALLBACK] resultJson string:', resultJsonString);
       }
+    } else if (!topLevelImage) {
+      console.log('🔍 [CALLBACK] No resultJson found. Payload keys:', Object.keys(payload || {}));
+      console.log('🔍 [CALLBACK] Raw keys:', Object.keys(raw || {}));
     }
 
     // Prefer explicit audio/image on the top level; else look in songs[]
