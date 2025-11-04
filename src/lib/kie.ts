@@ -103,9 +103,9 @@ export async function generateImage(
     resolution: resolution,
     aspect_ratio: "16:9",
     quality: "high",
-    steps: 30,
-    cfg_scale: 8,
-    guidance: "detailed, cinematic lighting, high contrast, ultra sharp focus",
+    steps: 40,
+    cfg_scale: 8.5,
+    guidance: "cinematic lighting, ultra sharp detail, high contrast, realistic textures, professional composition",
   };
 
   try {
@@ -119,13 +119,16 @@ export async function generateImage(
     });
 
     const data = await response.json();
+    console.log(`🖼️ [IMAGE GEN] status: ${response.status} ok: ${response.ok}`);
+    
     if (!response.ok || (data as any)?.code !== 200) {
       console.error("❌ [IMAGE GEN] Failed:", data);
       return null;
     }
 
     const imageUrl = (data as any)?.data?.response?.imageUrl || null;
-    console.log("✅ [IMAGE GEN] 2K image generated:", imageUrl);
+    console.log("✅ [IMAGE GEN] 2048x1152 image generated:", imageUrl);
+    console.log(`🖼️ [IMAGE GEN] Params used: resolution=${resolution}, steps=40, cfg_scale=8.5`);
     return imageUrl;
   } catch (error) {
     console.error("❌ [IMAGE GEN] Exception:", error);

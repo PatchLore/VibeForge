@@ -212,7 +212,7 @@ export function buildImagePrompt(userPrompt: string) {
     visualPrompt = `A cinematic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic' : 'dramatic'} scene visualizing ${prompt} — epic landscapes, dramatic lighting, sweeping vistas, theatrical composition, and 2K cinematic quality, 16:9 aspect ratio`;
   } else {
     // Use emotion-based style for consistent interpretation
-    visualPrompt = `A ${style.image} representing "${prompt}", with cinematic lighting, high detail, and professional composition, 16:9 aspect ratio, 2K resolution quality`;
+    visualPrompt = `A ${style.image} representing "${prompt}", with cinematic lighting, high detail, ultra-sharp focus, and professional 16:9 composition.`;
   }
   
   // Clean up

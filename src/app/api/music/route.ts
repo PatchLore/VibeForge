@@ -153,11 +153,11 @@ export async function POST(req: Request) {
       
       // Create enriched prompts using emotion mapping (consistent with buildMusicPrompt/buildImagePrompt)
       displayMusicPrompt = `Create a ${style.music} that captures the feeling of "${userVibe}". Include emotional depth and dynamic structure.`;
-      displayImagePrompt = `A ${style.image} representing "${userVibe}", with cinematic lighting, high detail, and professional composition.`;
+      displayImagePrompt = `A ${style.image} representing "${userVibe}", with cinematic lighting, high detail, ultra-sharp focus, and professional 16:9 composition.`;
       
       console.log("🎭 [EMOTION MAP] Style detected:", style);
-      console.log("🎵 [ENRICHMENT TEST] Music:", displayMusicPrompt);
-      console.log("🎨 [ENRICHMENT TEST] Image:", displayImagePrompt);
+      console.log("🎵 [ENRICHMENT ACTIVE]", displayMusicPrompt);
+      console.log("🎨 [ENRICHMENT ACTIVE]", displayImagePrompt);
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
       // Fallback to technical prompts if emotion mapping fails
