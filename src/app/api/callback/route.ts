@@ -234,23 +234,50 @@ export async function POST(request: NextRequest) {
           console.log(`🖼️ [IMAGE DIM] Image dimensions: ${verified.width}x${verified.height}`);
           console.log(`🖼️ [IMAGE GEN] Verified resolution: ${verified.width}x${verified.height} ✅`);
 
-          // 4) Save presigned URL and verified resolution in DB; avoid duplicates
-          const update = await supabaseServer
-            .from('tracks')
-            .update({
-              image_url: presignedUrl,
-              resolution: `${verified.width}x${verified.height}`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('task_id', taskId)
-            .not('image_url', 'eq', presignedUrl);
+          try {
+            // Download the verified image
+            const imgRes = await fetch(presignedUrl);
+            const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
 
-          if (update.error) {
-            console.error('❌ [CALLBACK] Track update error:', update.error);
-            return NextResponse.json({ ok: false, error: 'track update failed' }, { status: 500 });
+            // Upload original full-res image to Supabase Storage
+            const filePath = `tracks/${taskId}_${Date.now()}.png`;
+            const { data: uploadData, error: uploadErr } = await supabaseServer
+              .storage
+              .from("images")
+              .upload(filePath, imgBuffer, {
+                contentType: "image/png",
+                upsert: true,
+              });
+
+            if (uploadErr) {
+              console.error("❌ [CALLBACK] Supabase upload failed:", uploadErr);
+            } else {
+              const { data: publicData } = supabaseServer
+                .storage
+                .from("images")
+                .getPublicUrl(filePath);
+
+              const publicUrl = `${publicData.publicUrl}?v=${Date.now()}`; // cache-bust
+
+              const { error: updErr } = await supabaseServer
+                .from("tracks")
+                .update({
+                  image_url: publicUrl,
+                  resolution: `${verified.width}x${verified.height}`,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("task_id", taskId)
+                .not("image_url", "eq", publicUrl);
+
+              if (updErr) {
+                console.error("❌ [CALLBACK] Track update error:", updErr);
+              } else {
+                console.log("✅ [CALLBACK] Verified 2 K+ image uploaded & saved to DB");
+              }
+            }
+          } catch (err) {
+            console.error("❌ [CALLBACK] Full-res download/upload failed:", err);
           }
-
-          console.log('✅ [CALLBACK] Full-size image URL saved to database');
         } else {
           console.warn('⚠️ [IMAGE GEN] Low resolution image detected, retry skipped for safety.');
         }
