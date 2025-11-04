@@ -46,7 +46,22 @@ export async function POST(request: NextRequest) {
       [];
 
     const topLevelAudio = payload?.audio_url ?? raw?.audio_url;
-    const topLevelImage = payload?.image_url ?? raw?.image_url;
+    let topLevelImage = payload?.image_url ?? raw?.image_url;
+    
+    // Extract image URL from resultJson.resultUrls if available (new API structure)
+    if (!topLevelImage && payload?.resultJson) {
+      try {
+        const resultJson = typeof payload.resultJson === 'string' 
+          ? JSON.parse(payload.resultJson) 
+          : payload.resultJson;
+        if (resultJson?.resultUrls && Array.isArray(resultJson.resultUrls) && resultJson.resultUrls.length > 0) {
+          topLevelImage = resultJson.resultUrls[0];
+          console.log('🖼️ [CALLBACK] Extracted image URL from resultJson.resultUrls:', topLevelImage);
+        }
+      } catch (e) {
+        console.warn('⚠️ [CALLBACK] Failed to parse resultJson:', e);
+      }
+    }
 
     // Prefer explicit audio/image on the top level; else look in songs[]
     const completed =
@@ -187,29 +202,17 @@ export async function POST(request: NextRequest) {
         console.log('🔍 [DEBUG] Image prompt length:', imagePrompt.length);
         console.log("[IMAGE PROMPT SENT]", imagePrompt);
         
-        // Generate image
-        const imageUrl = await generateImage(imagePrompt);
+        // Generate image (returns taskId with new API structure)
+        const imageTaskId = await generateImage(imagePrompt);
         
-        if (imageUrl) {
-          console.log('🎨 [IMAGE CALLBACK] Image generated successfully');
-          console.log('🎨 [IMAGE CALLBACK] Image URL:', imageUrl);
+        if (imageTaskId) {
+          console.log('🎨 [IMAGE CALLBACK] Image generation task created:', imageTaskId);
+          console.log('🎨 [IMAGE CALLBACK] Image will be delivered via callback');
+          console.log('🎨 [IMAGE CALLBACK] Expected resolution: 2K with landscape_16_9 = 2048x1152px');
           
-          // Update track with generated image and resolution
-          const { error: imageUpdateErr } = await supabaseServer
-            .from('tracks')
-            .update({ 
-              image_url: imageUrl,
-              resolution: "2048x1152",
-              updated_at: new Date().toISOString()
-            })
-            .eq('task_id', taskId);
-            
-          if (imageUpdateErr) {
-            console.error('❌ [CALLBACK] Image update error:', imageUpdateErr);
-          } else {
-            console.log('✅ [IMAGE CALLBACK] Track updated with generated image and resolution');
-            console.log("🖼️ [IMAGE SAVED]", { taskId, image_url: imageUrl, resolution: "2048x1152" });
-          }
+          // Store image taskId - the actual URL will come via callback in resultJson.resultUrls[0]
+          // For now, we'll wait for the image callback to update the track
+          // The image callback will extract the URL from resultJson.resultUrls[0]
         }
       } catch (imageErr) {
         console.error('❌ [CALLBACK] Image generation failed:', imageErr);

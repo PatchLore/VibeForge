@@ -84,7 +84,8 @@ export async function checkMusicStatus(taskId: string) {
   return result;
 }
 
-// 🖼️ IMAGE GENERATION — Stable 2K Version
+// 🖼️ IMAGE GENERATION — Using correct Kie.ai API structure
+// Based on official API docs: /api/v1/jobs/createTask
 export async function generateImage(
   prompt: string,
   styleSuffix: string = ""
@@ -95,32 +96,35 @@ export async function generateImage(
 
   const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ""}`;
   const model = "bytedance/seedream-v4-text-to-image";
-  const resolution = "2048x1152"; // 2K stable resolution
   
-  const imageParams = {
+  // Use correct API structure per documentation
+  // image_size: "landscape_16_9" for 16:9 aspect ratio
+  // image_resolution: "2K" for 2K resolution (combines with image_size to give actual pixels)
+  const callBackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
+  
+  const requestBody = {
     model: model,
-    prompt: finalPrompt,
-    resolution: resolution,
-    aspect_ratio: "16:9",
-    quality: "high",
-    steps: 40,
-    cfg_scale: 8.5,
-    guidance: "cinematic lighting, ultra sharp detail, high contrast, realistic textures, professional composition",
-    // Try to explicitly request full resolution (not thumbnail)
-    return_full_resolution: true,
-    thumbnail: false,
-  } as Record<string, any>;
+    callBackUrl: callBackUrl,
+    input: {
+      prompt: finalPrompt,
+      image_size: "landscape_16_9",  // 16:9 aspect ratio
+      image_resolution: "2K",         // 2K resolution (with 16:9 = 2048x1152px)
+      max_images: 1,
+    }
+  };
   
-  console.log(`🖼️ [IMAGE GEN] Request params:`, JSON.stringify(imageParams, null, 2));
+  console.log(`🖼️ [IMAGE GEN] Using correct API endpoint: /api/v1/jobs/createTask`);
+  console.log(`🖼️ [IMAGE GEN] Request body:`, JSON.stringify(requestBody, null, 2));
 
   try {
-    const response = await fetch(`${BASE_URL}/generate/image`, {
+    // Use correct endpoint from documentation
+    const response = await fetch(`${BASE_URL}/api/v1/jobs/createTask`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(imageParams),
+      body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();
@@ -132,87 +136,23 @@ export async function generateImage(
       return null;
     }
 
-    // Try multiple possible response paths for image URL
-    // Check for full-resolution URL first, then fall back to thumbnail
-    const fullResUrl = (data as any)?.data?.response?.fullImageUrl ||
-                       (data as any)?.data?.response?.highResUrl ||
-                       (data as any)?.data?.response?.originalUrl ||
-                       (data as any)?.data?.fullImageUrl ||
-                       (data as any)?.fullImageUrl ||
-                       null;
+    // Response structure: { code: 200, data: { taskId: "..." } }
+    const taskId = (data as any)?.data?.taskId;
     
-    const imageUrl = fullResUrl ||
-                     (data as any)?.data?.response?.imageUrl || 
-                     (data as any)?.data?.imageUrl || 
-                     (data as any)?.imageUrl ||
-                     (data as any)?.data?.response?.url ||
-                     (data as any)?.url ||
-                     null;
-    
-    // If we got a URL, try to convert thumbnail URLs to full-res
-    let finalImageUrl = imageUrl;
-    if (imageUrl) {
-      // For musicfile.kie.ai URLs, try to verify actual image dimensions
-      // The API might be returning thumbnails, so we'll verify the actual image
-      if (imageUrl.includes('musicfile.kie.ai') || imageUrl.includes('kie.ai')) {
-        try {
-          // Fetch image headers to check actual dimensions
-          const headResponse = await fetch(imageUrl, { method: 'HEAD' });
-          const contentType = headResponse.headers.get('content-type');
-          const contentLength = headResponse.headers.get('content-length');
-          
-          console.log(`🔍 [IMAGE GEN] Image headers:`, {
-            contentType,
-            contentLength,
-            url: imageUrl
-          });
-          
-          // If content length is very small (< 100KB), it's likely a thumbnail
-          if (contentLength && parseInt(contentLength) < 100000) {
-            console.warn("⚠️ [IMAGE GEN] Image appears to be thumbnail (small file size)");
-          }
-        } catch (e) {
-          console.warn("⚠️ [IMAGE GEN] Could not verify image dimensions:", e);
-        }
-      }
-      
-      // Try common URL modifications to get full resolution
-      // Replace common thumbnail paths with full-res paths
-      const modifiedUrl = imageUrl
-        .replace(/\/thumb\//g, '/full/')
-        .replace(/\/thumbnail\//g, '/original/')
-        .replace(/\/preview\//g, '/full/')
-        .replace(/\/360x360\//g, '/2048x1152/')
-        .replace(/\/small\//g, '/large/')
-        .replace(/w=360&h=360/g, 'w=2048&h=1152')
-        .replace(/width=360&height=360/g, 'width=2048&height=1152')
-        .replace(/size=360/g, 'size=2048')
-        .replace(/scale=thumbnail/g, 'scale=full')
-        .replace(/quality=low/g, 'quality=high');
-      
-      // Only use modified URL if it's different (meaning we found a pattern to replace)
-      if (modifiedUrl !== imageUrl) {
-        console.log("🔄 [IMAGE GEN] Attempting to convert thumbnail to full-res URL");
-        console.log("🔄 [IMAGE GEN] Original:", imageUrl);
-        console.log("🔄 [IMAGE GEN] Modified:", modifiedUrl);
-        finalImageUrl = modifiedUrl;
-      }
+    if (!taskId) {
+      console.error("❌ [IMAGE GEN] No taskId in response:", data);
+      return null;
     }
     
-    console.log("✅ [IMAGE GEN] 2048x1152 image generated:", finalImageUrl);
-    console.log(`🖼️ [IMAGE GEN] Params used: resolution=${resolution}, steps=40, cfg_scale=8.5`);
-    console.log(`🖼️ [IMAGE GEN] Response structure:`, {
-      hasData: !!data?.data,
-      hasResponse: !!data?.data?.response,
-      hasImageUrl: !!data?.data?.response?.imageUrl,
-      hasFullResUrl: !!fullResUrl,
-      hasDirectImageUrl: !!data?.data?.imageUrl,
-      topLevelUrl: data?.url,
-      code: data?.code,
-      allKeys: Object.keys(data?.data?.response || {}),
-    });
+    console.log(`✅ [IMAGE GEN] Task created: ${taskId}`);
+    console.log(`🖼️ [IMAGE GEN] Image will be delivered via callback at: ${callBackUrl}`);
+    console.log(`🖼️ [IMAGE GEN] Expected resolution: 2K with landscape_16_9 = 2048x1152px`);
     
-    return finalImageUrl;
+    // Return taskId - the actual image URL will come via callback
+    // The callback will contain resultJson with resultUrls array
+    // For now, return taskId so caller can track the task
+    // In the callback handler, we'll extract the image URL from resultJson.resultUrls[0]
+    return taskId;
   } catch (error) {
     console.error("❌ [IMAGE GEN] Exception:", error);
     return null;
