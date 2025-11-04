@@ -145,13 +145,17 @@ export async function POST(req: Request) {
     try {
       const style = mapEmotionToStyle(userVibe);
       
-      // Create user-friendly display prompts using emotion mapping
-      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${style.music}`;
-      displayImagePrompt = `A ${style.image} representing "${userVibe}"`;
+      // Create enriched prompts using emotion mapping (consistent with buildMusicPrompt/buildImagePrompt)
+      displayMusicPrompt = `Create a ${style.music} that captures the feeling of "${userVibe}". Include emotional depth and dynamic structure.`;
+      displayImagePrompt = `A ${style.image} representing "${userVibe}", with cinematic lighting, high detail, and professional composition.`;
+      
+      console.log("🎭 [EMOTION MAP] Style detected:", style);
+      console.log("🎵 [ENRICHMENT TEST] Music:", displayMusicPrompt);
+      console.log("🎨 [ENRICHMENT TEST] Image:", displayImagePrompt);
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
       // Fallback to technical prompts if emotion mapping fails
-      displayMusicPrompt = `Creating music inspired by "${userVibe}"`;
+      displayMusicPrompt = cleanedMusicPrompt;
       displayImagePrompt = imagePrompt;
     }
     
