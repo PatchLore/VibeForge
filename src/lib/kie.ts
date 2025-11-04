@@ -239,6 +239,63 @@ export async function getImageDimensions(
   }
 }
 
+// 🖼️ Get image dimensions from a Buffer (server-side)
+export async function getImageDimensionsFromBuffer(
+  buffer: Buffer
+): Promise<{ width: number; height: number } | null> {
+  try {
+    let width = 0;
+    let height = 0;
+
+    // JPEG (FF D8)
+    if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+      let i = 2;
+      while (i < buffer.length - 8) {
+        if (buffer[i] === 0xFF && buffer[i + 1] >= 0xC0 && buffer[i + 1] <= 0xC3) {
+          height = (buffer[i + 5] << 8) | buffer[i + 6];
+          width = (buffer[i + 7] << 8) | buffer[i + 8];
+          break;
+        }
+        i++;
+      }
+    }
+    // PNG (89 50 4E 47)
+    else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      if (buffer.length >= 24) {
+        width = buffer.readUInt32BE(16);
+        height = buffer.readUInt32BE(20);
+      }
+    }
+    // WebP (RIFF .... WEBP)
+    else if (
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+    ) {
+      if (buffer.length >= 30) {
+        // VP8
+        if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x20) {
+          width = ((buffer[26] | (buffer[27] << 8)) & 0x3FFF) + 1;
+          height = ((buffer[28] | (buffer[29] << 8)) & 0x3FFF) + 1;
+        }
+        // VP8L
+        else if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x4C) {
+          const bits = buffer[21];
+          width = (bits & 0x3F) + 1;
+          height = ((bits >> 6) | ((buffer[20] & 0xF) << 2)) + 1;
+        }
+      }
+    }
+
+    if (width > 0 && height > 0) {
+      return { width, height };
+    }
+    return null;
+  } catch (e) {
+    console.error('❌ [IMAGE DIM BUFFER] Exception:', e);
+    return null;
+  }
+}
+
 // ✅ Simple verifier for old imports (kept for backward compatibility)
 export async function verifyAndUpscaleTo2K(
   imageUrl: string,

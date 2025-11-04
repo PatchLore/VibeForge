@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
-import { generateImage, getImageDimensions } from '@/lib/kie';
+import { generateImage, getImageDimensions, getImageDimensionsFromBuffer } from '@/lib/kie';
 import { buildImagePrompt } from '@/lib/enrichPrompt';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
@@ -205,56 +205,83 @@ export async function POST(request: NextRequest) {
     // --- Handle Image Callback Separately ---
     if (imageUrl && (isImageCallback || !track.image_url)) {
       console.log('🖼️ [CALLBACK] Image URL received.');
-      
-      // Add 1-second delay to ensure CDN readiness
-      await new Promise(r => setTimeout(r, 1000));
-      
-      // Verify image dimensions
-      const dimensions = await getImageDimensions(imageUrl);
-      
-      if (!dimensions) {
-        console.error('❌ [CALLBACK] Failed to get image dimensions, cannot verify');
-        return NextResponse.json({ ok: false, error: 'image dimension verification failed' }, { status: 500 });
-      }
-      
-      console.log(`🖼️ [IMAGE DIM] Image dimensions: ${dimensions.width}x${dimensions.height}`);
-      
-      // Check if image meets 2K requirement (width >= 2048px)
-      if (dimensions.width < 2048) {
-        console.warn(`⚠️ [IMAGE GEN] Low resolution detected, retrying with 4K...`);
-        
-        // Retry with 4K resolution using helper
-        const retryTaskId = await retryWithResolution(
-          "4K",
-          track.task_id,
-          track.user_id,
-          track.prompt,
-          track.extended_prompt
-        );
-        
-        if (retryTaskId) {
-          return NextResponse.json({ ok: true, message: 'retrying with 4K' });
+
+      // 1) Request presigned full-size download URL from Kie.ai
+      try {
+        const dlRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId: taskId, url: imageUrl })
+        });
+
+        const dlJson = await dlRes.json();
+        const presignedUrl = dlJson?.data;
+        if (!dlRes.ok || !presignedUrl) {
+          console.error('❌ [CALLBACK] Failed to get presigned download URL:', dlJson);
+          return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
         }
-        
-        // If retry failed, don't save the small image
-        console.error('❌ [CALLBACK] 4K retry failed, not saving small image');
-        return NextResponse.json({ ok: false, error: 'image too small and retry failed' }, { status: 500 });
+
+        // 2) Delay for CDN readiness, then download the full-size image
+        await new Promise(r => setTimeout(r, 1000));
+        const imgRes = await fetch(presignedUrl);
+        if (!imgRes.ok) {
+          console.error('❌ [CALLBACK] Failed to fetch presigned image URL:', presignedUrl);
+          return NextResponse.json({ ok: false, error: 'image fetch failed' }, { status: 500 });
+        }
+        const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+
+        // 3) Verify dimensions from the raw buffer
+        const dim = await getImageDimensionsFromBuffer(imgBuffer);
+        if (!dim || !dim.width || dim.width < 2048) {
+          console.warn('⚠️ [IMAGE GEN] Low resolution detected, retrying with 4K...');
+          const retryTaskId = await retryWithResolution(
+            "4K",
+            track.task_id,
+            track.user_id,
+            track.prompt,
+            track.extended_prompt
+          );
+          if (retryTaskId) {
+            return NextResponse.json({ ok: true, message: 'retrying with 4K' });
+          }
+          return NextResponse.json({ ok: false, error: 'image too small and retry failed' }, { status: 500 });
+        }
+
+        console.log(`🖼️ [IMAGE DIM] Image dimensions: ${dim.width}x${dim.height}`);
+        console.log(`🖼️ [IMAGE GEN] Verified resolution: ${dim.width}x${dim.height} ✅`);
+
+        // 4) Upload full-size image to Supabase Storage (no resizing)
+        const storagePath = `tracks/${taskId}.png`;
+        const upload = await supabaseServer.storage.from('images').upload(storagePath, imgBuffer, {
+          contentType: 'image/png',
+          upsert: true,
+        });
+        if (upload.error) {
+          console.error('❌ [CALLBACK] Supabase upload error:', upload.error);
+          return NextResponse.json({ ok: false, error: 'storage upload failed' }, { status: 500 });
+        }
+        const publicUrlData = supabaseServer.storage.from('images').getPublicUrl(storagePath);
+        const publicUrl = publicUrlData?.data?.publicUrl;
+        if (!publicUrl) {
+          console.error('❌ [CALLBACK] Failed to get public URL from storage');
+          return NextResponse.json({ ok: false, error: 'public url generation failed' }, { status: 500 });
+        }
+
+        // 5) Save public URL and verified resolution in DB
+        await supabaseServer
+          .from('tracks')
+          .update({
+            image_url: publicUrl,
+            resolution: `${dim.width}x${dim.height}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', track.id);
+
+        console.log('✅ [CALLBACK] Full-size image saved to database');
+      } catch (err) {
+        console.error('❌ [CALLBACK] Presigned download flow failed:', err);
+        return NextResponse.json({ ok: false, error: 'presigned download flow failed' }, { status: 500 });
       }
-      
-      // Image meets 2K requirement, save it
-      const resolution = `${dimensions.width}x${dimensions.height}`;
-      console.log(`🖼️ [IMAGE GEN] Verified resolution: ${resolution} ✅`);
-      
-      await supabaseServer
-        .from('tracks')
-        .update({
-          image_url: imageUrl,
-          resolution: resolution,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', track.id);
-      
-      console.log('✅ [CALLBACK] Image saved to database');
     }
 
     // --- Handle Audio Callback Separately ---
