@@ -82,11 +82,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Load the pending track with extended prompt
-    const { data: pending, error: fetchErr } = await supabaseServer
+    // Check if this is an image callback (taskId might be image taskId, not music taskId)
+    let pending = null;
+    let fetchErr = null;
+    
+    // First, try to find by task_id (for music callbacks)
+    const { data: trackByTaskId, error: err1 } = await supabaseServer
       .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt, image_url')
+      .select('id, user_id, status, prompt, extended_prompt, image_url, task_id')
       .eq('task_id', taskId)
       .maybeSingle();
+    
+    if (trackByTaskId) {
+      pending = trackByTaskId;
+    } else {
+      // If not found, might be an image callback - try to find by image_task_id in extended_prompt
+      const { data: trackByImageTask, error: err2 } = await supabaseServer
+        .from('tracks')
+        .select('id, user_id, status, prompt, extended_prompt, image_url, task_id')
+        .like('extended_prompt', `%image_task_id: ${taskId}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (trackByImageTask) {
+        pending = trackByImageTask;
+        console.log('🖼️ [CALLBACK] Found track by image taskId:', taskId);
+      } else {
+        fetchErr = err2;
+      }
+    }
 
     if (fetchErr) {
       console.error('❌ [CALLBACK] Track fetch error:', fetchErr);
@@ -98,7 +123,9 @@ export async function POST(request: NextRequest) {
     }
 
     // If we already completed, be idempotent: do nothing, return ok
-    if (pending.status === 'completed') {
+    // Exception: if this is an image callback and image_url is missing, allow update
+    const isImageCallback = pending.extended_prompt?.includes(`image_task_id: ${taskId}`);
+    if (pending.status === 'completed' && !(isImageCallback && !pending.image_url)) {
       console.log('ℹ️ [CALLBACK] Track already completed. Ignoring duplicate.');
       return NextResponse.json({ ok: true, message: 'already completed' });
     }
@@ -117,8 +144,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // If not failed and not completed yet, acknowledge but don't update
+    // If not failed and not completed yet, check if this is an image-only callback
     if (!completed) {
+      // If this is an image callback with resultJson, extract and update image
+      if (isImageCallback && topLevelImage) {
+        console.log('🖼️ [CALLBACK] Image-only callback, updating image URL:', topLevelImage);
+        await supabaseServer
+          .from('tracks')
+          .update({
+            image_url: topLevelImage,
+            resolution: "2048x1152",
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', pending.id);
+        console.log('✅ [CALLBACK] Track updated with image URL');
+        return NextResponse.json({ ok: true, message: 'image updated' });
+      }
+      
       console.log('⏳ [CALLBACK] Not ready yet, no audio_url in payload.');
       return NextResponse.json({ ok: true, message: 'processing' }, { status: 200 });
     }
@@ -210,9 +252,17 @@ export async function POST(request: NextRequest) {
           console.log('🎨 [IMAGE CALLBACK] Image will be delivered via callback');
           console.log('🎨 [IMAGE CALLBACK] Expected resolution: 2K with landscape_16_9 = 2048x1152px');
           
-          // Store image taskId - the actual URL will come via callback in resultJson.resultUrls[0]
-          // For now, we'll wait for the image callback to update the track
-          // The image callback will extract the URL from resultJson.resultUrls[0]
+          // Store image taskId in extended_prompt or as metadata so we can match it later
+          // When image callback comes, we'll match by finding track with this image taskId
+          // For now, we can store it in extended_prompt temporarily or find track by user_id + recent
+          await supabaseServer
+            .from('tracks')
+            .update({ 
+              extended_prompt: `${pending.extended_prompt || pending.prompt} | image_task_id: ${imageTaskId}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', taskId);
+          console.log('✅ [IMAGE CALLBACK] Stored image taskId for matching');
         }
       } catch (imageErr) {
         console.error('❌ [CALLBACK] Image generation failed:', imageErr);
