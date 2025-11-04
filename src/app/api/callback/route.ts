@@ -122,9 +122,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'track not found' }, { status: 404 });
     }
 
+    // Check if this is an image callback (taskId matches image_task_id stored in extended_prompt)
+    const isImageCallback = pending.extended_prompt?.includes(`image_task_id: ${taskId}`);
+    
     // If we already completed, be idempotent: do nothing, return ok
     // Exception: if this is an image callback and image_url is missing, allow update
-    const isImageCallback = pending.extended_prompt?.includes(`image_task_id: ${taskId}`);
     if (pending.status === 'completed' && !(isImageCallback && !pending.image_url)) {
       console.log('ℹ️ [CALLBACK] Track already completed. Ignoring duplicate.');
       return NextResponse.json({ ok: true, message: 'already completed' });
