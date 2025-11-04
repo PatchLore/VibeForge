@@ -176,8 +176,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (!track) {
-      console.error('❌ [CALLBACK] No track found for task_id:', taskId);
-      return NextResponse.json({ ok: false, error: 'track not found' }, { status: 404 });
+      console.error('❌ [DEBUG] No track found in any lookup. Inserting recovery record...');
+      try {
+        const { data: inserted, error: insertErr } = await supabaseServer
+          .from('tracks')
+          .insert({
+            user_id: 'system_recover',
+            task_id: taskId,
+            status: 'callback_inserted',
+            image_url: imageUrl || null,
+            resolution: null,
+            created_at: new Date().toISOString(),
+          })
+          .select();
+        console.log('🧩 [DEBUG] Recovery insert result:', inserted, insertErr);
+        return NextResponse.json({ ok: true, inserted });
+      } catch (e) {
+        console.error('🔥 [DEBUG ERROR] Recovery insert exception:', e);
+        return NextResponse.json({ ok: false, error: 'recovery insert failed' }, { status: 500 });
+      }
     }
 
     // Check if this is an image callback (taskId matches image_task_id stored in extended_prompt)
@@ -255,17 +272,18 @@ export async function POST(request: NextRequest) {
             finalUrl = candidate;
             console.log(`✅ [IMAGE GEN] Verified full-res on attempt ${i}: ${check.width}x${check.height}`);
             try {
-              console.log('🔍 [DEBUG] Updating track with taskId:', taskId);
-              const updateRes = await supabaseServer
-                .from("tracks")
+              console.log('🧩 [DEBUG] Updating image_url + resolution for track:', track.id);
+              const { data: updateRes, error: updateErr } = await supabaseServer
+                .from('tracks')
                 .update({
                   image_url: finalUrl,
                   resolution: `${check.width}x${check.height}`,
                   updated_at: new Date().toISOString(),
                 })
-                .eq("id", track.id)
-                .select();
-              console.log('🔍 [DEBUG] Update result:', updateRes);
+                .eq('id', track.id)
+                .select()
+                .maybeSingle();
+              console.log('🧩 [DEBUG] Update result:', { updateRes, updateErr });
             } catch (err) {
               console.error('🔥 [DEBUG ERROR] Supabase update failed:', err);
             }
