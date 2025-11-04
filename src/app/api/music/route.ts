@@ -137,6 +137,12 @@ export async function POST(req: Request) {
       console.error("❌ [IMAGE PROMPT MISSING]", { userVibe, imagePrompt });
     }
 
+    // Clean music prompt to remove any remaining bias phrases
+    const cleanedMusicPrompt = musicPrompt
+      .replace(/ambient generative soundscape/gi, "")
+      .replace(/focus and relaxation/gi, "")
+      .trim();
+
     // Non-blocking display prompt creation (never allowed to throw)
     // Use emotion mapping for consistent interpretation
     let displayMusicPrompt = null;
@@ -158,12 +164,6 @@ export async function POST(req: Request) {
       displayMusicPrompt = cleanedMusicPrompt;
       displayImagePrompt = imagePrompt;
     }
-    
-    // Clean music prompt to remove any remaining bias phrases
-    const cleanedMusicPrompt = musicPrompt
-      .replace(/ambient generative soundscape/gi, "")
-      .replace(/focus and relaxation/gi, "")
-      .trim();
 
     console.log("🎵 Generating:", cleanedMusicPrompt);
     console.log("🎨 Creating:", imagePrompt);
