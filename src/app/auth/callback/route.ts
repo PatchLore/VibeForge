@@ -43,11 +43,7 @@ export async function GET(request: NextRequest) {
             value,
             ...options,
           });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
+          response = NextResponse.redirect(`${origin}${next}`);
           response.cookies.set({
             name,
             value,
@@ -60,11 +56,7 @@ export async function GET(request: NextRequest) {
             value: '',
             ...options,
           });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
+          response = NextResponse.redirect(`${origin}${next}`);
           response.cookies.set({
             name,
             value: '',
