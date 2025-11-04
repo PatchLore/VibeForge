@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
-import { buildMusicPrompt, buildImagePrompt } from "@/lib/enrichPrompt";
+import { buildMusicPrompt, buildImagePrompt, mapEmotionToStyle } from "@/lib/enrichPrompt";
 import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
@@ -138,22 +138,21 @@ export async function POST(req: Request) {
     }
 
     // Non-blocking display prompt creation (never allowed to throw)
+    // Use emotion mapping for consistent interpretation
     let displayMusicPrompt = null;
     let displayImagePrompt = null;
 
     try {
-      const detectedStyle =
-        /game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass/i.test(userVibe) ? "high-energy electronic"
-        : /cinematic|orchestral|film/i.test(userVibe) ? "cinematic orchestral"
-        : /lofi|chill/i.test(userVibe) ? "lofi / chill"
-        : "creative";
-
-      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${detectedStyle}.`;
+      const style = mapEmotionToStyle(userVibe);
       
-      // Use enriched image prompt for display (more detailed and descriptive)
-      displayImagePrompt = imagePrompt;
+      // Create user-friendly display prompts using emotion mapping
+      displayMusicPrompt = `Creating music inspired by "${userVibe}" — ${style.music}`;
+      displayImagePrompt = `A ${style.image} representing "${userVibe}"`;
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
+      // Fallback to technical prompts if emotion mapping fails
+      displayMusicPrompt = `Creating music inspired by "${userVibe}"`;
+      displayImagePrompt = imagePrompt;
     }
     
     // Clean music prompt to remove any remaining bias phrases

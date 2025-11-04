@@ -11,6 +11,61 @@ export interface EnrichedPrompts {
   confidence: number;
 }
 
+/**
+ * Maps user emotion/vibe to consistent music and image style descriptors
+ * Ensures both music and image prompts interpret feelings consistently
+ */
+export function mapEmotionToStyle(emotion: string): { music: string; image: string } {
+  const normalized = emotion.toLowerCase();
+
+  if (normalized.includes("calm") || normalized.includes("dream")) {
+    return {
+      music: "ambient cinematic with soft synths, gentle textures, and smooth progression",
+      image: "misty ethereal landscape, pastel colors, soft lighting, dreamy atmosphere"
+    };
+  }
+
+  if (normalized.includes("sad") || normalized.includes("melancholy")) {
+    return {
+      music: "emotive piano and strings with deep reverb and minimal percussion",
+      image: "dimly lit scene, cool tones, emotional composition, rain or reflection theme"
+    };
+  }
+
+  if (normalized.includes("happy") || normalized.includes("bright")) {
+    return {
+      music: "upbeat electronic or pop-inspired track with warm melodies and lively rhythm",
+      image: "sunlit environment, golden hues, vibrant light reflections, uplifting tone"
+    };
+  }
+
+  if (normalized.includes("energetic") || normalized.includes("hype")) {
+    return {
+      music: "drum and bass or future bass with strong basslines and euphoric synths",
+      image: "futuristic neon lights, dynamic motion blur, cyberpunk energy, vivid colors"
+    };
+  }
+
+  if (normalized.includes("lonely") || normalized.includes("nostalgic")) {
+    return {
+      music: "lofi or indie acoustic with subtle ambience and introspective tone",
+      image: "night-time street or cozy room with warm glow, vintage tones, reflective mood"
+    };
+  }
+
+  if (normalized.includes("romantic") || normalized.includes("heart")) {
+    return {
+      music: "soft pop ballad or cinematic strings evoking tenderness and warmth",
+      image: "soft focus, warm lighting, intimate composition, pink and golden tones"
+    };
+  }
+
+  return {
+    music: "modern cinematic instrumental with balanced emotion and evolving layers",
+    image: "cinematic composition with balanced lighting, realistic textures, and depth"
+  };
+}
+
 // Fallback templates for when no specific intent is detected
 const DEFAULT_TEMPLATES = {
   music: "experimental electronic music with creative sound design, innovative techniques, rhythmic elements, and artistic expression",
@@ -93,23 +148,25 @@ function getStyleKeywords(styleKey: string): string[] {
 
 /**
  * Build creative, narrative-style music prompt
+ * Uses emotion mapping for consistent style interpretation
  * Compressed to stay under Kie.ai's 500 character limit
  */
 export function buildMusicPrompt(userPrompt: string) {
   const lowerPrompt = userPrompt.toLowerCase();
   
-  // Detect style and create narrative description
+  // Get emotion-based style mapping for consistent interpretation
+  const style = mapEmotionToStyle(userPrompt);
+  
+  // Check for specific genre keywords first (these take priority)
   let narrativePrompt = "";
   
   if (/game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass|dubstep/i.test(lowerPrompt)) {
     narrativePrompt = `A high-energy ${/dubstep/i.test(lowerPrompt) ? 'dubstep' : 'electronic'} ${/anthem/i.test(lowerPrompt) ? 'anthem' : 'track'} inspired by ${userPrompt} — thundering basslines, ${/roblox|gaming|game/i.test(lowerPrompt) ? 'playful synths, and glitchy drops' : 'driving rhythms, and electrifying synth melodies'}`;
   } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
     narrativePrompt = `An epic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic orchestral' : 'orchestral'} composition inspired by ${userPrompt} — sweeping strings, powerful brass sections, dramatic crescendos, and emotional depth`;
-  } else if (/lofi|chill|relaxing|study|peaceful/i.test(lowerPrompt)) {
-    narrativePrompt = `A ${/lofi/i.test(lowerPrompt) ? 'lofi' : 'chill'} melody inspired by ${userPrompt} — soft analog textures, gentle piano chords, warm vinyl crackle, and laid-back grooves`;
   } else {
-    // Creative default for other prompts
-    narrativePrompt = `Creative music inspired by ${userPrompt} — dynamic arrangement, expressive melodies, rich instrumentation, and engaging rhythms`;
+    // Use emotion-based style for consistent interpretation
+    narrativePrompt = `Create a ${style.music} that captures the feeling of "${userPrompt}". Include emotional depth, structure, and atmosphere.`;
   }
 
   // Clean and compress
@@ -123,21 +180,24 @@ export function buildMusicPrompt(userPrompt: string) {
 
   console.log("[PROMPT LENGTH]", finalPrompt.length, "chars");
   console.log("🎵 [CREATIVE PROMPT] Music:", finalPrompt);
+  console.log("🎭 [EMOTION MAP] Using style:", style.music);
   
   return finalPrompt;
 }
 
 /**
  * Build creative, narrative-style image prompt
+ * Uses emotion mapping for consistent style interpretation
  */
 export function buildImagePrompt(userPrompt: string) {
   const lowerPrompt = userPrompt.toLowerCase();
   const prompt = userPrompt.trim();
   
-  // Detect the primary style/intent from the user prompt
-  const { intent } = detectIntent(prompt);
+  // Get emotion-based style mapping for consistent interpretation
+  const style = mapEmotionToStyle(userPrompt);
   
-  // Get the enriched image description from the mapping
+  // Detect the primary style/intent from the user prompt (for fallback)
+  const { intent } = detectIntent(prompt);
   const styleMapping = styles[intent as keyof typeof styles];
   const enrichedImageDescription = styleMapping?.image || styles.experimental.image;
   
@@ -150,11 +210,9 @@ export function buildImagePrompt(userPrompt: string) {
     visualPrompt = `A geometric digital landscape inspired by ${prompt} — neon grid patterns, rhythmic obstacles, dynamic shapes, vibrant color gradients, and cinematic 2K resolution, 16:9 aspect ratio`;
   } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
     visualPrompt = `A cinematic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic' : 'dramatic'} scene visualizing ${prompt} — epic landscapes, dramatic lighting, sweeping vistas, theatrical composition, and 2K cinematic quality, 16:9 aspect ratio`;
-  } else if (/lofi|chill/i.test(lowerPrompt)) {
-    visualPrompt = `A ${/lofi/i.test(lowerPrompt) ? 'nostalgic lofi' : 'serene'} aesthetic visualizing ${prompt} — warm tones, soft lighting, cozy atmosphere, vintage textures, and 2K cinematic quality, 16:9 aspect ratio`;
   } else {
-    // Creative default with enriched description
-    visualPrompt = `A stunning visual representation of ${prompt}, ${enrichedImageDescription}, cinematic lighting, 16:9 aspect ratio, ultra-detailed textures, high contrast, professional composition, 2K resolution quality`;
+    // Use emotion-based style for consistent interpretation
+    visualPrompt = `A ${style.image} representing "${prompt}", with cinematic lighting, high detail, and professional composition, 16:9 aspect ratio, 2K resolution quality`;
   }
   
   // Clean up
@@ -162,6 +220,7 @@ export function buildImagePrompt(userPrompt: string) {
   
   console.log(`🖼️ [ENRICHED IMAGE] Detected intent: ${intent}`);
   console.log(`🖼️ [CREATIVE PROMPT] Image: ${enrichedPrompt}`);
+  console.log(`🎭 [EMOTION MAP] Using style: ${style.image}`);
   
   return enrichedPrompt;
 }
