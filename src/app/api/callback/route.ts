@@ -221,65 +221,58 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
         }
 
-        // 2) Delay briefly for CDN readiness
-        await new Promise(r => setTimeout(r, 800));
+        // Wait longer for CDN propagation
+        await new Promise(r => setTimeout(r, 2000));
 
-        // 3) Verify dimensions using the presigned URL directly
-        const verified = await getImageDimensions(presignedUrl);
-        if (!verified || !verified.width) {
-          console.warn('⚠️ [IMAGE GEN] Could not verify image dimensions from URL');
+        // Force direct re-fetch of the download URL (can avoid cached preview)
+        const dlRetryRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId, url: imageUrl, resolution: "2K" })
+        });
+
+        const dlRetryJson = await dlRetryRes.json();
+        const finalUrl = dlRetryJson?.data || presignedUrl;
+        if (!finalUrl) {
+          console.error("❌ [CALLBACK] No valid finalUrl from Kie.ai download-url");
+        } else {
+          console.log("🔗 [CALLBACK] Confirmed full-resolution URL:", finalUrl);
         }
 
-        if (verified && verified.width >= 2048) {
-          console.log(`🖼️ [IMAGE DIM] Image dimensions: ${verified.width}x${verified.height}`);
-          console.log(`🖼️ [IMAGE GEN] Verified resolution: ${verified.width}x${verified.height} ✅`);
+        // Fetch actual image buffer for verification
+        const finalRes = await fetch(finalUrl);
+        const buffer = Buffer.from(await finalRes.arrayBuffer());
 
-          try {
-            // Download the verified image
-            const imgRes = await fetch(presignedUrl);
-            const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-
-            // Upload original full-res image to Supabase Storage
-            const filePath = `tracks/${taskId}_${Date.now()}.png`;
-            const { data: uploadData, error: uploadErr } = await supabaseServer
-              .storage
-              .from("images")
-              .upload(filePath, imgBuffer, {
-                contentType: "image/png",
-                upsert: true,
-              });
-
-            if (uploadErr) {
-              console.error("❌ [CALLBACK] Supabase upload failed:", uploadErr);
-            } else {
-              const { data: publicData } = supabaseServer
-                .storage
-                .from("images")
-                .getPublicUrl(filePath);
-
-              const publicUrl = `${publicData.publicUrl}?v=${Date.now()}`; // cache-bust
-
-              const { error: updErr } = await supabaseServer
-                .from("tracks")
-                .update({
-                  image_url: publicUrl,
-                  resolution: `${verified.width}x${verified.height}`,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("task_id", taskId)
-                .not("image_url", "eq", publicUrl);
-
-              if (updErr) {
-                console.error("❌ [CALLBACK] Track update error:", updErr);
-              } else {
-                console.log("✅ [CALLBACK] Verified 2 K+ image uploaded & saved to DB");
-              }
-            }
-          } catch (err) {
-            console.error("❌ [CALLBACK] Full-res download/upload failed:", err);
-          }
+        // Use buffer-level verification
+        const verified = await getImageDimensionsFromBuffer(buffer);
+        if (!verified || verified.width < 2048) {
+          console.warn("⚠️ [IMAGE GEN] Image still below 2K or undetectable; skipping unsafe save");
         } else {
-          console.warn('⚠️ [IMAGE GEN] Low resolution image detected, retry skipped for safety.');
+          console.log(`🖼️ [IMAGE DIM] ${verified.width}x${verified.height}`);
+          console.log(`🖼️ [IMAGE GEN] Verified 2K+ ✅`);
+
+          // Upload the verified image buffer to Supabase
+          const path = `tracks/${taskId}_${Date.now()}.png`;
+          const { error: upErr } = await supabaseServer.storage.from("images").upload(path, buffer, {
+            contentType: "image/png",
+            upsert: true,
+          });
+          if (upErr) console.error("❌ [CALLBACK] Supabase upload failed:", upErr);
+
+          const { data: pub } = supabaseServer.storage.from("images").getPublicUrl(path);
+          const pubUrl = `${pub.publicUrl}?v=${Date.now()}`;
+
+          const { error: updErr } = await supabaseServer
+            .from("tracks")
+            .update({
+              image_url: pubUrl,
+              resolution: `${verified.width}x${verified.height}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("task_id", taskId);
+
+          if (updErr) console.error("❌ [CALLBACK] DB update failed:", updErr);
+          else console.log("✅ [CALLBACK] Stored verified full-res image in Supabase");
         }
       } catch (err) {
         console.error('❌ [CALLBACK] Presigned download flow failed:', err);
