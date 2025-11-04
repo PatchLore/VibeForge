@@ -388,7 +388,7 @@ export default function AppPage() {
                            focus:outline-none transition-all duration-300 resize-none"
                 rows={3}
               />
-              
+
               {expandedPrompts && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}

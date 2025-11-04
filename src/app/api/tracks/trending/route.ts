@@ -22,14 +22,15 @@ export async function GET() {
       return NextResponse.json({ tracks: [], error: "Database not configured" });
     }
 
-    // Fetch most liked tracks, ordered by likes descending
+    // Only show completed tracks with valid images
     const { data: tracks, error } = await supabase
       .from("tracks")
       .select(
         "id, title, prompt, extended_prompt, extended_prompt_image, vibe, summary, status, audio_url, image_url, likes, created_at, user_id"
       )
       .eq("status", "completed")
-      .order("likes", { ascending: false })
+      .not("image_url", "is", null)
+      .neq("image_url", "")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -100,6 +101,7 @@ export async function GET() {
     );
   }
 }
+
 
 
 

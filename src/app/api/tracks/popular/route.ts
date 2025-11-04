@@ -23,12 +23,16 @@ export async function GET() {
     }
 
     // Fetch recent completed tracks
+    // Only show active completed tracks with valid images (exclude archived)
     const { data: tracks, error } = await supabase
       .from("tracks")
       .select(
         "id, title, prompt, extended_prompt, extended_prompt_image, vibe, summary, status, audio_url, image_url, likes, created_at, user_id"
       )
       .eq("status", "completed")
+      .neq("status", "archived") // Explicitly exclude archived
+      .not("image_url", "is", null) // Require valid image_url
+      .neq("image_url", "") // Exclude empty strings
       .order("created_at", { ascending: false })
       .limit(20);
 

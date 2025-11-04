@@ -15,9 +15,14 @@ export async function GET() {
       return NextResponse.json({ tracks: [], error: "Database not configured" });
     }
 
+    // Only show active completed tracks with valid images (exclude archived and processing)
     const { data, error } = await supabase
       .from("tracks")
       .select("*")
+      .eq("status", "completed")
+      .neq("status", "archived") // Explicitly exclude archived
+      .not("image_url", "is", null) // Require valid image_url
+      .neq("image_url", "") // Exclude empty strings
       .order("created_at", { ascending: false })
       .limit(20);
 

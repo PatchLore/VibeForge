@@ -25,10 +25,12 @@ export async function GET() {
       throw new Error("Supabase admin client not initialized");
     }
 
+    // Find tracks missing images (including archived ones)
+    // Query for tracks with null/empty image_url OR archived status
     const { data: brokenTracks, error } = await supabaseAdmin
       .from("tracks")
-      .select("id, prompt, extended_prompt_image")
-      .is("image_url", null)
+      .select("id, prompt, extended_prompt_image, status")
+      .or("image_url.is.null,image_url.eq.,status.eq.archived")
       .limit(10);
 
     if (error) throw error;
@@ -55,6 +57,7 @@ export async function GET() {
             .update({
               image_url: typeof imageUrl === "string" ? imageUrl : (imageUrl as any)?.imageUrl ?? null,
               resolution: "2048x1152",
+              status: "completed", // Restore from archived to completed when image is added
               updated_at: new Date().toISOString(),
             })
             .eq("id", track.id);
