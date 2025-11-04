@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
-import { buildMusicPrompt, buildImagePrompt, mapEmotionToStyle } from "@/lib/enrichPrompt";
+import { buildMusicPrompt, buildImagePrompt, generateEnrichedPrompts } from "@/lib/enrichPrompt";
 import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
 
@@ -149,15 +149,10 @@ export async function POST(req: Request) {
     let displayImagePrompt = null;
 
     try {
-      const style = mapEmotionToStyle(userVibe);
-      
-      // Create enriched prompts using emotion mapping (consistent with buildMusicPrompt/buildImagePrompt)
-      displayMusicPrompt = `Create a ${style.music} that captures the feeling of "${userVibe}". Include emotional depth and dynamic structure.`;
-      displayImagePrompt = `A ${style.image} representing "${userVibe}", with cinematic lighting, high detail, ultra-sharp focus, and professional 16:9 composition.`;
-      
-      console.log("🎭 [EMOTION MAP] Style detected:", style);
-      console.log("🎵 [ENRICHMENT ACTIVE]", displayMusicPrompt);
-      console.log("🎨 [ENRICHMENT ACTIVE]", displayImagePrompt);
+      // Use centralized enrichment function
+      const expandedPrompts = generateEnrichedPrompts(userVibe);
+      displayMusicPrompt = expandedPrompts.music;
+      displayImagePrompt = expandedPrompts.image;
     } catch (e) {
       console.warn("⚠️ Non-blocking display prompt error:", e);
       // Fallback to technical prompts if emotion mapping fails

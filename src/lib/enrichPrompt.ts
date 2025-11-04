@@ -66,6 +66,22 @@ export function mapEmotionToStyle(emotion: string): { music: string; image: stri
   };
 }
 
+/**
+ * Generates enriched prompts for both music and image using emotion mapping
+ * Centralized function for consistent enrichment across the application
+ */
+export function generateEnrichedPrompts(userPrompt: string): { music: string; image: string } {
+  const style = mapEmotionToStyle(userPrompt);
+
+  const enrichedMusicPrompt = `Create a ${style.music} that captures the feeling of "${userPrompt}". Include emotional depth and dynamic structure.`;
+  const enrichedImagePrompt = `A ${style.image} representing "${userPrompt}", with cinematic lighting, ultra-sharp detail, and professional 16:9 composition.`;
+
+  console.log("🎵 [ENRICHMENT ACTIVE]", enrichedMusicPrompt);
+  console.log("🎨 [ENRICHMENT ACTIVE]", enrichedImagePrompt);
+
+  return { music: enrichedMusicPrompt, image: enrichedImagePrompt };
+}
+
 // Fallback templates for when no specific intent is detected
 const DEFAULT_TEMPLATES = {
   music: "experimental electronic music with creative sound design, innovative techniques, rhythmic elements, and artistic expression",
