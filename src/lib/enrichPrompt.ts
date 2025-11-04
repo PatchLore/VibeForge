@@ -173,16 +173,27 @@ export function buildMusicPrompt(userPrompt: string) {
   // Get emotion-based style mapping for consistent interpretation
   const style = mapEmotionToStyle(userPrompt);
   
-  // Check for specific genre keywords first (these take priority)
+  // Check if emotion mapping detected a specific style (not the default fallback)
+  const hasEmotionMapping = !lowerPrompt.includes("calm") && !lowerPrompt.includes("dream") && 
+                            !lowerPrompt.includes("sad") && !lowerPrompt.includes("melancholy") &&
+                            !lowerPrompt.includes("happy") && !lowerPrompt.includes("bright") &&
+                            !lowerPrompt.includes("energetic") && !lowerPrompt.includes("hype") &&
+                            !lowerPrompt.includes("lonely") && !lowerPrompt.includes("nostalgic") &&
+                            !lowerPrompt.includes("romantic") && !lowerPrompt.includes("heart");
+  
+  // Check for specific genre keywords first (these take priority over emotion mapping)
   let narrativePrompt = "";
   
   if (/game|gaming|roblox|geometry dash|edm|synthwave|dnb|drum and bass|dubstep/i.test(lowerPrompt)) {
     narrativePrompt = `A high-energy ${/dubstep/i.test(lowerPrompt) ? 'dubstep' : 'electronic'} ${/anthem/i.test(lowerPrompt) ? 'anthem' : 'track'} inspired by ${userPrompt} — thundering basslines, ${/roblox|gaming|game/i.test(lowerPrompt) ? 'playful synths, and glitchy drops' : 'driving rhythms, and electrifying synth melodies'}`;
+    console.log("🎵 [BUILD PROMPT] Using genre-specific prompt (gaming/electronic)");
   } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
     narrativePrompt = `An epic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic orchestral' : 'orchestral'} composition inspired by ${userPrompt} — sweeping strings, powerful brass sections, dramatic crescendos, and emotional depth`;
+    console.log("🎵 [BUILD PROMPT] Using genre-specific prompt (cinematic)");
   } else {
-    // Use emotion-based style for consistent interpretation
-    narrativePrompt = `Create a ${style.music} that captures the feeling of "${userPrompt}". Include emotional depth, structure, and atmosphere.`;
+    // Use emotion-based style for consistent interpretation (same format as generateEnrichedPrompts)
+    narrativePrompt = `Create a ${style.music} that captures the feeling of "${userPrompt}". Include emotional depth and dynamic structure.`;
+    console.log("🎵 [BUILD PROMPT] Using emotion-mapped style:", style.music);
   }
 
   // Clean and compress
@@ -222,13 +233,17 @@ export function buildImagePrompt(userPrompt: string) {
   
   if (/game|gaming|roblox|geometry dash/i.test(lowerPrompt)) {
     visualPrompt = `A neon futuristic ${/roblox/i.test(lowerPrompt) ? 'Roblox' : 'gaming'} arena with glowing avatars, energy bursts, cyber city lights, vibrant colors, dynamic action, and cutting-edge visuals in 2K cinematic quality, 16:9 aspect ratio`;
+    console.log("🖼️ [BUILD PROMPT] Using genre-specific prompt (gaming)");
   } else if (/geometry dash/i.test(lowerPrompt)) {
     visualPrompt = `A geometric digital landscape inspired by ${prompt} — neon grid patterns, rhythmic obstacles, dynamic shapes, vibrant color gradients, and cinematic 2K resolution, 16:9 aspect ratio`;
+    console.log("🖼️ [BUILD PROMPT] Using genre-specific prompt (geometry dash)");
   } else if (/cinematic|orchestral|film|epic/i.test(lowerPrompt)) {
     visualPrompt = `A cinematic ${/cinematic|film/i.test(lowerPrompt) ? 'cinematic' : 'dramatic'} scene visualizing ${prompt} — epic landscapes, dramatic lighting, sweeping vistas, theatrical composition, and 2K cinematic quality, 16:9 aspect ratio`;
+    console.log("🖼️ [BUILD PROMPT] Using genre-specific prompt (cinematic)");
   } else {
-    // Use emotion-based style for consistent interpretation
-    visualPrompt = `A ${style.image} representing "${prompt}", with cinematic lighting, high detail, ultra-sharp focus, and professional 16:9 composition.`;
+    // Use emotion-based style for consistent interpretation (same format as generateEnrichedPrompts)
+    visualPrompt = `A ${style.image} representing "${prompt}", with cinematic lighting, ultra-sharp detail, and professional 16:9 composition.`;
+    console.log("🖼️ [BUILD PROMPT] Using emotion-mapped style:", style.image);
   }
   
   // Clean up
