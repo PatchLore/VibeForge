@@ -221,63 +221,39 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
         }
 
-        // 2) Delay for CDN readiness, then download the full-size image
-        await new Promise(r => setTimeout(r, 1000));
-        const imgRes = await fetch(presignedUrl);
-        if (!imgRes.ok) {
-          console.error('❌ [CALLBACK] Failed to fetch presigned image URL:', presignedUrl);
-          return NextResponse.json({ ok: false, error: 'image fetch failed' }, { status: 500 });
-        }
-        const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+        // 2) Delay briefly for CDN readiness
+        await new Promise(r => setTimeout(r, 800));
 
-        // 3) Verify dimensions from the raw buffer
-        const dim = await getImageDimensionsFromBuffer(imgBuffer);
-        if (!dim || !dim.width || dim.width < 2048) {
-          console.warn('⚠️ [IMAGE GEN] Low resolution detected, retrying with 4K...');
-          const retryTaskId = await retryWithResolution(
-            "4K",
-            track.task_id,
-            track.user_id,
-            track.prompt,
-            track.extended_prompt
-          );
-          if (retryTaskId) {
-            return NextResponse.json({ ok: true, message: 'retrying with 4K' });
+        // 3) Verify dimensions using the presigned URL directly
+        const verified = await getImageDimensions(presignedUrl);
+        if (!verified || !verified.width) {
+          console.warn('⚠️ [IMAGE GEN] Could not verify image dimensions from URL');
+        }
+
+        if (verified && verified.width >= 2048) {
+          console.log(`🖼️ [IMAGE DIM] Image dimensions: ${verified.width}x${verified.height}`);
+          console.log(`🖼️ [IMAGE GEN] Verified resolution: ${verified.width}x${verified.height} ✅`);
+
+          // 4) Save presigned URL and verified resolution in DB; avoid duplicates
+          const update = await supabaseServer
+            .from('tracks')
+            .update({
+              image_url: presignedUrl,
+              resolution: `${verified.width}x${verified.height}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', taskId)
+            .not('image_url', 'eq', presignedUrl);
+
+          if (update.error) {
+            console.error('❌ [CALLBACK] Track update error:', update.error);
+            return NextResponse.json({ ok: false, error: 'track update failed' }, { status: 500 });
           }
-          return NextResponse.json({ ok: false, error: 'image too small and retry failed' }, { status: 500 });
+
+          console.log('✅ [CALLBACK] Full-size image URL saved to database');
+        } else {
+          console.warn('⚠️ [IMAGE GEN] Low resolution image detected, retry skipped for safety.');
         }
-
-        console.log(`🖼️ [IMAGE DIM] Image dimensions: ${dim.width}x${dim.height}`);
-        console.log(`🖼️ [IMAGE GEN] Verified resolution: ${dim.width}x${dim.height} ✅`);
-
-        // 4) Upload full-size image to Supabase Storage (no resizing)
-        const storagePath = `tracks/${taskId}.png`;
-        const upload = await supabaseServer.storage.from('images').upload(storagePath, imgBuffer, {
-          contentType: 'image/png',
-          upsert: true,
-        });
-        if (upload.error) {
-          console.error('❌ [CALLBACK] Supabase upload error:', upload.error);
-          return NextResponse.json({ ok: false, error: 'storage upload failed' }, { status: 500 });
-        }
-        const publicUrlData = supabaseServer.storage.from('images').getPublicUrl(storagePath);
-        const publicUrl = publicUrlData?.data?.publicUrl;
-        if (!publicUrl) {
-          console.error('❌ [CALLBACK] Failed to get public URL from storage');
-          return NextResponse.json({ ok: false, error: 'public url generation failed' }, { status: 500 });
-        }
-
-        // 5) Save public URL and verified resolution in DB
-        await supabaseServer
-          .from('tracks')
-          .update({
-            image_url: publicUrl,
-            resolution: `${dim.width}x${dim.height}`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', track.id);
-
-        console.log('✅ [CALLBACK] Full-size image saved to database');
       } catch (err) {
         console.error('❌ [CALLBACK] Presigned download flow failed:', err);
         return NextResponse.json({ ok: false, error: 'presigned download flow failed' }, { status: 500 });
