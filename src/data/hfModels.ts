@@ -6,7 +6,7 @@ export interface HFModel {
 
 export const HF_MODELS: HFModel[] = [
   {
-    id: "SG161222/Realistic_Vision_V6.0",
+    id: "SG161222/Realistic_Vision_V6.0_B1_noVAE",
     label: "Realistic Vision V6 (Photorealistic)",
     category: "Realism",
   },
