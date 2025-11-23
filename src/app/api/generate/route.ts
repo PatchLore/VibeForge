@@ -289,6 +289,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ image });
         } catch (err) {
           console.error("[GEN] Runware failed, falling back to DeepInfra Schnell:", err);
+          console.log("[GEN] DeepInfra final modelId:", deepInfraSchnellId);
           try {
             const image = await generateWithDeepInfra({
               prompt,
@@ -303,6 +304,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ image });
           } catch (schnellErr) {
             console.error("[GEN] DeepInfra Schnell failed, falling back to DeepInfra Dev:", schnellErr);
+            console.log("[GEN] DeepInfra final modelId:", deepInfraDevId);
             const image = await generateWithDeepInfra({
               prompt,
               width,
@@ -322,6 +324,7 @@ export async function POST(req: NextRequest) {
 
         // Try with LoRAs if allowed, then fallback without LoRAs
         if (allowLoras && finalLoras) {
+          console.log("[GEN] DeepInfra final modelId:", deepInfraModelId);
           try {
             const image = await generateWithDeepInfra({
               prompt,
@@ -336,6 +339,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ image });
           } catch (err) {
             console.error("[GEN] DeepInfra with LoRAs failed, retrying without LoRAs:", err);
+            console.log("[GEN] DeepInfra final modelId:", deepInfraModelId);
             const image = await generateWithDeepInfra({
               prompt,
               width,
@@ -350,6 +354,7 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // No LoRAs or LoRAs not allowed
+          console.log("[GEN] DeepInfra final modelId:", deepInfraModelId);
           const image = await generateWithDeepInfra({
             prompt,
             width,
