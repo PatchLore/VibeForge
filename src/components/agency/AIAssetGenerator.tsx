@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { generateHFImage } from "../../services/hfInferenceService";
 import { HF_MODELS } from "../../data/hfModels";
 
 export default function AIAssetGenerator() {
@@ -37,13 +36,34 @@ export default function AIAssetGenerator() {
       console.log('  Model:', selectedModel);
       console.log('  Prompt:', prompt);
       
-      const finalImage = await generateHFImage(selectedModel, prompt);
+      // Call our server-side API route
+      const response = await fetch('/api/hf/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          modelId: selectedModel,
+          prompt: prompt,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.image) {
+        throw new Error('No image data in response');
+      }
       
       console.log('✅ [AIAssetGenerator] Image generated successfully');
-      console.log('  Image data length:', finalImage.length, 'characters');
-      console.log('  Image format:', finalImage.substring(0, 30) + '...');
+      console.log('  Image data length:', data.image.length, 'characters');
+      console.log('  Image format:', data.image.substring(0, 30) + '...');
       
-      setImageResult(finalImage);
+      setImageResult(data.image);
     } catch (error: any) {
       console.error('❌ [AIAssetGenerator] Image generation failed:', error);
       setError(error.message || "Image generation failed");
