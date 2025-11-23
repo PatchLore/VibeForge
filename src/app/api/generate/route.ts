@@ -202,8 +202,8 @@ export async function POST(req: NextRequest) {
 
     // CASE 1 — LoRAs selected but model cannot use them
     if (loras.length > 0 && LORA_SUPPORTED[model] === false) {
-      console.warn(`[LORA SWITCH] Model '${model}' does NOT support LoRAs. Switching to SDXL Base.`);
-      finalModel = "stabilityai/stable-diffusion-xl-base-1.0";
+      console.warn(`[LORA SWITCH] Model '${model}' does NOT support LoRAs. Switching to SDXL Turbo.`);
+      finalModel = "stabilityai/sdxl-turbo";
       body.model = finalModel;
     } else if (LORA_SUPPORTED[model] === true) {
       // Keep selected model for valid LoRA models (only if we didn't switch above)
@@ -258,9 +258,7 @@ export async function POST(req: NextRequest) {
     }
 
     // SDXL models keep LoRAs automatically
-    // 'stabilityai/stable-diffusion-xl-base-1.0'
-    // 'Lykon/dreamshaper-xl-v2'
-    // 'SG161222/Realistic_Vision_4.0'
+    // 'stabilityai/sdxl-turbo'
 
     // Prepare final loras array for DeepInfra
     const finalLoras = body.loras && body.loras.length > 0 ? body.loras : undefined;
