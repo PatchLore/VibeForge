@@ -1,4 +1,4 @@
-export type AIProvider = "deepinfra" | "hf";
+export type AIProvider = "deepinfra";
 
 export interface DeepInfraModel {
   id: string;

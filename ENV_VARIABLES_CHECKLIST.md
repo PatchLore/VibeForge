@@ -58,23 +58,29 @@ This document lists all environment variables used in the codebase and where the
 
 ---
 
-### HuggingFace AI Configuration
+### Image Generation AI Configuration (Runware + DeepInfra)
 
 **Vercel Environment Variables (Server-only, NOT exposed to client):**
-- `HF_API_KEY` - HuggingFace API key for AI image generation (server-only, no NEXT_PUBLIC_ prefix)
-- `HF_BASE_URL` - HuggingFace Router API base URL (defaults to `https://router.huggingface.co`)
+- `RUNWARE_API_KEY` - Runware API key for AI image generation (server-only, no NEXT_PUBLIC_ prefix)
+- `DEEPINFRA_API_KEY` - DeepInfra API key for AI image generation (server-only, no NEXT_PUBLIC_ prefix)
 
-**Note:** These are server-only environment variables. The API key is never exposed to the client. All HuggingFace API calls are made from the server-side API route `/api/hf/generate` using the new HF Router API.
+**Note:** These are server-only environment variables. The API keys are never exposed to the client. All image generation API calls are made from the server-side API route `/api/generate` with waterfall fallback logic.
 
-**HuggingFace Dashboard Location:**
-- Get API key from your HuggingFace account
-- Visit: https://huggingface.co/settings/tokens
-- Create a token with "Read" permissions
+**Provider Priority:**
+1. **Runware** (FLUX.1 Schnell) - Cheapest & fastest, tried first for Runware models
+2. **DeepInfra** (FLUX.1 Dev, SDXL, Realistic Vision V6, Juggernaut XL) - Higher quality models, used as primary for DeepInfra models or as fallback
+
+**API Endpoints:**
+- Runware: `POST https://api.runware.ai/v1/schnell`
+- DeepInfra: `POST https://api.deepinfra.com/v1/inference/{model}`
+
+**Dashboard Locations:**
+- **Runware**: Get API key from https://runware.ai
+- **DeepInfra**: Get API key from https://deepinfra.com/dash/api_keys
 
 **Usage:**
 - Used in the Agency Dashboard AI Asset Generator (`/agency`)
-- Supports 7 elite models: Realistic Vision V6, Juggernaut XL V9, DreamShaper 8, Deliberate, CyberRealistic, OpenJourney v4, SynthwavePunk v2
-- Generates images using HuggingFace Inference API
+- Supports waterfall fallback: if Runware fails, automatically tries DeepInfra
 - Returns binary image data converted to base64
 
 ---

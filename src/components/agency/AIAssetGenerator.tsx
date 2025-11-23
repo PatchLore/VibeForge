@@ -1,19 +1,23 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { HF_MODELS } from "../../data/hfModels";
+import { ALL_MODELS, ImageModel } from "../../data/models";
 
 export default function AIAssetGenerator() {
-  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedModel, setSelectedModel] = useState<ImageModel | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [width, setWidth] = useState<number>(1024);
+  const [height, setHeight] = useState<number>(1024);
+  const [steps, setSteps] = useState<number | undefined>(undefined);
+  const [seed, setSeed] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [imageResult, setImageResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load HF models on mount
-    if (HF_MODELS.length > 0) {
-      setSelectedModel(HF_MODELS[0].id);
+    // Load models on mount
+    if (ALL_MODELS.length > 0) {
+      setSelectedModel(ALL_MODELS[0]);
     }
   }, []);
 
@@ -33,19 +37,32 @@ export default function AIAssetGenerator() {
 
     try {
       console.log('🚀 [AIAssetGenerator] Starting image generation');
-      console.log('  Model:', selectedModel);
+      console.log('  Model:', selectedModel.id);
+      console.log('  Provider:', selectedModel.provider);
       console.log('  Prompt:', prompt);
+      console.log('  Width:', width);
+      console.log('  Height:', height);
+      console.log('  Steps:', steps);
+      console.log('  Seed:', seed);
       
-      // Call our server-side API route
-      const response = await fetch('/api/hf/generate', {
+      // Build request body
+      const requestBody: any = {
+        prompt: prompt,
+        model: selectedModel.id,
+      };
+
+      if (width) requestBody.width = width;
+      if (height) requestBody.height = height;
+      if (steps) requestBody.steps = steps;
+      if (seed) requestBody.seed = seed;
+
+      // Call the unified image generation API
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          modelId: selectedModel,
-          prompt: prompt,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -97,13 +114,69 @@ export default function AIAssetGenerator() {
         <label className="font-semibold text-white block mb-2">Model</label>
         <select
           className="w-full p-2 mt-1 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
+          value={selectedModel?.id || ''}
+          onChange={(e) => {
+            const model = ALL_MODELS.find(m => m.id === e.target.value);
+            setSelectedModel(model || null);
+          }}
         >
-          {HF_MODELS.map((m) => (
+          {ALL_MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
         </select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="font-semibold text-white block mb-2">Width</label>
+          <input
+            type="number"
+            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            value={width}
+            onChange={(e) => setWidth(parseInt(e.target.value) || 1024)}
+            min={256}
+            max={2048}
+            step={64}
+          />
+        </div>
+        <div>
+          <label className="font-semibold text-white block mb-2">Height</label>
+          <input
+            type="number"
+            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            value={height}
+            onChange={(e) => setHeight(parseInt(e.target.value) || 1024)}
+            min={256}
+            max={2048}
+            step={64}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="font-semibold text-white block mb-2">Steps (optional)</label>
+          <input
+            type="number"
+            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            value={steps || ''}
+            onChange={(e) => setSteps(e.target.value ? parseInt(e.target.value) : undefined)}
+            min={1}
+            max={50}
+            placeholder="Auto"
+          />
+        </div>
+        <div>
+          <label className="font-semibold text-white block mb-2">Seed (optional)</label>
+          <input
+            type="number"
+            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            value={seed || ''}
+            onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : undefined)}
+            min={0}
+            placeholder="Random"
+          />
+        </div>
       </div>
 
       <button
@@ -135,4 +208,3 @@ export default function AIAssetGenerator() {
     </div>
   );
 }
-
