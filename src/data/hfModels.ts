@@ -1,44 +1,36 @@
 export interface HFModel {
+  name: string;
   id: string;
-  label: string;
-  category: string;
 }
 
 export const HF_MODELS: HFModel[] = [
   {
-    id: "SG161222/Realistic_Vision_V6.0_B1_noVAE",
-    label: "Realistic Vision V6 (Photorealistic)",
-    category: "Realism",
+    name: "Realistic Vision V6 (Photorealistic)",
+    id: "SG161222/Realistic_Vision_V6.0_B1_noVAE"
   },
   {
-    id: "RunDiffusion/Juggernaut-XL-Version9",
-    label: "Juggernaut XL V9 (Cinematic)",
-    category: "Cinematic",
+    name: "Juggernaut XL V9 (Cinematic)",
+    id: "stablediffusionapi/juggernaut-xl-v9"
   },
   {
-    id: "Lykon/dreamshaper-8",
-    label: "DreamShaper 8 (Fantasy / Sci-Fi)",
-    category: "Stylized",
+    name: "DreamShaper 8 (Fantasy / Sci-Fi)",
+    id: "Lykon/DreamShaper_8"
   },
   {
-    id: "stabilityai/stable-diffusion-2-1",
-    label: "Deliberate (Balanced Realism)",
-    category: "All-Rounder",
+    name: "Deliberate (Balanced Realism)",
+    id: "XpucT/DeliberateV2"
   },
   {
-    id: "cyberdelia/CyberRealistic",
-    label: "CyberRealistic (Ultra Realistic Faces)",
-    category: "Faces",
+    name: "CyberRealistic (Ultra Realistic Faces)",
+    id: "gsdf/CyberRealistic_V4"
   },
   {
-    id: "prompthero/openjourney",
-    label: "OpenJourney v4 (Midjourney Style)",
-    category: "Stylized",
+    name: "OpenJourney v4 (Midjourney Style)",
+    id: "prompthero/openjourney-v4"
   },
   {
-    id: "ItsJayQz/SynthwavePunk-v2",
-    label: "SynthwavePunk v2 (Retro/Neon)",
-    category: "Retro",
-  },
+    name: "SynthwavePunk v2 (Retro/Neon)",
+    id: "ItsJayQz/SynthwavePunk-v2"
+  }
 ];
 

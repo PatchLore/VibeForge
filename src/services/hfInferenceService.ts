@@ -10,20 +10,18 @@ export async function generateHFImage(modelId: string, prompt: string): Promise<
     throw new Error("HuggingFace API key is not configured. Please set NEXT_PUBLIC_HF_API_KEY in your environment variables.");
   }
 
-  // Build the fetch URL
-  const fetchURL = `${BASE_URL}/${modelId}`;
+  // Build the fetch URL using model.id
+  const finalURL = `${BASE_URL}/${modelId}`;
   
-  // Build the payload
+  // Build the payload - EXACTLY { "inputs": prompt }
   const payload = { inputs: prompt };
   
   // Log for debugging
-  console.log('🎨 [HF Image Generation]');
-  console.log('  Provider: HuggingFace');
-  console.log('  Model ID:', modelId);
-  console.log('  Fetch URL:', fetchURL);
-  console.log('  Payload:', JSON.stringify(payload, null, 2));
+  console.log("[HF] Model ID:", modelId);
+  console.log("[HF] Fetch URL:", finalURL);
+  console.log("[HF] Payload:", payload);
 
-  const res = await fetch(fetchURL, {
+  const res = await fetch(finalURL, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${API_KEY}`,

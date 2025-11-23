@@ -81,7 +81,7 @@ export default function AIAssetGenerator() {
           onChange={(e) => setSelectedModel(e.target.value)}
         >
           {HF_MODELS.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
+            <option key={m.id} value={m.id}>{m.name}</option>
           ))}
         </select>
       </div>
