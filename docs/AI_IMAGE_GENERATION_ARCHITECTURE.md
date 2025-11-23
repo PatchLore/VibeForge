@@ -1,10 +1,14 @@
 # 📘 DOCUMENT: AI Image Generation Architecture (Runware + DeepInfra)
 
-**Version 1.0 – November 2025**
+**Version 1.1 – November 2025**
 
 **Author:** Allen Dunn & ChatGPT Dev Assistant
 
 **Use Case:** For Soundswoop, OnPointPrompt, FixBlox, Ambient Video Lab, AuralMix, etc.
+
+**Changelog:**
+- **v1.1:** LoRAs now route to DeepInfra only (bypass Runware completely)
+- **v1.0:** Initial architecture with Runware + DeepInfra waterfall
 
 ---
 
@@ -64,33 +68,38 @@ RUNWARE_LORA_ENABLED=true
 
 ---
 
-## 🎯 4. LoRA Support (Optional Now, Add Later When Needed)
+## 🎯 4. LoRA Support (DeepInfra Only)
 
-We only use **commercial-safe SDXL LoRAs**, not Flux Dev ones.
+**⚠️ CRITICAL:** LoRAs are **ONLY** sent to DeepInfra, **NEVER** to Runware.
 
-### Recommended LoRA Pack (Legal):
+- ✅ If **ANY LoRA is selected** → Route to DeepInfra immediately (bypass Runware)
+- ✅ LoRAs use **Civitai SDXL format** (e.g., `civitai:122359@135867`)
+- ❌ Runware **never receives LoRAs** (prevents `invalidLoraModel` errors)
+- ✅ DeepInfra supports full SDXL LoRA compatibility
 
-1. **Detail Tweaker XL**
-   - AIR ID: `civitai:122359@135867`
+### Recommended LoRA Pack (Commercial Safe):
+
+1. **Detail Tweaker XL (Intensity / Grit)**
+   - Civitai ID: `civitai:122359@135867`
    - Default Scale: 1.0
 
-2. **SDXL Inkdrawing (Black & White Emotional)**
-   - AIR ID: `civitai:154918@173694`
+2. **SDXL Inkdrawing (Raw Emotion)**
+   - Civitai ID: `civitai:154918@173694`
    - Default Scale: 0.9
 
-3. **Cinematic Warm Light XL (SDXL version)**
-   - AIR ID: `civitai:290860@592197`
+3. **Warm Light XL v2 (Nostalgia & Comfort)**
+   - Civitai ID: `civitai:290860@592197`
    - Default Scale: 0.8
 
-4. **Fine Tuned Detailed Eyes**
-   - AIR ID: `civitai:316969@355491`
-   - Default Scale: 0.8
-
-5. **Vibrant Watercolor (SDXL)**
-   - AIR ID: `civitai:1200817@1352135`
+4. **Watercolor – Textured Paper (Soft Dreaminess)**
+   - Civitai ID: `civitai:120789@131382`
    - Default Scale: 0.7
 
-These are **safe for SaaS**.
+5. **Fine Tuned Detailed Eyes (Realistic Emotion)**
+   - Civitai ID: `civitai:316969@355491`
+   - Default Scale: 0.8
+
+These are **100% safe for SaaS** and work with DeepInfra's FLUX.1-dev model.
 
 ### ⚠️ Flux-based LoRAs (NOT Commercial Safe)
 
@@ -105,21 +114,44 @@ These are **safe for SaaS**.
 
 ## 🌊 5. Waterfall Routing Logic
 
-### Step 1 — Try Runware FLUX.1-Schnell
+The system uses **two different routing paths** based on whether LoRAs are selected:
 
-If Runware responds within 3 seconds → return image.
+### 🟢 CASE A — No LoRAs Selected
 
-### Step 2 — If timeout/error → DeepInfra Schnell
+**Waterfall:** Runware → DeepInfra Schnell → DeepInfra Dev → fail
 
-Second attempt with DeepInfra Schnell (fast + cheap).
+1. **Try Runware FLUX.1-Schnell** (fastest, cheapest)
+   - If successful → return image
+   - If fails → continue to step 2
 
-### Step 3 — If still failing → DeepInfra Flux Dev
+2. **Try DeepInfra FLUX.1-Schnell** (fast fallback)
+   - If successful → return image
+   - If fails → continue to step 3
 
-Higher quality fallback.
+3. **Try DeepInfra FLUX.1-Dev** (high quality fallback)
+   - If successful → return image
+   - If fails → return error
 
-### Step 4 — Return failure if all 3 fail
+**Result:** Fastest path for 90% of requests (no LoRAs).
 
-**⚠️ Important:** If a LoRA is selected, **do NOT fallback to DeepInfra** (DeepInfra cannot load SDXL LoRAs while using Flux).
+### 🔵 CASE B — LoRAs Selected
+
+**Waterfall:** DeepInfra (with LoRAs) → DeepInfra (without LoRAs) → fail
+
+1. **Try DeepInfra FLUX.1-Dev with LoRAs**
+   - Model: `black-forest-labs/FLUX.1-dev`
+   - Payload includes `loras: [{model: "civitai:XXXX", weight: 0.8}]`
+   - If successful → return image
+   - If fails → continue to step 2
+
+2. **Try DeepInfra FLUX.1-Dev without LoRAs** (graceful fallback)
+   - Same model, but LoRAs removed from payload
+   - If successful → return image
+   - If fails → return error
+
+**Result:** Full SDXL LoRA support, avoids Runware errors.
+
+**⚠️ CRITICAL:** Runware is **completely bypassed** when ANY LoRA is selected.
 
 ---
 
@@ -181,7 +213,6 @@ It will work everywhere.
   "height": 1024,
   "steps": 4,
   "seed": 12345,
-  "lora": ["civitai:122359@135867"],
   "outputType": "dataURI",
   "outputFormat": "PNG",
   "deliveryMethod": "sync",
@@ -189,11 +220,15 @@ It will work everywhere.
 }
 ```
 
-**Note:** Runware API expects an array of LoRA IDs in the `lora` field. Scale is tracked separately but may not be directly supported in the API payload structure.
+**⚠️ CRITICAL:** Runware **NEVER** receives LoRA fields. If LoRAs are selected, the request is routed to DeepInfra instead.
+
+**Note:** Runware only accepts AIR identifiers (not Civitai IDs), and we use DeepInfra for all LoRA requests to avoid compatibility issues.
 
 ---
 
 ## 🖼 8. DeepInfra Payload Format (Schnell or Dev)
+
+### Without LoRAs:
 
 ```json
 {
@@ -205,7 +240,34 @@ It will work everywhere.
 }
 ```
 
-**Note:** DeepInfra does **not** support LoRAs when using Flux models. LoRA support is Runware-only.
+### With LoRAs:
+
+```json
+{
+  "prompt": "A beautiful emotional neon sunset",
+  "model": "black-forest-labs/FLUX.1-dev",
+  "width": 1024,
+  "height": 1024,
+  "num_inference_steps": 25,
+  "seed": 12345,
+  "loras": [
+    {
+      "model": "civitai:122359@135867",
+      "weight": 0.8
+    },
+    {
+      "model": "civitai:290860@592197",
+      "weight": 0.5
+    }
+  ]
+}
+```
+
+**Note:** 
+- DeepInfra **fully supports LoRAs** with FLUX.1-dev model
+- LoRA format: `{model: "civitai:XXXX", weight: 0.0-2.5}`
+- Multiple LoRAs can be included in the `loras` array
+- LoRA support is **DeepInfra-only** (Runware never receives LoRAs)
 
 ---
 
@@ -214,9 +276,10 @@ It will work everywhere.
 ### Commercial-safe:
 
 - ✅ **FLUX.1-Schnell** (Apache 2.0 License)
-- ✅ **SDXL LoRAs** (Commercial-safe SDXL-based LoRAs)
+- ✅ **SDXL LoRAs** (Commercial-safe SDXL-based LoRAs via DeepInfra)
 - ✅ **Your own prompt mixing**
 - ✅ **All Runware + DeepInfra Schnell generations**
+- ✅ **DeepInfra FLUX.1-dev with SDXL LoRAs** (SDXL LoRAs are commercial-safe)
 
 ### NOT commercial-safe:
 
@@ -225,7 +288,9 @@ It will work everywhere.
 - ❌ **Flux-based Cinematic / Eldritch / Abstract LoRAs** (Requires license)
 - ❌ **Fluxlisimo** (Requires license)
 
-**⚠️ Use only SDXL LoRAs until revenue allows a Flux Dev license.**
+**⚠️ Use only SDXL LoRAs (via DeepInfra) until revenue allows a Flux Dev license.**
+
+**Note:** All LoRAs are routed to DeepInfra, which supports commercial-safe SDXL LoRAs with FLUX.1-dev.
 
 ---
 
@@ -238,9 +303,10 @@ When adding AI Image Generation to a new PatchLore app:
 - [ ] Copy model definitions from `src/data/models.ts`
 - [ ] Copy LoRA styles from `src/lib/loraStyles.ts` (if using LoRAs)
 - [ ] Update UI component to use the unified API endpoint
-- [ ] Test waterfall routing (Runware → DeepInfra fallback)
-- [ ] Test LoRA support (if enabled)
-- [ ] Verify licensing compliance (SDXL LoRAs only)
+- [ ] Test waterfall routing (Runware → DeepInfra fallback) for **no-LoRA** requests
+- [ ] Test LoRA routing (DeepInfra only, bypasses Runware) for **LoRA** requests
+- [ ] Verify LoRAs are never sent to Runware (check logs)
+- [ ] Verify licensing compliance (SDXL LoRAs only, via DeepInfra)
 - [ ] Monitor costs and performance
 
 ---
@@ -275,11 +341,12 @@ When adding AI Image Generation to a new PatchLore app:
 
 ## 🚀 13. Performance Tips
 
-1. **Use Runware first** (fastest + cheapest)
-2. **Set timeout to 3 seconds** for Runware
-3. **Use LoRAs only when needed** (adds slight overhead)
+1. **Use Runware first** (fastest + cheapest) - **only for non-LoRA requests**
+2. **LoRAs automatically route to DeepInfra** (bypasses Runware completely)
+3. **Use LoRAs only when needed** (adds slight overhead, but enables style control)
 4. **Cache generated images** when possible
 5. **Monitor API usage** to optimize costs
+6. **Check logs** for routing decisions: `[GEN] LoRAs detected — routing to DeepInfra only`
 
 ---
 
@@ -289,7 +356,7 @@ For questions or updates to this architecture:
 
 - **Author:** Allen Dunn
 - **Last Updated:** November 2025
-- **Version:** 1.0
+- **Version:** 1.1
 
 ---
 
