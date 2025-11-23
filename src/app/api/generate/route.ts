@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ALL_MODELS } from '@/data/models';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +10,7 @@ async function generateWithRunware({
   steps,
   seed,
   modelId,
-  style,
+  loras,
 }: {
   prompt: string;
   width?: number;
@@ -19,33 +18,35 @@ async function generateWithRunware({
   steps?: number;
   seed?: number;
   modelId: string;
-  style?: { id: string; name: string } | null;
+  loras?: Array<{ id: string; scale: number }>;
 }): Promise<string> {
   const API_KEY = process.env.RUNWARE_API_KEY;
   if (!API_KEY) throw new Error('RUNWARE_API_KEY not set');
 
-  const runwareModelId =
-    modelId === 'flux-schnell'
-      ? 'runware:101@1' // FLUX Schnell AIR ID
-      : modelId;
+  const runwarePayload: any = {
+    taskType: 'imageInference',
+    taskUUID: crypto.randomUUID(),
+    positivePrompt: prompt,
+    width: width ?? 1024,
+    height: height ?? 1024,
+    model: modelId, // e.g. "runware:101@1"
+    steps: steps ?? 20,
+    seed,
+    outputType: 'dataURI',
+    outputFormat: 'PNG',
+    deliveryMethod: 'sync',
+    numberResults: 1,
+  };
 
-  const body = [
-    {
-      taskType: 'imageInference',
-      taskUUID: crypto.randomUUID(),
-      positivePrompt: prompt,
-      width: width ?? 1024,
-      height: height ?? 1024,
-      model: runwareModelId,
-      steps: steps ?? 20,
-      seed,
-      lora: style?.id ? [style.id] : [],
-      outputType: 'dataURI',
-      outputFormat: 'PNG',
-      deliveryMethod: 'sync',
-      numberResults: 1,
-    },
-  ];
+  // Add loras array only if provided
+  // Runware API expects lora as array of IDs, but we track scale for logging
+  if (loras && loras.length > 0) {
+    runwarePayload.lora = loras.map(l => l.id);
+    console.log('[RUNWARE] LoRA Payload:', JSON.stringify(loras));
+    console.log('[RUNWARE] LoRA IDs being sent:', runwarePayload.lora);
+  }
+
+  const body = [runwarePayload];
 
   console.log('[RUNWARE] Request body:', JSON.stringify(body[0]));
 
@@ -153,45 +154,80 @@ async function generateWithDeepInfra({
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, model: modelId, width, height, steps, seed, style } = await req.json();
+    const { prompt, modelId, provider, loraId, loraStrength, width, height, steps, seed } = await req.json();
 
     if (!prompt || !modelId) {
       return NextResponse.json(
-        { error: 'Missing prompt or model' },
+        { error: 'Missing prompt or modelId' },
         { status: 400 }
       );
     }
 
-    const selectedModel = ALL_MODELS.find(m => m.id === modelId);
-    if (!selectedModel) {
-      return NextResponse.json(
-        { error: `Unknown model: ${modelId}` },
-        { status: 400 }
-      );
-    }
-
-    const provider = selectedModel.provider; // "runware" | "deepinfra"
     console.log('[GEN] Provider:', provider, 'Model:', modelId);
+    console.log('[GEN] Selected LoRA:', loraId || 'None');
+    console.log('[GEN] LoRA Strength:', loraStrength || 'N/A');
+
+    // Build loras array if LoRA is selected
+    const loras = loraId
+      ? [
+          {
+            id: loraId,
+            scale: loraStrength || 1.0
+          }
+        ]
+      : [];
+
+    console.log('[GEN] LoRA Payload:', JSON.stringify(loras));
 
     try {
       if (provider === 'runware') {
-        // Try Runware first, then DeepInfra fallback
-        try {
-          const image = await generateWithRunware({ prompt, width, height, steps, seed, modelId, style });
-          return NextResponse.json({ image });
-        } catch (err) {
-          console.error('[GEN] Runware failed, falling back to DeepInfra:', err);
-          const image = await generateWithDeepInfra({ 
-            prompt, 
-            width, 
-            height, 
-            steps, 
-            seed, 
-            modelId: 'stabilityai/stable-diffusion-xl-base-1.0' 
-          });
-          return NextResponse.json({ image });
+        // Smart fallback: If LoRA is active, do NOT fallback to DeepInfra
+        if (loras.length > 0) {
+          console.log('[GEN] LoRA active → disabling DeepInfra fallback');
+          // Run Runware only, no fallback
+          try {
+            const image = await generateWithRunware({ 
+              prompt, 
+              width, 
+              height, 
+              steps, 
+              seed, 
+              modelId, 
+              loras 
+            });
+            return NextResponse.json({ image });
+          } catch (err) {
+            console.error('[GEN] Runware failed with LoRA (no fallback):', err);
+            throw err; // Re-throw since we can't fallback with LoRA
+          }
+        } else {
+          // No LoRA: normal waterfall (Runware → DeepInfra fallback)
+          try {
+            const image = await generateWithRunware({ 
+              prompt, 
+              width, 
+              height, 
+              steps, 
+              seed, 
+              modelId, 
+              loras: [] 
+            });
+            return NextResponse.json({ image });
+          } catch (err) {
+            console.error('[GEN] Runware failed, falling back to DeepInfra:', err);
+            const image = await generateWithDeepInfra({ 
+              prompt, 
+              width, 
+              height, 
+              steps, 
+              seed, 
+              modelId: 'stabilityai/stable-diffusion-xl-base-1.0' 
+            });
+            return NextResponse.json({ image });
+          }
         }
       } else if (provider === 'deepinfra') {
+        // DeepInfra ignores LoRA completely
         const image = await generateWithDeepInfra({ prompt, width, height, steps, seed, modelId });
         return NextResponse.json({ image });
       } else {

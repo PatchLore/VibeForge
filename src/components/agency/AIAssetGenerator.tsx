@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { ALL_MODELS, ImageModel } from "../../data/models";
-import { LORA_STYLES, LoRAStyle } from "../../data/loraStyles";
+import { MODELS } from "@/data/models";
+import { LORA_STYLES } from "@/lib/loraStyles";
 
 export default function AIAssetGenerator() {
-  const [selectedModel, setSelectedModel] = useState<ImageModel | null>(null);
-  const [selectedStyle, setSelectedStyle] = useState<LoRAStyle | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(MODELS[0]?.id ?? null);
+  const [selectedLoraId, setSelectedLoraId] = useState<string>("");
+  const [loraStrength, setLoraStrength] = useState<number>(1.0);
   const [prompt, setPrompt] = useState("");
   const [width, setWidth] = useState<number>(1024);
   const [height, setHeight] = useState<number>(1024);
@@ -16,16 +17,25 @@ export default function AIAssetGenerator() {
   const [imageResult, setImageResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Derive the selected model
+  const selectedModel = MODELS.find(m => m.id === selectedModelId) ?? MODELS[0];
+  
+  // Get default scale for selected LoRA
+  const selectedLora = LORA_STYLES.find(s => s.id === selectedLoraId);
+
   useEffect(() => {
-    // Load models on mount
-    if (ALL_MODELS.length > 0) {
-      setSelectedModel(ALL_MODELS[0]);
-    }
-    // Load default style (None)
-    if (LORA_STYLES.length > 0) {
-      setSelectedStyle(LORA_STYLES[0]);
+    // Initialize with first model
+    if (MODELS.length > 0 && !selectedModelId) {
+      setSelectedModelId(MODELS[0].id);
     }
   }, []);
+
+  // Update LoRA strength when LoRA changes
+  useEffect(() => {
+    if (selectedLora) {
+      setLoraStrength(selectedLora.defaultScale);
+    }
+  }, [selectedLora]);
 
   async function handleGenerate() {
     if (!prompt.trim()) {
@@ -46,7 +56,8 @@ export default function AIAssetGenerator() {
       console.log('  Model:', selectedModel.id);
       console.log('  Provider:', selectedModel.provider);
       console.log('  Prompt:', prompt);
-      console.log('  Style:', selectedStyle?.name || 'None');
+      console.log('  Selected LoRA:', selectedLoraId || 'None');
+      console.log('  LoRA Strength:', loraStrength);
       console.log('  Width:', width);
       console.log('  Height:', height);
       console.log('  Steps:', steps);
@@ -54,17 +65,16 @@ export default function AIAssetGenerator() {
       
       // Build request body
       const requestBody: any = {
-        prompt: prompt,
-        model: selectedModel.id,
+        prompt,
+        modelId: selectedModel.id,
+        provider: selectedModel.provider,
+        loraId: selectedLoraId || null,
+        loraStrength: selectedLoraId ? loraStrength : null,
+        width,
+        height,
+        steps,
+        seed,
       };
-
-      if (selectedStyle && selectedStyle.id) {
-        requestBody.style = selectedStyle;
-      }
-      if (width) requestBody.width = width;
-      if (height) requestBody.height = height;
-      if (steps) requestBody.steps = steps;
-      if (seed) requestBody.seed = seed;
 
       // Call the unified image generation API
       const response = await fetch('/api/generate', {
@@ -124,33 +134,56 @@ export default function AIAssetGenerator() {
         <label className="font-semibold text-white block mb-2">Model</label>
         <select
           className="w-full p-2 mt-1 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-          value={selectedModel?.id || ''}
-          onChange={(e) => {
-            const model = ALL_MODELS.find(m => m.id === e.target.value);
-            setSelectedModel(model || null);
-          }}
+          value={selectedModelId || ''}
+          onChange={(e) => setSelectedModelId(e.target.value)}
         >
-          {ALL_MODELS.map((m) => (
+          {MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
         </select>
       </div>
 
-      <div>
-        <label className="font-semibold text-white block mb-2">Select Style</label>
-        <select
-          className="w-full p-2 mt-1 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-          value={selectedStyle?.id || ''}
-          onChange={(e) => {
-            const style = LORA_STYLES.find(s => s.id === e.target.value);
-            setSelectedStyle(style || null);
-          }}
-        >
-          {LORA_STYLES.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
+      {selectedModel?.provider === "runware" && selectedModel.supportsLora && (
+        <>
+          <div>
+            <label className="font-semibold text-white block mb-2">LoRA Style</label>
+            <select
+              value={selectedLoraId}
+              onChange={(e) => setSelectedLoraId(e.target.value)}
+              className="w-full rounded-lg bg-black/30 border border-white/10 p-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            >
+              <option value="">No LoRA</option>
+              {LORA_STYLES.map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedLoraId && (
+            <div>
+              <label className="font-semibold text-white block mb-2">
+                LoRA Strength: {loraStrength.toFixed(1)}
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={2.5}
+                step={0.1}
+                value={loraStrength}
+                onChange={(e) => setLoraStrength(parseFloat(e.target.value))}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>0.0</span>
+                <span>1.0</span>
+                <span>2.5</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

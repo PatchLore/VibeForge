@@ -2,38 +2,38 @@ export interface ImageModel {
   id: string;
   name: string;
   provider: "runware" | "deepinfra";
+  supportsLora: boolean;
 }
 
-export const RUNWARE_MODELS: ImageModel[] = [
+export const MODELS: ImageModel[] = [
   {
-    id: "flux-schnell",
-    name: "FLUX.1 Schnell (Runware)",
-    provider: "runware"
-  }
-];
-
-export const DEEPINFRA_MODELS: ImageModel[] = [
+    id: "runware:101@1",              // FLUX.1 Schnell AIR ID
+    name: "FLUX.1 Schnell",
+    provider: "runware",
+    supportsLora: true,
+  },
   {
     id: "black-forest-labs/FLUX.1-dev",
-    name: "FLUX.1 Dev (DeepInfra)",
-    provider: "deepinfra"
+    name: "FLUX.1 Dev",
+    provider: "deepinfra",
+    supportsLora: false,
   },
   {
     id: "stabilityai/stable-diffusion-xl-base-1.0",
     name: "SDXL 1.0 Base",
-    provider: "deepinfra"
+    provider: "deepinfra",
+    supportsLora: false,
   },
   {
-    id: "SG161222/Realistic_Vision_V6.0_B1_noVAE",
+    id: "runware:realistic-vision-v6", // TODO: replace with real AIR ID from Runware if/when you add it
     name: "Realistic Vision V6",
-    provider: "deepinfra"
+    provider: "runware",
+    supportsLora: true,
   },
   {
-    id: "juggernaut-xl/Juggernaut_XL",
+    id: "runware:juggernaut-xl", // TODO: replace with real AIR ID from Runware
     name: "Juggernaut XL",
-    provider: "deepinfra"
-  }
+    provider: "runware",
+    supportsLora: true,
+  },
 ];
-
-export const ALL_MODELS: ImageModel[] = [...RUNWARE_MODELS, ...DEEPINFRA_MODELS];
-

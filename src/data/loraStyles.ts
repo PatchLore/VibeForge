@@ -1,18 +1,31 @@
 export interface LoRAStyle {
-  id: string;
   name: string;
+  airId: string;
 }
 
 export const LORA_STYLES: LoRAStyle[] = [
+  // NOTE:
+  // - These airId values are placeholders.
+  // - You (Allen) will fill them with real Runware AIR IDs like "civitai:122359@135867"
+  //   using Runware's model search once you pick final emotional LoRAs.
   {
-    id: '',
-    name: 'None (No Style)'
+    name: "Detail Tweaker XL (Intensity)",
+    airId: "", // TODO: e.g. "civitai:122359@135867"
   },
-  // Add more LoRA styles here as needed
-  // Example format:
-  // {
-  //   id: 'lora-id-here',
-  //   name: 'Style Name'
-  // }
+  {
+    name: "SDXL Inkdrawing (Ink Abstraction)",
+    airId: "", // TODO
+  },
+  {
+    name: "Cinematic Warm Light (SDXL version)",
+    airId: "", // TODO
+  },
+  {
+    name: "Expressive Watercolor (SDXL)",
+    airId: "", // TODO
+  },
+  {
+    name: "Detailed Eyes XL (Emotion Focus)",
+    airId: "", // TODO
+  },
 ];
-
