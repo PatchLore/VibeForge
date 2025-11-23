@@ -1,34 +1,39 @@
-'use client';
+"use client";
 
-import { createContext, useContext, ReactNode } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState } from "react";
 
-interface AuthContextType {
-  user: any;
-  session: any;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string) => Promise<any>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
-
-  return (
-    <AuthContext.Provider value={auth}>
-      {children}
-    </AuthContext.Provider>
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [supabase] = useState(() =>
+    createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
   );
-}
 
-export function useAuthContext() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
-  }
-  return context;
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        // If refresh token is invalid → reset everything
+        if (error?.message?.includes("Refresh Token")) {
+          await supabase.auth.signOut();
+          console.warn("Resetting auth due to invalid refresh token.");
+        }
+      } catch (e) {
+        console.warn("AuthProvider init error:", e);
+      } finally {
+        // Avoid layout.js ChunkLoadError
+        setIsReady(true);
+      }
+    }
+
+    init();
+  }, [supabase]);
+
+  if (!isReady) return null; // Prevent chunk load crash
+  return <>{children}</>;
 }

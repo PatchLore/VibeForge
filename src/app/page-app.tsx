@@ -217,6 +217,22 @@ export default function Home() {
           setAudioUrl(json.track.audioUrl);
           setVideoUrl(json.track.imageUrl || null);
           setAudioSource('generated');
+          console.log("✅ [UnifiedPlayer] Generation completed, refreshing track...");
+
+          try {
+            // Small delay to allow backend callback to finalize image upload
+            await new Promise(r => setTimeout(r, 1000));
+            const refreshed = await fetch(`/api/status?taskId=${taskId}`);
+            if (refreshed.ok) {
+              const latest = await refreshed.json();
+              if (latest?.track?.imageUrl) {
+                setVideoUrl(latest.track.imageUrl);
+                console.log("🖼️ [UnifiedPlayer] Updated to verified image from Supabase");
+              }
+            }
+          } catch (e) {
+            console.warn("⚠️ [UnifiedPlayer] Refresh fetch failed:", e);
+          }
           
           // Save to local storage
           if (isClient) {

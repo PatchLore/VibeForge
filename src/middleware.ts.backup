@@ -1,0 +1,11 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(req: NextRequest) {
+  return NextResponse.next();
+}
+
+// SIMPLE matcher — match only specific paths to avoid Edge Runtime eval issues
+export const config = {
+  matcher: ['/'],
+};

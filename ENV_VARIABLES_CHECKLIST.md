@@ -40,6 +40,45 @@ This document lists all environment variables used in the codebase and where the
 
 ---
 
+### DeepInfra AI Configuration
+
+**Vercel Environment Variables:**
+- `NEXT_PUBLIC_DEEPINFRA_API_KEY` - DeepInfra API key for AI image generation
+- `NEXT_PUBLIC_DEEPINFRA_BASE_URL` - DeepInfra API base URL (defaults to `https://api.deepinfra.com/v1/openai`)
+
+**Note:** The code also supports `REACT_APP_DEEPINFRA_API_KEY` and `REACT_APP_DEEPINFRA_BASE_URL` for compatibility, but Next.js requires `NEXT_PUBLIC_` prefix for client-side environment variables.
+
+**DeepInfra Dashboard Location:**
+- Get API key from your DeepInfra account dashboard
+- Visit: https://deepinfra.com/dash/api_keys
+
+**Usage:**
+- Used in the Agency Dashboard AI Asset Generator (`/agency`)
+- Generates 2048x2048 images using DeepInfra's OpenAI-compatible API
+
+---
+
+### HuggingFace / Cognaix AI Configuration
+
+**Vercel Environment Variables:**
+- `NEXT_PUBLIC_HF_API_KEY` - HuggingFace API key for AI image generation
+- `NEXT_PUBLIC_HF_BASE_URL` - HuggingFace Inference API base URL (defaults to `https://api-inference.huggingface.co/models`)
+- `NEXT_PUBLIC_COGNAIX_API_KEY` - (Optional) Cognaix-specific API key if using Cognaix endpoint instead of HF
+- `NEXT_PUBLIC_COGNAIX_BASE_URL` - (Optional) Cognaix-specific base URL if different from HF
+
+**HuggingFace Dashboard Location:**
+- Get API key from your HuggingFace account
+- Visit: https://huggingface.co/settings/tokens
+- Create a token with "Read" permissions
+
+**Usage:**
+- Used in the Agency Dashboard AI Asset Generator (`/agency`)
+- Supports 7 elite models: Realistic Vision V6, Juggernaut XL V9, DreamShaper 8, Deliberate, CyberRealistic, OpenJourney v4, SynthwavePunk v2
+- Generates images using HuggingFace Inference API
+- Returns binary image data converted to base64
+
+---
+
 ### Stripe Configuration
 
 **Vercel Environment Variables:**
@@ -137,6 +176,10 @@ export async function GET() {
       music: !!process.env.VIBEFORGE_API_KEY,
       image: !!process.env.KIE_IMAGE_API_KEY,
       callback: !!process.env.KIE_CALLBACK_URL,
+    },
+    deepinfra: {
+      apiKey: !!process.env.NEXT_PUBLIC_DEEPINFRA_API_KEY,
+      baseUrl: !!process.env.NEXT_PUBLIC_DEEPINFRA_BASE_URL,
     },
     stripe: {
       secret: !!process.env.STRIPE_SECRET_KEY,
