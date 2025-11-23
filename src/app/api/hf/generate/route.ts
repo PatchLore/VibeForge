@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     // Build the payload - EXACTLY { "inputs": prompt }
     const payload = { inputs: prompt };
 
-    // Build the fetch URL using HF Router API
-    const url = `${BASE_URL}/${modelId}`;
+    // Build the fetch URL using HF Router API with task-based endpoint
+    const url = `${BASE_URL}/pipeline/text-to-image/${modelId}`;
 
     // Full debug logs BEFORE fetch()
     console.log('[HF Router] Model ID:', modelId);
