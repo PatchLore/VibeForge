@@ -10,7 +10,6 @@ async function generateWithRunware({
   steps,
   seed,
   modelId,
-  loras,
 }: {
   prompt: string;
   width?: number;
@@ -18,11 +17,11 @@ async function generateWithRunware({
   steps?: number;
   seed?: number;
   modelId: string;
-  loras?: Array<{ id: string; scale: number }>;
 }): Promise<string> {
   const API_KEY = process.env.RUNWARE_API_KEY;
   if (!API_KEY) throw new Error('RUNWARE_API_KEY not set');
 
+  // Runware NEVER receives LoRAs - they are DeepInfra-only
   const runwarePayload: any = {
     taskType: 'imageInference',
     taskUUID: crypto.randomUUID(),
@@ -37,14 +36,6 @@ async function generateWithRunware({
     deliveryMethod: 'sync',
     numberResults: 1,
   };
-
-  // Add loras array only if provided
-  // Runware API expects lora as array of IDs, but we track scale for logging
-  if (loras && loras.length > 0) {
-    runwarePayload.lora = loras.map(l => l.id);
-    console.log('[RUNWARE] LoRA Payload:', JSON.stringify(loras));
-    console.log('[RUNWARE] LoRA IDs being sent:', runwarePayload.lora);
-  }
 
   const body = [runwarePayload];
 
@@ -92,6 +83,7 @@ async function generateWithDeepInfra({
   steps,
   seed,
   modelId,
+  loras,
 }: {
   prompt: string;
   width?: number;
@@ -99,6 +91,7 @@ async function generateWithDeepInfra({
   steps?: number;
   seed?: number;
   modelId: string;
+  loras?: Array<{ id: string; scale: number }>;
 }): Promise<string> {
   const API_KEY = process.env.DEEPINFRA_API_KEY;
   if (!API_KEY) throw new Error('DEEPINFRA_API_KEY not set');
@@ -111,6 +104,15 @@ async function generateWithDeepInfra({
   if (height) body.height = height;
   if (steps) body.num_inference_steps = steps;
   if (seed) body.seed = seed;
+
+  // DeepInfra LoRA format: { "loras": [{ "model": "civitai:XXXX", "weight": 0.8 }] }
+  if (loras && loras.length > 0) {
+    body.loras = loras.map(l => ({
+      model: l.id, // e.g. "civitai:122359@135867"
+      weight: l.scale, // e.g. 0.8
+    }));
+    console.log('[DEEPINFRA] LoRAs included:', JSON.stringify(body.loras));
+  }
 
   console.log('[DEEPINFRA] Body:', JSON.stringify(body));
 
@@ -163,10 +165,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('[GEN] Provider:', provider, 'Model:', modelId);
-    console.log('[GEN] Selected LoRA:', loraId || 'None');
-    console.log('[GEN] LoRA Strength:', loraStrength || 'N/A');
-
     // Build loras array if LoRA is selected
     const loras = loraId
       ? [
@@ -177,62 +175,120 @@ export async function POST(req: NextRequest) {
         ]
       : [];
 
-    console.log('[GEN] LoRA Payload:', JSON.stringify(loras));
+    // CRITICAL: If ANY LoRA is selected, route to DeepInfra ONLY (never Runware)
+    if (loras.length > 0) {
+      console.log('[GEN] LoRAs detected — routing to DeepInfra only');
+      console.log('[GEN] LoRA Payload:', JSON.stringify(loras));
+      
+      // CASE B: LoRA-enabled → DeepInfra with LoRAs → DeepInfra without LoRAs → fail
+      try {
+        // Try DeepInfra with LoRAs (FLUX.1-dev supports LoRAs best)
+        const image = await generateWithDeepInfra({
+          prompt,
+          width,
+          height,
+          steps,
+          seed,
+          modelId: 'black-forest-labs/FLUX.1-dev',
+          loras,
+        });
+        return NextResponse.json({ image });
+      } catch (err) {
+        console.error('[GEN] DeepInfra with LoRAs failed, retrying without LoRAs:', err);
+        // Fallback: try DeepInfra without LoRAs
+        try {
+          const image = await generateWithDeepInfra({
+            prompt,
+            width,
+            height,
+            steps,
+            seed,
+            modelId: 'black-forest-labs/FLUX.1-dev',
+            loras: undefined, // No LoRAs
+          });
+          return NextResponse.json({ image });
+        } catch (fallbackErr) {
+          console.error('[GEN] DeepInfra fallback also failed:', fallbackErr);
+          throw fallbackErr; // Fail gracefully
+        }
+      }
+    }
+
+    // CASE A: No LoRAs → Runware → DeepInfra Schnell → DeepInfra Dev → fail
+    console.log('[GEN] No LoRAs — using waterfall: Runware → DeepInfra');
+    console.log('[GEN] Provider:', provider, 'Model:', modelId);
+
+    // Determine final provider and model for no-LoRA case
+    let finalProvider = provider;
+    let finalModel = modelId;
+
+    // If provider was "runware", use Runware model; otherwise use DeepInfra model
+    if (provider === 'runware') {
+      finalProvider = 'runware';
+      finalModel = modelId || 'runware:101@1'; // Default to FLUX.1 Schnell
+    } else {
+      finalProvider = 'deepinfra';
+      finalModel = modelId || 'black-forest-labs/FLUX.1-dev';
+    }
+
+    console.log('[GEN] Using provider:', finalProvider);
 
     try {
-      if (provider === 'runware') {
-        // Smart fallback: If LoRA is active, do NOT fallback to DeepInfra
-        if (loras.length > 0) {
-          console.log('[GEN] LoRA active → disabling DeepInfra fallback');
-          // Run Runware only, no fallback
+      if (finalProvider === 'runware') {
+        // Waterfall: Runware → DeepInfra Schnell → DeepInfra Dev
+        try {
+          const image = await generateWithRunware({
+            prompt,
+            width,
+            height,
+            steps,
+            seed,
+            modelId: finalModel,
+          });
+          return NextResponse.json({ image });
+        } catch (err) {
+          console.error('[GEN] Runware failed, falling back to DeepInfra Schnell:', err);
           try {
-            const image = await generateWithRunware({ 
-              prompt, 
-              width, 
-              height, 
-              steps, 
-              seed, 
-              modelId, 
-              loras 
+            const image = await generateWithDeepInfra({
+              prompt,
+              width,
+              height,
+              steps,
+              seed,
+              modelId: 'black-forest-labs/FLUX.1-schnell',
+              loras: undefined,
             });
             return NextResponse.json({ image });
-          } catch (err) {
-            console.error('[GEN] Runware failed with LoRA (no fallback):', err);
-            throw err; // Re-throw since we can't fallback with LoRA
-          }
-        } else {
-          // No LoRA: normal waterfall (Runware → DeepInfra fallback)
-          try {
-            const image = await generateWithRunware({ 
-              prompt, 
-              width, 
-              height, 
-              steps, 
-              seed, 
-              modelId, 
-              loras: [] 
-            });
-            return NextResponse.json({ image });
-          } catch (err) {
-            console.error('[GEN] Runware failed, falling back to DeepInfra:', err);
-            const image = await generateWithDeepInfra({ 
-              prompt, 
-              width, 
-              height, 
-              steps, 
-              seed, 
-              modelId: 'stabilityai/stable-diffusion-xl-base-1.0' 
+          } catch (schnellErr) {
+            console.error('[GEN] DeepInfra Schnell failed, falling back to DeepInfra Dev:', schnellErr);
+            // Final fallback: DeepInfra Dev
+            const image = await generateWithDeepInfra({
+              prompt,
+              width,
+              height,
+              steps,
+              seed,
+              modelId: 'black-forest-labs/FLUX.1-dev',
+              loras: undefined,
             });
             return NextResponse.json({ image });
           }
         }
-      } else if (provider === 'deepinfra') {
-        // DeepInfra ignores LoRA completely
-        const image = await generateWithDeepInfra({ prompt, width, height, steps, seed, modelId });
+      } else if (finalProvider === 'deepinfra') {
+        // Direct DeepInfra call (no waterfall needed)
+        const image = await generateWithDeepInfra({
+          prompt,
+          width,
+          height,
+          steps,
+          seed,
+          modelId: finalModel,
+          loras: undefined,
+        });
         return NextResponse.json({ image });
       } else {
         return NextResponse.json(
-          { error: `Unsupported provider: ${provider}` },
+          { error: `Unsupported provider: ${finalProvider}` },
           { status: 400 }
         );
       }
