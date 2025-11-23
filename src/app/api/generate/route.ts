@@ -202,53 +202,34 @@ export async function POST(req: NextRequest) {
 
     const model = body.model;
     let finalModel = model;
+    let providerRoute = "deepinfra";
 
-    // 1. Seedream XL soft-block for LoRAs (check BEFORE general LoRA support check)
-    // If seedream-xl with LoRAs, just remove LoRAs (don't switch model)
-    if (finalModel === "seedream-xl" && loras.length > 0) {
-      console.warn("[Seedream] LoRAs removed for Seedream XL due to incompatibility.");
-      body.loras = []; // Prevent error: Invalid request body
-      // Don't switch model, just remove LoRAs
-    } else if (loras.length > 0 && LORA_SUPPORTED[model] === false) {
-      // 2. If LoRAs selected but selected model does NOT support them → force SDXL Base
-      // (Skip this if we already handled seedream-xl above)
-      console.warn(`[LORA BLOCK] Model ${model} does NOT support LoRAs. Switching to SDXL Base.`);
+    // 1. If LoRAs selected and model doesn't support them → switch to SDXL Base
+    if (loras.length > 0 && !LORA_SUPPORTED[model]) {
+      console.warn(`[LORA BLOCK] Model ${model} cannot use LoRAs. Switching to SDXL Base.`);
       finalModel = "sdxl-base";
       body.model = finalModel;
+      body.loras = loras; // Keep the LoRAs for the new model
     }
 
-    // 3. Never send LoRAs to Flux models
-    if (finalModel.startsWith("flux-")) {
+    // 2. If model supports LoRAs, leave everything as is
+    // (No action needed - finalModel is already correct)
+
+    // 3. Provider routing
+    if (finalModel === "flux-schnell") {
+      providerRoute = "runware";
+    } else {
+      providerRoute = "deepinfra";
+    }
+
+    // 4. Remove LoRAs for models that don't support them
+    if (!LORA_SUPPORTED[finalModel]) {
       body.loras = [];
     }
 
-    // Update finalModel after all checks
-    finalModel = body.model;
-
-    // ────────────────────────────────────────────────────────────────
-    // PROVIDER ROUTING (UPDATED)
-    // ────────────────────────────────────────────────────────────────
-
-    let providerRoute = "deepinfra";
-
-    if (finalModel === "flux-schnell") {
-      providerRoute = "runware";
-    }
-
-    // For Flux.Dev → DeepInfra only
-    if (finalModel === "flux-dev") {
-      providerRoute = "deepinfra";
-    }
-
-    // SDXL models always → DeepInfra
-    if (["seedream-xl", "janu-sdxl", "sdxl-base"].includes(finalModel)) {
-      providerRoute = "deepinfra";
-    }
-
     // Debug logs
-    console.log("[GEN] Requested Model:", model);
-    console.log("[GEN] Final Model Used:", finalModel);
-    console.log("[GEN] LoRAs:", body.loras.length > 0 ? body.loras : "None");
+    console.log("[GEN] Final model:", finalModel);
+    console.log("[GEN] LORAs:", body.loras.length);
     console.log("[GEN] Provider:", providerRoute);
 
     // Get final model metadata
@@ -276,7 +257,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare final loras array for DeepInfra
     const finalLoras = body.loras && body.loras.length > 0 ? body.loras : undefined;
-    const allowLoras = finalLoras && ["janu-sdxl", "sdxl-base"].includes(finalModel);
+    const allowLoras = finalLoras && LORA_SUPPORTED[finalModel] === true;
 
     // ────────────────────────────────────────────────────────────────
     // EXECUTE GENERATION
@@ -341,7 +322,7 @@ export async function POST(req: NextRequest) {
           allowLoras: false,
         });
         return NextResponse.json({ image });
-      } else if (["seedream-xl", "janu-sdxl", "sdxl-base"].includes(finalModel)) {
+      } else if (["seedream-xl", "janu-sdxl", "sdxl-base", "dreamshaper-xl", "realvis-xl"].includes(finalModel)) {
         // Direct DeepInfra SDXL models
         if (!finalModelMetadata.deepInfraModelId) {
           return NextResponse.json(
