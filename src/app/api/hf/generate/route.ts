@@ -4,8 +4,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  let modelId = 'unknown';
+  let prompt = '';
+  
   try {
-    const { modelId, prompt } = await request.json();
+    const body = await request.json();
+    modelId = body.modelId || 'unknown';
+    prompt = body.prompt || '';
 
     if (!modelId || !prompt) {
       return NextResponse.json(
@@ -16,29 +21,32 @@ export async function POST(request: NextRequest) {
 
     // Use server-only env var (NOT NEXT_PUBLIC_)
     const API_KEY = process.env.HF_API_KEY || '';
-    const BASE_URL = process.env.HF_BASE_URL || 'https://api-inference.huggingface.co/models';
+    const BASE_URL = process.env.HF_BASE_URL || 'https://router.huggingface.co';
 
     if (!API_KEY) {
-      console.error('[HF API] Missing HF_API_KEY environment variable');
+      console.error('[HF Router] Missing HF_API_KEY environment variable');
       return NextResponse.json(
         { error: 'Server configuration error: HF_API_KEY not set' },
         { status: 500 }
       );
     }
 
-    // Build the fetch URL
-    const finalURL = `${BASE_URL}/${modelId}`;
-
     // Build the payload - EXACTLY { "inputs": prompt }
     const payload = { inputs: prompt };
 
-    // Debugging logs
-    console.log('[HF API] Model:', modelId);
-    console.log('[HF API] Prompt length:', prompt.length);
-    console.log('[HF API] URL:', finalURL);
+    // Build the fetch URL using HF Router API
+    const url = `${BASE_URL}/${modelId}`;
 
-    // Call HuggingFace API
-    const res = await fetch(finalURL, {
+    // Full debug logs BEFORE fetch()
+    console.log('[HF Router] Model ID:', modelId);
+    console.log('[HF Router] Base URL:', process.env.HF_BASE_URL || 'https://router.huggingface.co (default)');
+    console.log('[HF Router] Final URL:', url);
+    console.log('[HF Router] Payload:', JSON.stringify(payload, null, 2));
+    console.log('[HF Router] Prompt length:', prompt.length);
+
+    // Call HuggingFace Router API
+    console.log('[HF Router] Making fetch request...');
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${API_KEY}`,
@@ -46,17 +54,20 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(payload),
     });
+    
+    console.log('[HF Router] Fetch response status:', res.status);
+    console.log('[HF Router] Fetch response headers:', Object.fromEntries(res.headers.entries()));
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('[HF API] Error:', res.status, errorText);
+      console.error('[HF Router] Error:', res.status, errorText);
       return NextResponse.json(
-        { error: `HuggingFace API error: ${res.status} ${errorText}` },
+        { error: `HuggingFace Router API error: ${res.status} ${errorText}` },
         { status: res.status }
       );
     }
 
-    console.log('[HF API] Response received, status:', res.status);
+    console.log('[HF Router] Response received, status:', res.status);
 
     // HF can return either:
     // 1. Binary blob (image data)
@@ -66,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('application/json')) {
       // JSON response with base64 data
       const json = await res.json();
-      console.log('[HF API] JSON response type');
+      console.log('[HF Router] JSON response type');
 
       // HF sometimes returns array: [{ generated_image: "base64..." }]
       // Or direct object with base64 field
@@ -89,9 +100,9 @@ export async function POST(request: NextRequest) {
       }
 
       if (!base64Image) {
-        console.error('[HF API] No base64 image found in JSON response:', JSON.stringify(json).substring(0, 200));
+        console.error('[HF Router] No base64 image found in JSON response:', JSON.stringify(json).substring(0, 200));
         return NextResponse.json(
-          { error: 'Invalid response format from HuggingFace API' },
+          { error: 'Invalid response format from HuggingFace Router API' },
           { status: 500 }
         );
       }
@@ -101,15 +112,15 @@ export async function POST(request: NextRequest) {
         ? base64Image
         : `data:image/png;base64,${base64Image}`;
 
-      console.log('[HF API] Image converted, length:', imageData.length);
+      console.log('[HF Router] Image converted, length:', imageData.length);
       return NextResponse.json({ image: imageData });
     } else {
       // Binary blob response (most common)
-      console.log('[HF API] Binary response type');
+      console.log('[HF Router] Binary response type');
       const arrayBuffer = await res.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
-      console.log('[HF API] Response size:', arrayBuffer.byteLength, 'bytes');
+      console.log('[HF Router] Response size:', arrayBuffer.byteLength, 'bytes');
 
       // Convert to base64
       let binary = '';
@@ -120,11 +131,20 @@ export async function POST(request: NextRequest) {
       const base64 = Buffer.from(binary, 'binary').toString('base64');
       const imageData = `data:image/png;base64,${base64}`;
 
-      console.log('[HF API] Image converted to base64, length:', imageData.length);
+      console.log('[HF Router] Image converted to base64, length:', imageData.length);
       return NextResponse.json({ image: imageData });
     }
   } catch (error: any) {
-    console.error('[HF API] Exception:', error);
+    const BASE_URL = process.env.HF_BASE_URL || 'https://router.huggingface.co';
+    const failedURL = `${BASE_URL}/${modelId}`;
+    
+    console.error('[HF Router] FAILED URL:', failedURL);
+    console.error('[HF Router] Model ID:', modelId);
+    console.error('[HF Router] Base URL:', BASE_URL);
+    console.error('[HF Router] Error Details:', error);
+    console.error('[HF Router] Error Message:', error.message);
+    console.error('[HF Router] Error Stack:', error.stack);
+    
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
