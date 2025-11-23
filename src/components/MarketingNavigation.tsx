@@ -53,7 +53,7 @@ export default function MarketingNavigation() {
                   {user.email}
                 </div>
                 <motion.a
-                  href="/app"
+                  href="/create"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all"

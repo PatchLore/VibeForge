@@ -28,7 +28,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-export default function AppPage() {
+export default function CreatePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [vibe, setVibe] = useState('');
@@ -97,7 +97,7 @@ export default function AppPage() {
             // @ts-ignore propagate extended image prompt
             extended_prompt_image: track.extended_prompt_image || '',
           };
-          console.log('🎧 [AppPage] Track converted:', { title: converted.title, hasAudio: !!converted.audioUrl, hasImage: !!converted.imageUrl });
+          console.log('🎧 [CreatePage] Track converted:', { title: converted.title, hasAudio: !!converted.audioUrl, hasImage: !!converted.imageUrl });
           return converted;
         });
         setSavedTracks(convertedTracks);
@@ -504,3 +504,4 @@ export default function AppPage() {
     </div>
   );
 }
+

@@ -128,7 +128,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
             <div className="space-y-3">
               <Link
-                href="/app"
+                href="/create"
                 className="block w-full py-3 px-4 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-500 text-white text-center hover:from-pink-600 hover:to-cyan-600 transition-all"
               >
                 🎵 Generate New Music
