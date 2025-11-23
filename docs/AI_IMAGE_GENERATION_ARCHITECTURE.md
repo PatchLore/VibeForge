@@ -1,12 +1,13 @@
 # 📘 DOCUMENT: AI Image Generation Architecture (Runware + DeepInfra)
 
-**Version 1.3 – November 2025**
+**Version 1.4 – November 2025**
 
 **Author:** Allen Dunn & ChatGPT Dev Assistant
 
 **Use Case:** For Soundswoop, OnPointPrompt, FixBlox, Ambient Video Lab, AuralMix, etc.
 
 **Changelog:**
+- **v1.4:** Use actual DeepInfra model IDs for LoRA-supported models (prevents 400/404 errors)
 - **v1.3:** Added DreamShaper XL and Realistic Vision XL models, updated LoRA support (7 models total, 3 LoRA-supported)
 - **v1.2:** 5-model system with LORA_SUPPORTED matrix, smart LoRA routing, auto-switch to sdxl-base
 - **v1.1:** LoRAs now route to DeepInfra only (bypass Runware completely)
@@ -87,23 +88,26 @@ The system supports **7 models** with different characteristics:
    - LoRA Support: ❌ No
    - Use Case: Realistic images without LoRA support
 
-5. **SDXL 1.0 Base (Universal — DeepInfra)**
-   - Value: `sdxl-base`
+5. **SDXL Base 1.0 (Universal — SDXL LoRA)**
+   - Value: `stabilityai/stable-diffusion-xl-base-1.0`
    - Provider: DeepInfra only
    - LoRA Support: ✅ Yes
    - Use Case: Universal SDXL with full LoRA compatibility
+   - **Note:** Uses actual DeepInfra model ID (prevents 400/404 errors)
 
-6. **DreamShaper XL (Stylized — DeepInfra)**
-   - Value: `dreamshaper-xl`
+6. **DreamShaper XL v2 (Stylized — SDXL LoRA)**
+   - Value: `Lykon/dreamshaper-xl-v2`
    - Provider: DeepInfra only
    - LoRA Support: ✅ Yes
    - Use Case: Stylized artistic generations with LoRA support
+   - **Note:** Uses actual DeepInfra model ID (prevents 400/404 errors)
 
-7. **Realistic Vision XL (Realistic — DeepInfra)**
-   - Value: `realvis-xl`
+7. **Realistic Vision XL 4.0 (Realistic — SDXL LoRA)**
+   - Value: `SG161222/Realistic_Vision_4.0`
    - Provider: DeepInfra only
    - LoRA Support: ✅ Yes
    - Use Case: Highly realistic images with LoRA support
+   - **Note:** Uses actual DeepInfra model ID (prevents 400/404 errors)
 
 ### LoRA Compatibility Matrix:
 
@@ -113,13 +117,13 @@ export const LORA_SUPPORTED = {
   "flux-dev": false,
   "seedream-xl": false,
   "janu-sdxl": false,
-  "sdxl-base": true,
-  "dreamshaper-xl": true,
-  "realvis-xl": true
+  "stabilityai/stable-diffusion-xl-base-1.0": true,
+  "Lykon/dreamshaper-xl-v2": true,
+  "SG161222/Realistic_Vision_4.0": true
 };
 ```
 
-**Only 3 models support LoRAs:** `sdxl-base`, `dreamshaper-xl`, `realvis-xl`
+**Only 3 models support LoRAs:** Uses actual DeepInfra model IDs to prevent "Model not available" errors
 
 ---
 
@@ -129,15 +133,16 @@ export const LORA_SUPPORTED = {
 
 ### LoRA Compatibility Rules:
 
-1. **Only 3 models support LoRAs:**
-   - ✅ `sdxl-base` (SDXL 1.0 Base)
-   - ✅ `dreamshaper-xl` (DreamShaper XL)
-   - ✅ `realvis-xl` (Realistic Vision XL)
+1. **Only 3 models support LoRAs (using actual DeepInfra IDs):**
+   - ✅ `stabilityai/stable-diffusion-xl-base-1.0` (SDXL Base 1.0)
+   - ✅ `Lykon/dreamshaper-xl-v2` (DreamShaper XL v2)
+   - ✅ `SG161222/Realistic_Vision_4.0` (Realistic Vision XL 4.0)
 
 2. **Smart Auto-Switching:**
-   - If LoRAs are selected but model doesn't support them → **automatically switch to `sdxl-base`**
-   - Example: User selects `flux-schnell` with LoRAs → system switches to `sdxl-base`
-   - Example: User selects `janu-sdxl` with LoRAs → system switches to `sdxl-base`
+   - If LoRAs are selected but model doesn't support them → **automatically switch to `stabilityai/stable-diffusion-xl-base-1.0`**
+   - Example: User selects `flux-schnell` with LoRAs → system switches to `stabilityai/stable-diffusion-xl-base-1.0`
+   - Example: User selects `janu-sdxl` with LoRAs → system switches to `stabilityai/stable-diffusion-xl-base-1.0`
+   - **Uses actual DeepInfra model IDs** to prevent "Model not available" (400/404) errors
 
 3. **Non-LoRA Models:**
    - `flux-schnell`, `flux-dev`, `seedream-xl`, `janu-sdxl` → **LoRAs are automatically removed**
@@ -225,37 +230,46 @@ The system routes requests based on the selected model and LoRA compatibility:
 
 - **LoRAs:** ❌ Not supported (automatically removed)
 
-### 🟢 `sdxl-base` (SDXL 1.0 Base)
+### 🟢 `stabilityai/stable-diffusion-xl-base-1.0` (SDXL Base 1.0)
 
 **Direct:** DeepInfra SDXL Base
 
 - **LoRAs:** ✅ Supported
 - Waterfall: With LoRAs → Without LoRAs → fail
 - **Auto-switch target:** If user selects non-LoRA model with LoRAs, switches here
+- **Uses actual DeepInfra model ID** (prevents 400/404 errors)
 
-### 🟢 `dreamshaper-xl` (DreamShaper XL)
+### 🟢 `Lykon/dreamshaper-xl-v2` (DreamShaper XL v2)
 
-**Direct:** DeepInfra DreamShaper XL
+**Direct:** DeepInfra DreamShaper XL v2
 
 - **LoRAs:** ✅ Supported
 - Waterfall: With LoRAs → Without LoRAs → fail
 - Use Case: Stylized artistic generations
+- **Uses actual DeepInfra model ID** (prevents 400/404 errors)
 
-### 🟢 `realvis-xl` (Realistic Vision XL)
+### 🟢 `SG161222/Realistic_Vision_4.0` (Realistic Vision XL 4.0)
 
-**Direct:** DeepInfra Realistic Vision XL
+**Direct:** DeepInfra Realistic Vision XL 4.0
 
 - **LoRAs:** ✅ Supported
 - Waterfall: With LoRAs → Without LoRAs → fail
 - Use Case: Highly realistic images
+- **Uses actual DeepInfra model ID** (prevents 400/404 errors)
 
 ### ⚠️ Smart LoRA Routing:
 
-1. **User selects LoRAs + non-LoRA model** → Auto-switch to `sdxl-base`
+1. **User selects LoRAs + non-LoRA model** → Auto-switch to `stabilityai/stable-diffusion-xl-base-1.0`
    - Applies to: `flux-schnell`, `flux-dev`, `seedream-xl`, `janu-sdxl`
+   - **Uses actual DeepInfra model ID** to prevent errors
 2. **User selects LoRAs + LoRA-compatible model** → Use selected model with LoRAs
-   - Applies to: `sdxl-base`, `dreamshaper-xl`, `realvis-xl`
+   - Applies to: `stabilityai/stable-diffusion-xl-base-1.0`, `Lykon/dreamshaper-xl-v2`, `SG161222/Realistic_Vision_4.0`
+   - **All use actual DeepInfra model IDs** (no shorthand names)
 3. **LoRAs are automatically removed** for non-LoRA models before generation
+4. **Payload sanitization** ensures LoRAs are never sent to:
+   - Runware (any model)
+   - Flux models (flux-schnell, flux-dev)
+   - Seedream XL
 
 ---
 
@@ -300,9 +314,11 @@ It will work everywhere.
 - `flux-dev` - FLUX.1 Dev (DeepInfra)
 - `seedream-xl` - Seedream XL (DeepInfra)
 - `janu-sdxl` - Janu Pro SDXL Turbo (DeepInfra)
-- `sdxl-base` - SDXL 1.0 Base (DeepInfra) ✅ LoRA-supported
-- `dreamshaper-xl` - DreamShaper XL (DeepInfra) ✅ LoRA-supported
-- `realvis-xl` - Realistic Vision XL (DeepInfra) ✅ LoRA-supported
+- `stabilityai/stable-diffusion-xl-base-1.0` - SDXL Base 1.0 (DeepInfra) ✅ LoRA-supported
+- `Lykon/dreamshaper-xl-v2` - DreamShaper XL v2 (DeepInfra) ✅ LoRA-supported
+- `SG161222/Realistic_Vision_4.0` - Realistic Vision XL 4.0 (DeepInfra) ✅ LoRA-supported
+
+**⚠️ Important:** LoRA-supported models use **actual DeepInfra model IDs** (not shorthand names) to prevent "Model not available" errors.
 
 ### Response Format:
 
@@ -417,8 +433,10 @@ When adding AI Image Generation to a new PatchLore app:
 - [ ] Copy LoRA styles from `src/lib/loraStyles.ts` (if using LoRAs)
 - [ ] Update UI component to use the unified API endpoint
 - [ ] Test model selection dropdown (5 models available)
-- [ ] Test LoRA auto-switching (select non-LoRA model with LoRAs → should switch to `sdxl-base`)
+- [ ] Test LoRA auto-switching (select non-LoRA model with LoRAs → should switch to `stabilityai/stable-diffusion-xl-base-1.0`)
 - [ ] Test Seedream XL soft-block (select Seedream with LoRAs → LoRAs removed, model stays)
+- [ ] Verify LoRA models use actual DeepInfra IDs (prevents 400/404 errors)
+- [ ] Test payload sanitization (LoRAs removed for Runware, Flux, Seedream)
 - [ ] Test waterfall routing (flux-schnell → Runware → DeepInfra Schnell → DeepInfra Dev)
 - [ ] Test LoRA routing (janu-sdxl/sdxl-base with LoRAs → DeepInfra with LoRAs)
 - [ ] Verify LoRAs are never sent to Runware or Flux models (check logs)
@@ -458,17 +476,24 @@ When adding AI Image Generation to a new PatchLore app:
 ## 🚀 13. Performance Tips
 
 1. **Use `flux-schnell` for fastest generation** (Runware → DeepInfra fallback)
-2. **Use `janu-sdxl` or `sdxl-base` for LoRA support** (only these 2 models support LoRAs)
-3. **System auto-switches to `sdxl-base`** if LoRAs are selected with non-LoRA model
+2. **Use LoRA-supported models for LoRA support:**
+   - `stabilityai/stable-diffusion-xl-base-1.0` (Universal)
+   - `Lykon/dreamshaper-xl-v2` (Stylized)
+   - `SG161222/Realistic_Vision_4.0` (Realistic)
+3. **System auto-switches to `stabilityai/stable-diffusion-xl-base-1.0`** if LoRAs are selected with non-LoRA model
 4. **Seedream XL removes LoRAs automatically** (prevents errors, keeps artistic style)
 5. **Flux models never receive LoRAs** (automatically stripped)
-6. **Cache generated images** when possible
-7. **Monitor API usage** to optimize costs
-8. **Check logs** for routing decisions:
-   - `[LORA BLOCK] Model X does NOT support LoRAs. Switching to SDXL Base.`
-   - `[Seedream] LoRAs removed for Seedream XL due to incompatibility.`
-   - `[GEN] Requested Model: X`
-   - `[GEN] Final Model Used: Y`
+6. **All LoRA models use actual DeepInfra IDs** (prevents 400/404 "Model not available" errors)
+7. **Payload sanitization** ensures LoRAs are never sent to incompatible models
+8. **Cache generated images** when possible
+9. **Monitor API usage** to optimize costs
+10. **Check logs** for routing decisions:
+    - `[LORA SWITCH] Model 'X' does NOT support LoRAs. Switching to SDXL Base.`
+    - `[Seedream] LoRAs removed (Seedream does not support SDXL LoRAs).`
+    - `[GEN] Requested model: X`
+    - `[GEN] Final routed model: Y`
+    - `[GEN] LoRAs used: N`
+    - `[GEN] Provider: runware|deepinfra`
 
 ---
 
@@ -478,7 +503,7 @@ For questions or updates to this architecture:
 
 - **Author:** Allen Dunn
 - **Last Updated:** November 2025
-- **Version:** 1.3
+- **Version:** 1.4
 
 ---
 
