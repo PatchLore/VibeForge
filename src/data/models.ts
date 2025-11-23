@@ -5,14 +5,15 @@ export interface ModelOption {
 }
 
 export const MODELS: ModelOption[] = [
+  // No LoRA models
   { label: "FLUX.1 Schnell (Fast — Runware)", value: "flux-schnell" },
   { label: "FLUX.1 Dev (HQ — DeepInfra)", value: "flux-dev" },
   { label: "Seedream XL (Artistic — DeepInfra)", value: "seedream-xl" },
   { label: "Janu Pro SDXL Turbo (Realistic — DeepInfra)", value: "janu-sdxl" },
-  // LoRA-supported SDXL models
-  { label: "SDXL 1.0 Base (Universal — DeepInfra)", value: "sdxl-base" },
-  { label: "DreamShaper XL (Stylized — DeepInfra)", value: "dreamshaper-xl" },
-  { label: "Realistic Vision XL (Realistic — DeepInfra)", value: "realvis-xl" },
+  // LoRA-capable SDXL models (CORRECT DeepInfra IDs)
+  { label: "SDXL Base 1.0 (Universal — SDXL LoRA)", value: "stabilityai/stable-diffusion-xl-base-1.0" },
+  { label: "DreamShaper XL v2 (Stylized — SDXL LoRA)", value: "Lykon/dreamshaper-xl-v2" },
+  { label: "Realistic Vision XL 4.0 (Realistic — SDXL LoRA)", value: "SG161222/Realistic_Vision_4.0" },
 ];
 
 // LoRA compatibility matrix
@@ -21,17 +22,17 @@ export const LORA_SUPPORTED: Record<string, boolean> = {
   "flux-dev": false,
   "seedream-xl": false,
   "janu-sdxl": false,
-  "sdxl-base": true,
-  "dreamshaper-xl": true,
-  "realvis-xl": true,
+  "stabilityai/stable-diffusion-xl-base-1.0": true,
+  "Lykon/dreamshaper-xl-v2": true,
+  "SG161222/Realistic_Vision_4.0": true,
 };
 
-// Model metadata for API routing
+// Model metadata for API routing (only for models that need special handling)
 export interface ModelMetadata {
   value: string;
   provider: "runware" | "deepinfra";
   apiModelId?: string; // Runware AIR ID
-  deepInfraModelId?: string; // DeepInfra model ID
+  deepInfraModelId?: string; // DeepInfra model ID (if different from value)
 }
 
 export const MODEL_METADATA: Record<string, ModelMetadata> = {
@@ -49,26 +50,27 @@ export const MODEL_METADATA: Record<string, ModelMetadata> = {
   "seedream-xl": {
     value: "seedream-xl",
     provider: "deepinfra",
-    deepInfraModelId: "seedream/seedream-xl", // TODO: Verify actual DeepInfra model ID
+    deepInfraModelId: "seedream/seedream-xl",
   },
   "janu-sdxl": {
     value: "janu-sdxl",
     provider: "deepinfra",
-    deepInfraModelId: "janu/janu-pro-sdxl-turbo", // TODO: Verify actual DeepInfra model ID
+    deepInfraModelId: "janu/janu-pro-sdxl-turbo",
   },
-  "sdxl-base": {
-    value: "sdxl-base",
+  // LoRA-supported models use their value directly as DeepInfra model ID
+  "stabilityai/stable-diffusion-xl-base-1.0": {
+    value: "stabilityai/stable-diffusion-xl-base-1.0",
     provider: "deepinfra",
     deepInfraModelId: "stabilityai/stable-diffusion-xl-base-1.0",
   },
-  "dreamshaper-xl": {
-    value: "dreamshaper-xl",
+  "Lykon/dreamshaper-xl-v2": {
+    value: "Lykon/dreamshaper-xl-v2",
     provider: "deepinfra",
-    deepInfraModelId: "lykon/dreamshaper-xl", // TODO: Verify actual DeepInfra model ID
+    deepInfraModelId: "Lykon/dreamshaper-xl-v2",
   },
-  "realvis-xl": {
-    value: "realvis-xl",
+  "SG161222/Realistic_Vision_4.0": {
+    value: "SG161222/Realistic_Vision_4.0",
     provider: "deepinfra",
-    deepInfraModelId: "SG161222/RealVisXL_V4.0", // TODO: Verify actual DeepInfra model ID
+    deepInfraModelId: "SG161222/Realistic_Vision_4.0",
   },
 };

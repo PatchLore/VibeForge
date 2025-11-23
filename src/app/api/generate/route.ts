@@ -171,15 +171,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate model exists
-    const modelMetadata = MODEL_METADATA[modelId];
-    if (!modelMetadata) {
-      return NextResponse.json(
-        { error: `Invalid model: ${modelId}` },
-        { status: 400 }
-      );
-    }
-
     // Build loras array if LoRA is selected
     const loras = loraId
       ? [
@@ -197,67 +188,84 @@ export async function POST(req: NextRequest) {
     };
 
     // ────────────────────────────────────────────────────────────────
-    // MAIN ROUTING LOGIC (CRITICAL FIX)
+    // MAIN ROUTING FIX — LoRA Enforcement
     // ────────────────────────────────────────────────────────────────
 
     const model = body.model;
     let finalModel = model;
-    let providerRoute = "deepinfra";
 
-    // 1. If LoRAs selected and model doesn't support them → switch to SDXL Base
-    if (loras.length > 0 && !LORA_SUPPORTED[model]) {
-      console.warn(`[LORA BLOCK] Model ${model} cannot use LoRAs. Switching to SDXL Base.`);
-      finalModel = "sdxl-base";
+    // CASE 1 — LoRAs selected but model cannot use them
+    if (loras.length > 0 && LORA_SUPPORTED[model] === false) {
+      console.warn(`[LORA SWITCH] Model '${model}' does NOT support LoRAs. Switching to SDXL Base.`);
+      finalModel = "stabilityai/stable-diffusion-xl-base-1.0";
       body.model = finalModel;
-      body.loras = loras; // Keep the LoRAs for the new model
+    } else if (LORA_SUPPORTED[model] === true) {
+      // Keep selected model for valid LoRA models (only if we didn't switch above)
+      finalModel = model;
     }
 
-    // 2. If model supports LoRAs, leave everything as is
-    // (No action needed - finalModel is already correct)
-
-    // 3. Provider routing
-    if (finalModel === "flux-schnell") {
-      providerRoute = "runware";
-    } else {
-      providerRoute = "deepinfra";
-    }
-
-    // 4. Remove LoRAs for models that don't support them
-    if (!LORA_SUPPORTED[finalModel]) {
+    // CASE 2 — Seedream XL attempted with LoRAs
+    if (finalModel === "seedream-xl" && loras.length > 0) {
+      console.warn("[Seedream] LoRAs removed (Seedream does not support SDXL LoRAs).");
       body.loras = [];
     }
 
-    // Debug logs
-    console.log("[GEN] Final model:", finalModel);
-    console.log("[GEN] LORAs:", body.loras.length);
-    console.log("[GEN] Provider:", providerRoute);
-
-    // Get final model metadata
-    const finalModelMetadata = MODEL_METADATA[finalModel];
-    if (!finalModelMetadata) {
-      return NextResponse.json(
-        { error: `Invalid final model: ${finalModel}` },
-        { status: 400 }
-      );
+    // CASE 3 — Flux models must never receive LoRAs
+    if (finalModel.startsWith("flux-")) {
+      body.loras = [];
     }
 
     // ────────────────────────────────────────────────────────────────
-    // PAYLOAD BUILDER FIXES
+    // PROVIDER ROUTING (FINAL & CORRECT)
     // ────────────────────────────────────────────────────────────────
 
-    // RUNWARE PAYLOAD MUST NOT include "loras"
-    if (providerRoute === "runware") {
+    let provider = "deepinfra";
+
+    // Flux Schnell runs ONLY on Runware
+    if (finalModel === "flux-schnell") {
+      provider = "runware";
+    }
+
+    // All other models (Flux Dev + all SDXL) use DeepInfra
+    // deepinfra = default
+
+    console.log("[GEN] Requested model:", model);
+    console.log("[GEN] Final routed model:", finalModel);
+    console.log("[GEN] LoRAs used:", body.loras.length);
+    console.log("[GEN] Provider:", provider);
+
+    // ────────────────────────────────────────────────────────────────
+    // PAYLOAD SANITIZATION (NO MORE 400/404)
+    // ────────────────────────────────────────────────────────────────
+
+    // RUNWARE → must NOT receive LoRAs
+    if (provider === "runware") {
       delete body.loras;
     }
 
-    // DEEPINFRA – ONLY SDXL MODELS CAN USE LORAs (except Seedream, already stripped)
-    if (providerRoute === "deepinfra" && finalModel.startsWith("flux-")) {
-      delete body.loras; // Flux cannot use SDXL LoRAs
+    // DEEPINFRA + FLUX DEV → no LoRAs
+    if (provider === "deepinfra" && finalModel.startsWith("flux-")) {
+      delete body.loras;
     }
+
+    // DEEPINFRA + SEEDREAM → no LoRAs
+    if (provider === "deepinfra" && finalModel === "seedream-xl") {
+      delete body.loras;
+    }
+
+    // SDXL models keep LoRAs automatically
+    // 'stabilityai/stable-diffusion-xl-base-1.0'
+    // 'Lykon/dreamshaper-xl-v2'
+    // 'SG161222/Realistic_Vision_4.0'
 
     // Prepare final loras array for DeepInfra
     const finalLoras = body.loras && body.loras.length > 0 ? body.loras : undefined;
     const allowLoras = finalLoras && LORA_SUPPORTED[finalModel] === true;
+
+    // Get model metadata (for models that need special handling)
+    // For LoRA-supported models, finalModel IS the DeepInfra model ID
+    const modelMetadata = MODEL_METADATA[finalModel];
+    const deepInfraModelId = modelMetadata?.deepInfraModelId || finalModel;
 
     // ────────────────────────────────────────────────────────────────
     // EXECUTE GENERATION
@@ -266,8 +274,8 @@ export async function POST(req: NextRequest) {
     try {
       if (finalModel === "flux-schnell") {
         // Waterfall: Runware → DeepInfra Schnell → DeepInfra Dev
-        const runwareModelId = finalModelMetadata.apiModelId || "runware:101@1";
-        const deepInfraSchnellId = finalModelMetadata.deepInfraModelId || "black-forest-labs/FLUX.1-schnell";
+        const runwareModelId = modelMetadata?.apiModelId || "runware:101@1";
+        const deepInfraSchnellId = modelMetadata?.deepInfraModelId || "black-forest-labs/FLUX.1-schnell";
         const deepInfraDevId = "black-forest-labs/FLUX.1-dev";
 
         try {
@@ -309,27 +317,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ image });
           }
         }
-      } else if (finalModel === "flux-dev") {
-        // Direct DeepInfra FLUX.1 Dev
-        const image = await generateWithDeepInfra({
-          prompt,
-          width,
-          height,
-          steps,
-          seed,
-          modelId: finalModelMetadata.deepInfraModelId || "black-forest-labs/FLUX.1-dev",
-          loras: undefined,
-          allowLoras: false,
-        });
-        return NextResponse.json({ image });
-      } else if (["seedream-xl", "janu-sdxl", "sdxl-base", "dreamshaper-xl", "realvis-xl"].includes(finalModel)) {
-        // Direct DeepInfra SDXL models
-        if (!finalModelMetadata.deepInfraModelId) {
-          return NextResponse.json(
-            { error: `Model ${finalModel} missing DeepInfra model ID` },
-            { status: 400 }
-          );
-        }
+      } else {
+        // All other models use DeepInfra directly
+        // Use deepInfraModelId if available, otherwise use finalModel (which is already the DeepInfra ID for LoRA models)
 
         // Try with LoRAs if allowed, then fallback without LoRAs
         if (allowLoras && finalLoras) {
@@ -340,7 +330,7 @@ export async function POST(req: NextRequest) {
               height,
               steps,
               seed,
-              modelId: finalModelMetadata.deepInfraModelId,
+              modelId: deepInfraModelId,
               loras: finalLoras,
               allowLoras: true,
             });
@@ -353,7 +343,7 @@ export async function POST(req: NextRequest) {
               height,
               steps,
               seed,
-              modelId: finalModelMetadata.deepInfraModelId,
+              modelId: deepInfraModelId,
               loras: undefined,
               allowLoras: false,
             });
@@ -367,17 +357,12 @@ export async function POST(req: NextRequest) {
             height,
             steps,
             seed,
-            modelId: finalModelMetadata.deepInfraModelId,
+            modelId: deepInfraModelId,
             loras: undefined,
             allowLoras: false,
           });
           return NextResponse.json({ image });
         }
-      } else {
-        return NextResponse.json(
-          { error: `Unsupported model: ${finalModel}` },
-          { status: 400 }
-        );
       }
     } catch (error: any) {
       console.error("[GEN] Fatal error:", error);
