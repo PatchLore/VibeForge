@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import { MODELS } from "@/data/models";
+import { MODELS, LORA_SUPPORTED } from "@/data/models";
 import { LORA_STYLES } from "@/lib/loraStyles";
 
 export default function AIAssetGenerator() {
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(MODELS[0]?.id ?? null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(MODELS[0]?.value ?? null);
   const [selectedLoraId, setSelectedLoraId] = useState<string>("");
   const [loraStrength, setLoraStrength] = useState<number>(1.0);
   const [prompt, setPrompt] = useState("");
@@ -18,7 +18,8 @@ export default function AIAssetGenerator() {
   const [error, setError] = useState<string | null>(null);
 
   // Derive the selected model
-  const selectedModel = MODELS.find(m => m.id === selectedModelId) ?? MODELS[0];
+  const selectedModel = MODELS.find(m => m.value === selectedModelId) ?? MODELS[0];
+  const supportsLora = selectedModelId ? LORA_SUPPORTED[selectedModelId] ?? false : false;
   
   // Get default scale for selected LoRA
   const selectedLora = LORA_STYLES.find(s => s.id === selectedLoraId);
@@ -26,7 +27,7 @@ export default function AIAssetGenerator() {
   useEffect(() => {
     // Initialize with first model
     if (MODELS.length > 0 && !selectedModelId) {
-      setSelectedModelId(MODELS[0].id);
+      setSelectedModelId(MODELS[0].value);
     }
   }, []);
 
@@ -42,7 +43,7 @@ export default function AIAssetGenerator() {
       setError("Please enter a prompt");
       return;
     }
-    if (!selectedModel) {
+    if (!selectedModel || !selectedModelId) {
       setError("Please select a model");
       return;
     }
@@ -53,8 +54,8 @@ export default function AIAssetGenerator() {
 
     try {
       console.log('🚀 [AIAssetGenerator] Starting image generation');
-      console.log('  Model:', selectedModel.id);
-      console.log('  Provider:', selectedModel.provider);
+      console.log('  Model:', selectedModelId);
+      console.log('  Model Label:', selectedModel.label);
       console.log('  Prompt:', prompt);
       console.log('  Selected LoRA:', selectedLoraId || 'None');
       console.log('  LoRA Strength:', loraStrength);
@@ -64,11 +65,11 @@ export default function AIAssetGenerator() {
       console.log('  Seed:', seed);
       
       // Build request body
-      // Use the model ID (e.g., "flux-schnell") - the API will resolve to actual provider/model
+      // Use the model value (e.g., "flux-schnell") - the API will resolve to actual provider/model
       const requestBody: any = {
         prompt,
-        modelId: selectedModel.id, // e.g., "flux-schnell", "seedream-xl", etc.
-        provider: selectedModel.provider, // For backward compatibility
+        modelId: selectedModelId, // e.g., "flux-schnell", "seedream-xl", etc.
+        provider: "deepinfra", // Will be overridden by API routing logic
         loraId: selectedLoraId || null,
         loraStrength: selectedLoraId ? loraStrength : null,
         width,
@@ -139,12 +140,12 @@ export default function AIAssetGenerator() {
           onChange={(e) => setSelectedModelId(e.target.value)}
         >
           {MODELS.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.value} value={m.value}>{m.label}</option>
           ))}
         </select>
       </div>
 
-      {selectedModel?.isSDXLCompatible && (
+      {supportsLora && (
         <>
           <div>
             <label className="font-semibold text-white block mb-2">LoRA Style</label>

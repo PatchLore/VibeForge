@@ -1,53 +1,59 @@
-export interface ImageModel {
-  id: string; // Frontend value (e.g., "flux-schnell")
-  name: string; // Display label
-  provider: "runware" | "deepinfra";
-  supportsLora: boolean;
-  isSDXLCompatible: boolean; // For LoRA routing logic
-  apiModelId?: string; // Actual API model ID (for Runware)
-  deepInfraModelId?: string; // Actual DeepInfra model ID
+// Simple model definition for dropdown
+export interface ModelOption {
+  label: string;
+  value: string;
 }
 
-export const MODELS: ImageModel[] = [
-  {
-    id: "flux-schnell",
-    name: "FLUX.1 Schnell (Fast — Runware)",
+export const MODELS: ModelOption[] = [
+  { label: "FLUX.1 Schnell (Fast — Runware)", value: "flux-schnell" },
+  { label: "FLUX.1 Dev (HQ — DeepInfra)", value: "flux-dev" },
+  { label: "Seedream XL (Artistic — DeepInfra)", value: "seedream-xl" },
+  { label: "Janu Pro SDXL Turbo (Realistic — DeepInfra)", value: "janu-sdxl" },
+  { label: "SDXL 1.0 Base (Universal — DeepInfra)", value: "sdxl-base" },
+];
+
+// LoRA compatibility matrix
+export const LORA_SUPPORTED: Record<string, boolean> = {
+  "seedream-xl": false,
+  "flux-schnell": false,
+  "flux-dev": false,
+  "janu-sdxl": true,
+  "sdxl-base": true,
+};
+
+// Model metadata for API routing
+export interface ModelMetadata {
+  value: string;
+  provider: "runware" | "deepinfra";
+  apiModelId?: string; // Runware AIR ID
+  deepInfraModelId?: string; // DeepInfra model ID
+}
+
+export const MODEL_METADATA: Record<string, ModelMetadata> = {
+  "flux-schnell": {
+    value: "flux-schnell",
     provider: "runware",
-    supportsLora: false, // Flux models don't support LoRAs
-    isSDXLCompatible: false,
-    apiModelId: "runware:101@1", // Runware AIR ID
-    deepInfraModelId: "black-forest-labs/FLUX.1-schnell", // Fallback DeepInfra model
+    apiModelId: "runware:101@1",
+    deepInfraModelId: "black-forest-labs/FLUX.1-schnell",
   },
-  {
-    id: "flux-dev",
-    name: "FLUX.1 Dev (HQ — DeepInfra)",
+  "flux-dev": {
+    value: "flux-dev",
     provider: "deepinfra",
-    supportsLora: false, // Flux models don't support LoRAs
-    isSDXLCompatible: false,
     deepInfraModelId: "black-forest-labs/FLUX.1-dev",
   },
-  {
-    id: "seedream-xl",
-    name: "Seedream XL (Artistic — DeepInfra)",
+  "seedream-xl": {
+    value: "seedream-xl",
     provider: "deepinfra",
-    supportsLora: true, // SDXL-compatible
-    isSDXLCompatible: true,
     deepInfraModelId: "seedream/seedream-xl", // TODO: Verify actual DeepInfra model ID
   },
-  {
-    id: "janu-sdxl",
-    name: "Janu Pro SDXL Turbo (Realistic — DeepInfra)",
+  "janu-sdxl": {
+    value: "janu-sdxl",
     provider: "deepinfra",
-    supportsLora: true, // SDXL-compatible
-    isSDXLCompatible: true,
     deepInfraModelId: "janu/janu-pro-sdxl-turbo", // TODO: Verify actual DeepInfra model ID
   },
-  {
-    id: "sdxl-base",
-    name: "SDXL 1.0 Base (Legacy)",
+  "sdxl-base": {
+    value: "sdxl-base",
     provider: "deepinfra",
-    supportsLora: true, // SDXL-compatible
-    isSDXLCompatible: true,
     deepInfraModelId: "stabilityai/stable-diffusion-xl-base-1.0",
   },
-];
+};
