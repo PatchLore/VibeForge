@@ -1,12 +1,13 @@
 # 📘 DOCUMENT: AI Image Generation Architecture (Runware + DeepInfra)
 
-**Version 1.2 – November 2025**
+**Version 1.3 – November 2025**
 
 **Author:** Allen Dunn & ChatGPT Dev Assistant
 
 **Use Case:** For Soundswoop, OnPointPrompt, FixBlox, Ambient Video Lab, AuralMix, etc.
 
 **Changelog:**
+- **v1.3:** Added DreamShaper XL and Realistic Vision XL models, updated LoRA support (7 models total, 3 LoRA-supported)
 - **v1.2:** 5-model system with LORA_SUPPORTED matrix, smart LoRA routing, auto-switch to sdxl-base
 - **v1.1:** LoRAs now route to DeepInfra only (bypass Runware completely)
 - **v1.0:** Initial architecture with Runware + DeepInfra waterfall
@@ -58,7 +59,7 @@ RUNWARE_LORA_ENABLED=true
 
 ## 🔥 3. Available Models
 
-The system supports **5 models** with different characteristics:
+The system supports **7 models** with different characteristics:
 
 ### Model List:
 
@@ -77,14 +78,14 @@ The system supports **5 models** with different characteristics:
 3. **Seedream XL (Artistic — DeepInfra)**
    - Value: `seedream-xl`
    - Provider: DeepInfra only
-   - LoRA Support: ❌ No (LoRAs automatically removed if selected)
+   - LoRA Support: ❌ No
    - Use Case: Artistic, creative generations
 
 4. **Janu Pro SDXL Turbo (Realistic — DeepInfra)**
    - Value: `janu-sdxl`
    - Provider: DeepInfra only
-   - LoRA Support: ✅ Yes
-   - Use Case: Realistic images with LoRA support
+   - LoRA Support: ❌ No
+   - Use Case: Realistic images without LoRA support
 
 5. **SDXL 1.0 Base (Universal — DeepInfra)**
    - Value: `sdxl-base`
@@ -92,17 +93,33 @@ The system supports **5 models** with different characteristics:
    - LoRA Support: ✅ Yes
    - Use Case: Universal SDXL with full LoRA compatibility
 
+6. **DreamShaper XL (Stylized — DeepInfra)**
+   - Value: `dreamshaper-xl`
+   - Provider: DeepInfra only
+   - LoRA Support: ✅ Yes
+   - Use Case: Stylized artistic generations with LoRA support
+
+7. **Realistic Vision XL (Realistic — DeepInfra)**
+   - Value: `realvis-xl`
+   - Provider: DeepInfra only
+   - LoRA Support: ✅ Yes
+   - Use Case: Highly realistic images with LoRA support
+
 ### LoRA Compatibility Matrix:
 
 ```typescript
 export const LORA_SUPPORTED = {
-  "seedream-xl": false,
   "flux-schnell": false,
   "flux-dev": false,
-  "janu-sdxl": true,
-  "sdxl-base": true
+  "seedream-xl": false,
+  "janu-sdxl": false,
+  "sdxl-base": true,
+  "dreamshaper-xl": true,
+  "realvis-xl": true
 };
 ```
+
+**Only 3 models support LoRAs:** `sdxl-base`, `dreamshaper-xl`, `realvis-xl`
 
 ---
 
@@ -112,21 +129,19 @@ export const LORA_SUPPORTED = {
 
 ### LoRA Compatibility Rules:
 
-1. **Only 2 models support LoRAs:**
-   - ✅ `janu-sdxl` (Janu Pro SDXL Turbo)
+1. **Only 3 models support LoRAs:**
    - ✅ `sdxl-base` (SDXL 1.0 Base)
+   - ✅ `dreamshaper-xl` (DreamShaper XL)
+   - ✅ `realvis-xl` (Realistic Vision XL)
 
 2. **Smart Auto-Switching:**
    - If LoRAs are selected but model doesn't support them → **automatically switch to `sdxl-base`**
    - Example: User selects `flux-schnell` with LoRAs → system switches to `sdxl-base`
+   - Example: User selects `janu-sdxl` with LoRAs → system switches to `sdxl-base`
 
-3. **Seedream XL Soft-Block:**
-   - If `seedream-xl` is selected with LoRAs → **LoRAs are removed** (model stays as Seedream)
-   - This prevents errors while keeping the artistic Seedream style
-
-4. **Flux Models:**
-   - `flux-schnell` and `flux-dev` → **LoRAs are always removed**
-   - Flux models cannot use SDXL LoRAs
+3. **Non-LoRA Models:**
+   - `flux-schnell`, `flux-dev`, `seedream-xl`, `janu-sdxl` → **LoRAs are automatically removed**
+   - These models cannot use SDXL LoRAs
 
 ### LoRA Format:
 
@@ -202,14 +217,13 @@ The system routes requests based on the selected model and LoRA compatibility:
 
 **Direct:** DeepInfra Seedream XL only
 
-- **LoRAs:** Soft-blocked (removed if selected, model stays as Seedream)
+- **LoRAs:** ❌ Not supported (automatically removed)
 
-### 🟢 `janu-sdxl` (Janu Pro SDXL Turbo)
+### 🟡 `janu-sdxl` (Janu Pro SDXL Turbo)
 
 **Direct:** DeepInfra Janu Pro SDXL Turbo
 
-- **LoRAs:** ✅ Supported
-- Waterfall: With LoRAs → Without LoRAs → fail
+- **LoRAs:** ❌ Not supported (automatically removed)
 
 ### 🟢 `sdxl-base` (SDXL 1.0 Base)
 
@@ -219,12 +233,29 @@ The system routes requests based on the selected model and LoRA compatibility:
 - Waterfall: With LoRAs → Without LoRAs → fail
 - **Auto-switch target:** If user selects non-LoRA model with LoRAs, switches here
 
+### 🟢 `dreamshaper-xl` (DreamShaper XL)
+
+**Direct:** DeepInfra DreamShaper XL
+
+- **LoRAs:** ✅ Supported
+- Waterfall: With LoRAs → Without LoRAs → fail
+- Use Case: Stylized artistic generations
+
+### 🟢 `realvis-xl` (Realistic Vision XL)
+
+**Direct:** DeepInfra Realistic Vision XL
+
+- **LoRAs:** ✅ Supported
+- Waterfall: With LoRAs → Without LoRAs → fail
+- Use Case: Highly realistic images
+
 ### ⚠️ Smart LoRA Routing:
 
 1. **User selects LoRAs + non-LoRA model** → Auto-switch to `sdxl-base`
-2. **User selects LoRAs + `seedream-xl`** → Remove LoRAs, keep Seedream
-3. **User selects LoRAs + Flux model** → Remove LoRAs, keep Flux model
-4. **User selects LoRAs + LoRA-compatible model** → Use selected model with LoRAs
+   - Applies to: `flux-schnell`, `flux-dev`, `seedream-xl`, `janu-sdxl`
+2. **User selects LoRAs + LoRA-compatible model** → Use selected model with LoRAs
+   - Applies to: `sdxl-base`, `dreamshaper-xl`, `realvis-xl`
+3. **LoRAs are automatically removed** for non-LoRA models before generation
 
 ---
 
@@ -269,7 +300,9 @@ It will work everywhere.
 - `flux-dev` - FLUX.1 Dev (DeepInfra)
 - `seedream-xl` - Seedream XL (DeepInfra)
 - `janu-sdxl` - Janu Pro SDXL Turbo (DeepInfra)
-- `sdxl-base` - SDXL 1.0 Base (DeepInfra)
+- `sdxl-base` - SDXL 1.0 Base (DeepInfra) ✅ LoRA-supported
+- `dreamshaper-xl` - DreamShaper XL (DeepInfra) ✅ LoRA-supported
+- `realvis-xl` - Realistic Vision XL (DeepInfra) ✅ LoRA-supported
 
 ### Response Format:
 
@@ -445,7 +478,7 @@ For questions or updates to this architecture:
 
 - **Author:** Allen Dunn
 - **Last Updated:** November 2025
-- **Version:** 1.2
+- **Version:** 1.3
 
 ---
 
