@@ -62,9 +62,9 @@ This document lists all environment variables used in the codebase and where the
 
 **Vercel Environment Variables (Server-only, NOT exposed to client):**
 - `HF_API_KEY` - HuggingFace API key for AI image generation (server-only, no NEXT_PUBLIC_ prefix)
-- `HF_BASE_URL` - HuggingFace Inference API base URL (defaults to `https://api-inference.huggingface.co/models`)
+- `HF_BASE_URL` - HuggingFace Router API base URL (defaults to `https://router.huggingface.co`)
 
-**Note:** These are server-only environment variables. The API key is never exposed to the client. All HuggingFace API calls are made from the server-side API route `/api/hf/generate`.
+**Note:** These are server-only environment variables. The API key is never exposed to the client. All HuggingFace API calls are made from the server-side API route `/api/hf/generate` using the new HF Router API.
 
 **HuggingFace Dashboard Location:**
 - Get API key from your HuggingFace account
