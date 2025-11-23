@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MODELS } from '@/data/models';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,7 @@ async function generateWithDeepInfra({
   seed,
   modelId,
   loras,
+  allowLoras = true, // Only include LoRAs if model supports them
 }: {
   prompt: string;
   width?: number;
@@ -92,6 +94,7 @@ async function generateWithDeepInfra({
   seed?: number;
   modelId: string;
   loras?: Array<{ id: string; scale: number }>;
+  allowLoras?: boolean;
 }): Promise<string> {
   const API_KEY = process.env.DEEPINFRA_API_KEY;
   if (!API_KEY) throw new Error('DEEPINFRA_API_KEY not set');
@@ -106,12 +109,15 @@ async function generateWithDeepInfra({
   if (seed) body.seed = seed;
 
   // DeepInfra LoRA format: { "loras": [{ "model": "civitai:XXXX", "weight": 0.8 }] }
-  if (loras && loras.length > 0) {
+  // Only include LoRAs if allowLoras is true (SDXL models only)
+  if (allowLoras && loras && loras.length > 0) {
     body.loras = loras.map(l => ({
       model: l.id, // e.g. "civitai:122359@135867"
       weight: l.scale, // e.g. 0.8
     }));
     console.log('[DEEPINFRA] LoRAs included:', JSON.stringify(body.loras));
+  } else if (loras && loras.length > 0) {
+    console.log('[DEEPINFRA] LoRAs provided but model does not support them (Flux model)');
   }
 
   console.log('[DEEPINFRA] Body:', JSON.stringify(body));
@@ -165,6 +171,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Find the selected model from MODELS array
+    const selectedModel = MODELS.find(m => m.id === modelId);
+    if (!selectedModel) {
+      return NextResponse.json(
+        { error: `Invalid model: ${modelId}` },
+        { status: 400 }
+      );
+    }
+
     // Build loras array if LoRA is selected
     const loras = loraId
       ? [
@@ -175,22 +190,66 @@ export async function POST(req: NextRequest) {
         ]
       : [];
 
-    // CRITICAL: If ANY LoRA is selected, route to DeepInfra ONLY (never Runware)
+    console.log('[GEN] Selected model:', selectedModel.name);
+    console.log('[GEN] LoRAs selected:', loras.length);
+    console.log('[GEN] Model ID:', modelId);
+    console.log('[GEN] Provider:', selectedModel.provider);
+
+    // CRITICAL: Prevent LoRAs from being sent to Flux models
+    if (loras.length > 0 && modelId.startsWith('flux-')) {
+      console.warn('[GEN] WARNING: LoRAs cannot be used with Flux models. Forcing model to seedream-xl');
+      // Force model to seedream-xl for LoRA support
+      const seedreamModel = MODELS.find(m => m.id === 'seedream-xl');
+      if (!seedreamModel || !seedreamModel.deepInfraModelId) {
+        return NextResponse.json(
+          { error: 'LoRAs require SDXL-compatible model, but seedream-xl is not available' },
+          { status: 400 }
+        );
+      }
+      // Continue with seedream-xl routing below
+    }
+
+    // ROUTING LOGIC: Handle LoRA vs non-LoRA cases
     if (loras.length > 0) {
+      // CASE: LoRAs selected
       console.log('[GEN] LoRAs detected — routing to DeepInfra only');
-      console.log('[GEN] LoRA Payload:', JSON.stringify(loras));
       
-      // CASE B: LoRA-enabled → DeepInfra with LoRAs → DeepInfra without LoRAs → fail
+      let finalModel = selectedModel;
+      let finalModelId: string;
+
+      // Check if selected model is SDXL-compatible
+      if (selectedModel.isSDXLCompatible && selectedModel.deepInfraModelId) {
+        // Use selected SDXL model
+        finalModelId = selectedModel.deepInfraModelId;
+        console.log('[GEN] Using selected SDXL model:', finalModelId);
+      } else {
+        // Force to seedream-xl (SDXL-compatible)
+        const seedreamModel = MODELS.find(m => m.id === 'seedream-xl');
+        if (!seedreamModel || !seedreamModel.deepInfraModelId) {
+          return NextResponse.json(
+            { error: 'LoRAs require SDXL-compatible model, but seedream-xl is not available' },
+            { status: 400 }
+          );
+        }
+        finalModel = seedreamModel;
+        finalModelId = seedreamModel.deepInfraModelId;
+        console.log('[GEN] Forced to seedream-xl for LoRA support');
+      }
+
+      console.log('[GEN] Routed provider: deepinfra');
+      console.log('[GEN] Final model used:', finalModelId);
+
+      // Try DeepInfra with LoRAs → DeepInfra without LoRAs → fail
       try {
-        // Try DeepInfra with LoRAs (FLUX.1-dev supports LoRAs best)
         const image = await generateWithDeepInfra({
           prompt,
           width,
           height,
           steps,
           seed,
-          modelId: 'black-forest-labs/FLUX.1-dev',
+          modelId: finalModelId,
           loras,
+          allowLoras: true, // SDXL models support LoRAs
         });
         return NextResponse.json({ image });
       } catch (err) {
@@ -203,8 +262,9 @@ export async function POST(req: NextRequest) {
             height,
             steps,
             seed,
-            modelId: 'black-forest-labs/FLUX.1-dev',
-            loras: undefined, // No LoRAs
+            modelId: finalModelId,
+            loras: undefined,
+            allowLoras: false,
           });
           return NextResponse.json({ image });
         } catch (fallbackErr) {
@@ -214,28 +274,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // CASE A: No LoRAs → Runware → DeepInfra Schnell → DeepInfra Dev → fail
-    console.log('[GEN] No LoRAs — using waterfall: Runware → DeepInfra');
-    console.log('[GEN] Provider:', provider, 'Model:', modelId);
-
-    // Determine final provider and model for no-LoRA case
-    let finalProvider = provider;
-    let finalModel = modelId;
-
-    // If provider was "runware", use Runware model; otherwise use DeepInfra model
-    if (provider === 'runware') {
-      finalProvider = 'runware';
-      finalModel = modelId || 'runware:101@1'; // Default to FLUX.1 Schnell
-    } else {
-      finalProvider = 'deepinfra';
-      finalModel = modelId || 'black-forest-labs/FLUX.1-dev';
-    }
-
-    console.log('[GEN] Using provider:', finalProvider);
+    // CASE: No LoRAs - route based on selected model
+    console.log('[GEN] No LoRAs — routing based on model selection');
 
     try {
-      if (finalProvider === 'runware') {
+      if (modelId === 'flux-schnell') {
         // Waterfall: Runware → DeepInfra Schnell → DeepInfra Dev
+        console.log('[GEN] Routed provider: runware (with fallbacks)');
+        console.log('[GEN] Final model used: runware:101@1');
+        
+        const runwareModelId = selectedModel.apiModelId || 'runware:101@1';
+        const deepInfraSchnellId = selectedModel.deepInfraModelId || 'black-forest-labs/FLUX.1-schnell';
+        const deepInfraDevId = 'black-forest-labs/FLUX.1-dev';
+
         try {
           const image = await generateWithRunware({
             prompt,
@@ -243,7 +294,7 @@ export async function POST(req: NextRequest) {
             height,
             steps,
             seed,
-            modelId: finalModel,
+            modelId: runwareModelId,
           });
           return NextResponse.json({ image });
         } catch (err) {
@@ -255,40 +306,68 @@ export async function POST(req: NextRequest) {
               height,
               steps,
               seed,
-              modelId: 'black-forest-labs/FLUX.1-schnell',
+              modelId: deepInfraSchnellId,
               loras: undefined,
+              allowLoras: false,
             });
             return NextResponse.json({ image });
           } catch (schnellErr) {
             console.error('[GEN] DeepInfra Schnell failed, falling back to DeepInfra Dev:', schnellErr);
-            // Final fallback: DeepInfra Dev
             const image = await generateWithDeepInfra({
               prompt,
               width,
               height,
               steps,
               seed,
-              modelId: 'black-forest-labs/FLUX.1-dev',
+              modelId: deepInfraDevId,
               loras: undefined,
+              allowLoras: false,
             });
             return NextResponse.json({ image });
           }
         }
-      } else if (finalProvider === 'deepinfra') {
-        // Direct DeepInfra call (no waterfall needed)
+      } else if (modelId === 'flux-dev') {
+        // Direct DeepInfra FLUX.1 Dev
+        console.log('[GEN] Routed provider: deepinfra');
+        console.log('[GEN] Final model used:', selectedModel.deepInfraModelId);
+        
         const image = await generateWithDeepInfra({
           prompt,
           width,
           height,
           steps,
           seed,
-          modelId: finalModel,
+          modelId: selectedModel.deepInfraModelId || 'black-forest-labs/FLUX.1-dev',
           loras: undefined,
+          allowLoras: false,
+        });
+        return NextResponse.json({ image });
+      } else if (['seedream-xl', 'janu-sdxl', 'sdxl-base'].includes(modelId)) {
+        // Direct DeepInfra SDXL models
+        console.log('[GEN] Routed provider: deepinfra');
+        console.log('[GEN] Final model used:', selectedModel.deepInfraModelId);
+        
+        if (!selectedModel.deepInfraModelId) {
+          return NextResponse.json(
+            { error: `Model ${modelId} missing DeepInfra model ID` },
+            { status: 400 }
+          );
+        }
+        
+        const image = await generateWithDeepInfra({
+          prompt,
+          width,
+          height,
+          steps,
+          seed,
+          modelId: selectedModel.deepInfraModelId,
+          loras: undefined,
+          allowLoras: false, // No LoRAs in this branch
         });
         return NextResponse.json({ image });
       } else {
         return NextResponse.json(
-          { error: `Unsupported provider: ${finalProvider}` },
+          { error: `Unsupported model: ${modelId}` },
           { status: 400 }
         );
       }

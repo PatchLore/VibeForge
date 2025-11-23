@@ -64,10 +64,11 @@ export default function AIAssetGenerator() {
       console.log('  Seed:', seed);
       
       // Build request body
+      // Use the model ID (e.g., "flux-schnell") - the API will resolve to actual provider/model
       const requestBody: any = {
         prompt,
-        modelId: selectedModel.id,
-        provider: selectedModel.provider,
+        modelId: selectedModel.id, // e.g., "flux-schnell", "seedream-xl", etc.
+        provider: selectedModel.provider, // For backward compatibility
         loraId: selectedLoraId || null,
         loraStrength: selectedLoraId ? loraStrength : null,
         width,
@@ -143,7 +144,7 @@ export default function AIAssetGenerator() {
         </select>
       </div>
 
-      {selectedModel?.provider === "runware" && selectedModel.supportsLora && (
+      {selectedModel?.isSDXLCompatible && (
         <>
           <div>
             <label className="font-semibold text-white block mb-2">LoRA Style</label>

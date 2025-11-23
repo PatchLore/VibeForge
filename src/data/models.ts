@@ -1,39 +1,53 @@
 export interface ImageModel {
-  id: string;
-  name: string;
+  id: string; // Frontend value (e.g., "flux-schnell")
+  name: string; // Display label
   provider: "runware" | "deepinfra";
   supportsLora: boolean;
+  isSDXLCompatible: boolean; // For LoRA routing logic
+  apiModelId?: string; // Actual API model ID (for Runware)
+  deepInfraModelId?: string; // Actual DeepInfra model ID
 }
 
 export const MODELS: ImageModel[] = [
   {
-    id: "runware:101@1",              // FLUX.1 Schnell AIR ID
-    name: "FLUX.1 Schnell",
+    id: "flux-schnell",
+    name: "FLUX.1 Schnell (Fast — Runware)",
     provider: "runware",
-    supportsLora: true,
+    supportsLora: false, // Flux models don't support LoRAs
+    isSDXLCompatible: false,
+    apiModelId: "runware:101@1", // Runware AIR ID
+    deepInfraModelId: "black-forest-labs/FLUX.1-schnell", // Fallback DeepInfra model
   },
   {
-    id: "black-forest-labs/FLUX.1-dev",
-    name: "FLUX.1 Dev",
+    id: "flux-dev",
+    name: "FLUX.1 Dev (HQ — DeepInfra)",
     provider: "deepinfra",
-    supportsLora: false,
+    supportsLora: false, // Flux models don't support LoRAs
+    isSDXLCompatible: false,
+    deepInfraModelId: "black-forest-labs/FLUX.1-dev",
   },
   {
-    id: "stabilityai/stable-diffusion-xl-base-1.0",
-    name: "SDXL 1.0 Base",
+    id: "seedream-xl",
+    name: "Seedream XL (Artistic — DeepInfra)",
     provider: "deepinfra",
-    supportsLora: false,
+    supportsLora: true, // SDXL-compatible
+    isSDXLCompatible: true,
+    deepInfraModelId: "seedream/seedream-xl", // TODO: Verify actual DeepInfra model ID
   },
   {
-    id: "runware:realistic-vision-v6", // TODO: replace with real AIR ID from Runware if/when you add it
-    name: "Realistic Vision V6",
-    provider: "runware",
-    supportsLora: true,
+    id: "janu-sdxl",
+    name: "Janu Pro SDXL Turbo (Realistic — DeepInfra)",
+    provider: "deepinfra",
+    supportsLora: true, // SDXL-compatible
+    isSDXLCompatible: true,
+    deepInfraModelId: "janu/janu-pro-sdxl-turbo", // TODO: Verify actual DeepInfra model ID
   },
   {
-    id: "runware:juggernaut-xl", // TODO: replace with real AIR ID from Runware
-    name: "Juggernaut XL",
-    provider: "runware",
-    supportsLora: true,
+    id: "sdxl-base",
+    name: "SDXL 1.0 Base (Legacy)",
+    provider: "deepinfra",
+    supportsLora: true, // SDXL-compatible
+    isSDXLCompatible: true,
+    deepInfraModelId: "stabilityai/stable-diffusion-xl-base-1.0",
   },
 ];
