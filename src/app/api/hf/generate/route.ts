@@ -4,6 +4,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  console.log('[HF Router] API route HIT');
+  
   let modelId = 'unknown';
   let prompt = '';
   
