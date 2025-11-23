@@ -162,7 +162,7 @@ async function generateWithDeepInfra({
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, modelId, provider, loraId, loraStrength, width, height, steps, seed } = await req.json();
+    const { prompt, modelId, loraId, loraStrength, width, height, steps, seed } = await req.json();
 
     if (!prompt || !modelId) {
       return NextResponse.json(
@@ -193,6 +193,7 @@ export async function POST(req: NextRequest) {
 
     const model = body.model;
     let finalModel = model;
+    let provider = "deepinfra";
 
     // CASE 1 — LoRAs selected but model cannot use them
     if (loras.length > 0 && LORA_SUPPORTED[model] === false) {
@@ -218,8 +219,6 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────────────
     // PROVIDER ROUTING (FINAL & CORRECT)
     // ────────────────────────────────────────────────────────────────
-
-    let provider = "deepinfra";
 
     // Flux Schnell runs ONLY on Runware
     if (finalModel === "flux-schnell") {
