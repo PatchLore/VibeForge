@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   console.log('[HF Router] API route HIT');
   
   let modelId = 'unknown';
   let prompt = '';
   
   try {
-    const body = await request.json();
+    const body = await req.json();
     modelId = body.modelId || 'unknown';
     prompt = body.prompt || '';
 
