@@ -1,12 +1,13 @@
 # 📘 DOCUMENT: AI Image Generation Architecture (Runware + DeepInfra)
 
-**Version 1.1 – November 2025**
+**Version 1.2 – November 2025**
 
 **Author:** Allen Dunn & ChatGPT Dev Assistant
 
 **Use Case:** For Soundswoop, OnPointPrompt, FixBlox, Ambient Video Lab, AuralMix, etc.
 
 **Changelog:**
+- **v1.2:** 5-model system with LORA_SUPPORTED matrix, smart LoRA routing, auto-switch to sdxl-base
 - **v1.1:** LoRAs now route to DeepInfra only (bypass Runware completely)
 - **v1.0:** Initial architecture with Runware + DeepInfra waterfall
 
@@ -55,27 +56,83 @@ RUNWARE_LORA_ENABLED=true
 
 ---
 
-## 🔥 3. Primary Model: FLUX.1-Schnell (Apache 2.0 License)
+## 🔥 3. Available Models
 
-### Why we use it:
+The system supports **5 models** with different characteristics:
 
-- ✅ **100% commercial safe** (Apache 2.0 License)
-- ✅ **Fastest image model in the world** (0.5–1.5 seconds)
-- ✅ **Great quality** (85% of Flux Pro)
-- ✅ **Extremely cheap** ($0.0006–$0.0015 per image)
-- ✅ **Supported natively on Runware**
-- ✅ **Works with LoRAs** (SDXL + Schnell-compatible ones)
+### Model List:
+
+1. **FLUX.1 Schnell (Fast — Runware)**
+   - Value: `flux-schnell`
+   - Provider: Runware (with DeepInfra fallbacks)
+   - LoRA Support: ❌ No
+   - Use Case: Fastest generation, cheapest cost
+
+2. **FLUX.1 Dev (HQ — DeepInfra)**
+   - Value: `flux-dev`
+   - Provider: DeepInfra only
+   - LoRA Support: ❌ No
+   - Use Case: Highest quality Flux generation
+
+3. **Seedream XL (Artistic — DeepInfra)**
+   - Value: `seedream-xl`
+   - Provider: DeepInfra only
+   - LoRA Support: ❌ No (LoRAs automatically removed if selected)
+   - Use Case: Artistic, creative generations
+
+4. **Janu Pro SDXL Turbo (Realistic — DeepInfra)**
+   - Value: `janu-sdxl`
+   - Provider: DeepInfra only
+   - LoRA Support: ✅ Yes
+   - Use Case: Realistic images with LoRA support
+
+5. **SDXL 1.0 Base (Universal — DeepInfra)**
+   - Value: `sdxl-base`
+   - Provider: DeepInfra only
+   - LoRA Support: ✅ Yes
+   - Use Case: Universal SDXL with full LoRA compatibility
+
+### LoRA Compatibility Matrix:
+
+```typescript
+export const LORA_SUPPORTED = {
+  "seedream-xl": false,
+  "flux-schnell": false,
+  "flux-dev": false,
+  "janu-sdxl": true,
+  "sdxl-base": true
+};
+```
 
 ---
 
-## 🎯 4. LoRA Support (DeepInfra Only)
+## 🎯 4. LoRA Support & Smart Routing
 
 **⚠️ CRITICAL:** LoRAs are **ONLY** sent to DeepInfra, **NEVER** to Runware.
 
-- ✅ If **ANY LoRA is selected** → Route to DeepInfra immediately (bypass Runware)
-- ✅ LoRAs use **Civitai SDXL format** (e.g., `civitai:122359@135867`)
-- ❌ Runware **never receives LoRAs** (prevents `invalidLoraModel` errors)
-- ✅ DeepInfra supports full SDXL LoRA compatibility
+### LoRA Compatibility Rules:
+
+1. **Only 2 models support LoRAs:**
+   - ✅ `janu-sdxl` (Janu Pro SDXL Turbo)
+   - ✅ `sdxl-base` (SDXL 1.0 Base)
+
+2. **Smart Auto-Switching:**
+   - If LoRAs are selected but model doesn't support them → **automatically switch to `sdxl-base`**
+   - Example: User selects `flux-schnell` with LoRAs → system switches to `sdxl-base`
+
+3. **Seedream XL Soft-Block:**
+   - If `seedream-xl` is selected with LoRAs → **LoRAs are removed** (model stays as Seedream)
+   - This prevents errors while keeping the artistic Seedream style
+
+4. **Flux Models:**
+   - `flux-schnell` and `flux-dev` → **LoRAs are always removed**
+   - Flux models cannot use SDXL LoRAs
+
+### LoRA Format:
+
+- LoRAs use **Civitai SDXL format** (e.g., `civitai:122359@135867`)
+- DeepInfra payload: `{loras: [{model: "civitai:XXXX", weight: 0.8}]}`
+- Weight range: 0.0–2.5
 
 ### Recommended LoRA Pack (Commercial Safe):
 
@@ -112,11 +169,11 @@ These are **100% safe for SaaS** and work with DeepInfra's FLUX.1-dev model.
 
 ---
 
-## 🌊 5. Waterfall Routing Logic
+## 🌊 5. Routing Logic by Model
 
-The system uses **two different routing paths** based on whether LoRAs are selected:
+The system routes requests based on the selected model and LoRA compatibility:
 
-### 🟢 CASE A — No LoRAs Selected
+### 🟢 `flux-schnell` (FLUX.1 Schnell)
 
 **Waterfall:** Runware → DeepInfra Schnell → DeepInfra Dev → fail
 
@@ -132,26 +189,42 @@ The system uses **two different routing paths** based on whether LoRAs are selec
    - If successful → return image
    - If fails → return error
 
-**Result:** Fastest path for 90% of requests (no LoRAs).
+**LoRAs:** Automatically removed (Flux models don't support LoRAs)
 
-### 🔵 CASE B — LoRAs Selected
+### 🔵 `flux-dev` (FLUX.1 Dev)
 
-**Waterfall:** DeepInfra (with LoRAs) → DeepInfra (without LoRAs) → fail
+**Direct:** DeepInfra FLUX.1-Dev only
 
-1. **Try DeepInfra FLUX.1-Dev with LoRAs**
-   - Model: `black-forest-labs/FLUX.1-dev`
-   - Payload includes `loras: [{model: "civitai:XXXX", weight: 0.8}]`
-   - If successful → return image
-   - If fails → continue to step 2
+- No waterfall, direct DeepInfra call
+- **LoRAs:** Automatically removed
 
-2. **Try DeepInfra FLUX.1-Dev without LoRAs** (graceful fallback)
-   - Same model, but LoRAs removed from payload
-   - If successful → return image
-   - If fails → return error
+### 🟡 `seedream-xl` (Seedream XL)
 
-**Result:** Full SDXL LoRA support, avoids Runware errors.
+**Direct:** DeepInfra Seedream XL only
 
-**⚠️ CRITICAL:** Runware is **completely bypassed** when ANY LoRA is selected.
+- **LoRAs:** Soft-blocked (removed if selected, model stays as Seedream)
+
+### 🟢 `janu-sdxl` (Janu Pro SDXL Turbo)
+
+**Direct:** DeepInfra Janu Pro SDXL Turbo
+
+- **LoRAs:** ✅ Supported
+- Waterfall: With LoRAs → Without LoRAs → fail
+
+### 🟢 `sdxl-base` (SDXL 1.0 Base)
+
+**Direct:** DeepInfra SDXL Base
+
+- **LoRAs:** ✅ Supported
+- Waterfall: With LoRAs → Without LoRAs → fail
+- **Auto-switch target:** If user selects non-LoRA model with LoRAs, switches here
+
+### ⚠️ Smart LoRA Routing:
+
+1. **User selects LoRAs + non-LoRA model** → Auto-switch to `sdxl-base`
+2. **User selects LoRAs + `seedream-xl`** → Remove LoRAs, keep Seedream
+3. **User selects LoRAs + Flux model** → Remove LoRAs, keep Flux model
+4. **User selects LoRAs + LoRA-compatible model** → Use selected model with LoRAs
 
 ---
 
@@ -180,8 +253,8 @@ It will work everywhere.
 ```json
 {
   "prompt": "A beautiful emotional neon sunset",
-  "modelId": "runware:101@1",
-  "provider": "runware",
+  "modelId": "flux-schnell",
+  "provider": "deepinfra",
   "loraId": "civitai:122359@135867",
   "loraStrength": 1.0,
   "width": 1024,
@@ -190,6 +263,13 @@ It will work everywhere.
   "seed": 12345
 }
 ```
+
+**Model IDs:**
+- `flux-schnell` - FLUX.1 Schnell (Runware)
+- `flux-dev` - FLUX.1 Dev (DeepInfra)
+- `seedream-xl` - Seedream XL (DeepInfra)
+- `janu-sdxl` - Janu Pro SDXL Turbo (DeepInfra)
+- `sdxl-base` - SDXL 1.0 Base (DeepInfra)
 
 ### Response Format:
 
@@ -300,12 +380,15 @@ When adding AI Image Generation to a new PatchLore app:
 
 - [ ] Add environment variables to `.env.local` and Vercel
 - [ ] Copy `/api/generate/route.ts` from Soundswoop
-- [ ] Copy model definitions from `src/data/models.ts`
+- [ ] Copy model definitions from `src/data/models.ts` (includes `MODELS`, `LORA_SUPPORTED`, `MODEL_METADATA`)
 - [ ] Copy LoRA styles from `src/lib/loraStyles.ts` (if using LoRAs)
 - [ ] Update UI component to use the unified API endpoint
-- [ ] Test waterfall routing (Runware → DeepInfra fallback) for **no-LoRA** requests
-- [ ] Test LoRA routing (DeepInfra only, bypasses Runware) for **LoRA** requests
-- [ ] Verify LoRAs are never sent to Runware (check logs)
+- [ ] Test model selection dropdown (5 models available)
+- [ ] Test LoRA auto-switching (select non-LoRA model with LoRAs → should switch to `sdxl-base`)
+- [ ] Test Seedream XL soft-block (select Seedream with LoRAs → LoRAs removed, model stays)
+- [ ] Test waterfall routing (flux-schnell → Runware → DeepInfra Schnell → DeepInfra Dev)
+- [ ] Test LoRA routing (janu-sdxl/sdxl-base with LoRAs → DeepInfra with LoRAs)
+- [ ] Verify LoRAs are never sent to Runware or Flux models (check logs)
 - [ ] Verify licensing compliance (SDXL LoRAs only, via DeepInfra)
 - [ ] Monitor costs and performance
 
@@ -341,12 +424,18 @@ When adding AI Image Generation to a new PatchLore app:
 
 ## 🚀 13. Performance Tips
 
-1. **Use Runware first** (fastest + cheapest) - **only for non-LoRA requests**
-2. **LoRAs automatically route to DeepInfra** (bypasses Runware completely)
-3. **Use LoRAs only when needed** (adds slight overhead, but enables style control)
-4. **Cache generated images** when possible
-5. **Monitor API usage** to optimize costs
-6. **Check logs** for routing decisions: `[GEN] LoRAs detected — routing to DeepInfra only`
+1. **Use `flux-schnell` for fastest generation** (Runware → DeepInfra fallback)
+2. **Use `janu-sdxl` or `sdxl-base` for LoRA support** (only these 2 models support LoRAs)
+3. **System auto-switches to `sdxl-base`** if LoRAs are selected with non-LoRA model
+4. **Seedream XL removes LoRAs automatically** (prevents errors, keeps artistic style)
+5. **Flux models never receive LoRAs** (automatically stripped)
+6. **Cache generated images** when possible
+7. **Monitor API usage** to optimize costs
+8. **Check logs** for routing decisions:
+   - `[LORA BLOCK] Model X does NOT support LoRAs. Switching to SDXL Base.`
+   - `[Seedream] LoRAs removed for Seedream XL due to incompatibility.`
+   - `[GEN] Requested Model: X`
+   - `[GEN] Final Model Used: Y`
 
 ---
 
@@ -356,7 +445,7 @@ For questions or updates to this architecture:
 
 - **Author:** Allen Dunn
 - **Last Updated:** November 2025
-- **Version:** 1.1
+- **Version:** 1.2
 
 ---
 
