@@ -24,7 +24,12 @@ export default function AgencyPage() {
   }
 
   if (!user) {
-    return null;
+    // Return a loading state while redirecting instead of null
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center p-4">
+        <div className="text-white text-xl">Redirecting...</div>
+      </div>
+    );
   }
 
   return <AgencyDashboard />;
