@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { ALL_MODELS, ImageModel } from "../../data/models";
+import { LORA_STYLES, LoRAStyle } from "../../data/loraStyles";
 
 export default function AIAssetGenerator() {
   const [selectedModel, setSelectedModel] = useState<ImageModel | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<LoRAStyle | null>(null);
   const [prompt, setPrompt] = useState("");
   const [width, setWidth] = useState<number>(1024);
   const [height, setHeight] = useState<number>(1024);
@@ -18,6 +20,10 @@ export default function AIAssetGenerator() {
     // Load models on mount
     if (ALL_MODELS.length > 0) {
       setSelectedModel(ALL_MODELS[0]);
+    }
+    // Load default style (None)
+    if (LORA_STYLES.length > 0) {
+      setSelectedStyle(LORA_STYLES[0]);
     }
   }, []);
 
@@ -40,6 +46,7 @@ export default function AIAssetGenerator() {
       console.log('  Model:', selectedModel.id);
       console.log('  Provider:', selectedModel.provider);
       console.log('  Prompt:', prompt);
+      console.log('  Style:', selectedStyle?.name || 'None');
       console.log('  Width:', width);
       console.log('  Height:', height);
       console.log('  Steps:', steps);
@@ -51,6 +58,9 @@ export default function AIAssetGenerator() {
         model: selectedModel.id,
       };
 
+      if (selectedStyle && selectedStyle.id) {
+        requestBody.style = selectedStyle;
+      }
       if (width) requestBody.width = width;
       if (height) requestBody.height = height;
       if (steps) requestBody.steps = steps;
@@ -122,6 +132,22 @@ export default function AIAssetGenerator() {
         >
           {ALL_MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="font-semibold text-white block mb-2">Select Style</label>
+        <select
+          className="w-full p-2 mt-1 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          value={selectedStyle?.id || ''}
+          onChange={(e) => {
+            const style = LORA_STYLES.find(s => s.id === e.target.value);
+            setSelectedStyle(style || null);
+          }}
+        >
+          {LORA_STYLES.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       </div>
