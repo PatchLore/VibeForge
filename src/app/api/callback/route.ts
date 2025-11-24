@@ -22,47 +22,74 @@ export async function POST(request: NextRequest) {
     console.log('🔔 [CALLBACK] Received @', new Date().toISOString());
 
     const raw = await request.json();
-    console.log('🛰️ [CALLBACK RAW]', JSON.stringify(raw));
+    console.log('🛰️ [CALLBACK RAW]', JSON.stringify(raw, null, 2));
 
     // --- Normalize payload from various possible shapes ---
+    // "data" is the envelope (e.g. { callbackType, data: [...], task_id })
     const data = raw?.data ?? raw;
+
+    // "payload" was previously used inconsistently; here we treat it as the inner data field
+    // BUT if it's an array, that means it's the list of result items (Kie.ai style)
     const payload = data?.data ?? data;
-    
-    // Extract taskId from multiple locations
+
+    // If payload is an array (Kie.ai: data.data = [ {audio_url, image_url, ...}, ... ]),
+    // we treat the first item as the "primary" item for audio/image/title/etc.
+    const itemsArray = Array.isArray(payload) ? payload : (Array.isArray(data?.data) ? data.data : null);
+    const primaryItem = itemsArray?.[0] ?? null;
+
+    // Extract taskId from multiple possible locations (envelope-first)
     const taskId =
-      payload?.task_id ??
-      payload?.taskId ??
       data?.task_id ??
       data?.taskId ??
       raw?.task_id ??
-      raw?.taskId;
+      raw?.taskId ??
+      primaryItem?.task_id ??
+      primaryItem?.taskId;
 
+    // Status / callback type: Kie.ai uses callbackType: "complete"
     const status =
-      payload?.status ??
       data?.status ??
       raw?.status ??
-      payload?.callbackType ??
-      data?.callbackType;
+      (typeof data?.callbackType === 'string' ? data.callbackType : undefined) ??
+      (typeof raw?.callbackType === 'string' ? raw.callbackType : undefined);
+
+    // Basic debug log
+    console.log('📌 Normalized callback:', {
+      taskId,
+      status,
+      hasPrimaryItem: !!primaryItem,
+      isArray: Array.isArray(payload),
+    });
 
     // --- Parse image URL from multiple possible locations ---
+    // Priority 1: Kie.ai style: data.data[0].image_url (primaryItem)
     let imageUrl =
+      primaryItem?.image_url ||
+      primaryItem?.source_image_url ||
       (data?.result?.images?.[0]?.url ||
-      data?.output?.image_url_full ||
-      data?.output?.image_url ||
-      payload?.result?.images?.[0]?.url ||
-      payload?.output?.image_url_full ||
-      payload?.output?.image_url) ||
+        data?.output?.image_url_full ||
+        data?.output?.image_url ||
+        payload?.result?.images?.[0]?.url ||
+        payload?.output?.image_url_full ||
+        payload?.output?.image_url) ||
       (payload?.image_url ??
-      data?.image_url ??
-      raw?.image_url);
+        data?.image_url ??
+        raw?.image_url);
 
     // Also check resultJson.resultUrls (new API structure)
-    const resultJsonString = payload?.resultJson ?? data?.resultJson ?? raw?.resultJson ?? raw?.data?.resultJson;
+    const resultJsonString =
+      primaryItem?.resultJson ??
+      payload?.resultJson ??
+      data?.resultJson ??
+      raw?.resultJson ??
+      raw?.data?.resultJson;
+
     if (!imageUrl && resultJsonString) {
       try {
-        const resultJson = typeof resultJsonString === 'string' 
-          ? JSON.parse(resultJsonString) 
-          : resultJsonString;
+        const resultJson =
+          typeof resultJsonString === 'string'
+            ? JSON.parse(resultJsonString)
+            : resultJsonString;
         if (resultJson?.resultUrls && Array.isArray(resultJson.resultUrls) && resultJson.resultUrls.length > 0) {
           imageUrl = resultJson.resultUrls[0];
           console.log('✅ [CALLBACK] Extracted image URL from resultJson.resultUrls:', imageUrl);
@@ -73,19 +100,37 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Parse audio URL from multiple possible locations ---
+    // Priority 1: Kie.ai style: data.data[0].audio_url (primaryItem)
     const audioUrl =
+      primaryItem?.audio_url ||
+      primaryItem?.stream_audio_url ||
+      primaryItem?.source_audio_url ||
       (data?.result?.audios?.[0]?.url ||
-      data?.output?.audio_url ||
-      payload?.result?.audios?.[0]?.url ||
-      payload?.output?.audio_url) ||
+        data?.output?.audio_url ||
+        payload?.result?.audios?.[0]?.url ||
+        payload?.output?.audio_url) ||
       (payload?.audio_url ??
-      data?.audio_url ??
-      raw?.audio_url);
+        data?.audio_url ??
+        raw?.audio_url);
 
-    // Extract other metadata
-    const title = payload?.title ?? data?.title;
-    const duration = payload?.duration ?? data?.duration;
-    const prompt = payload?.prompt ?? data?.prompt;
+    // Extract other metadata (prefer primaryItem, then envelope)
+    const title =
+      primaryItem?.title ??
+      payload?.title ??
+      data?.title ??
+      raw?.title;
+
+    const duration =
+      primaryItem?.duration ??
+      payload?.duration ??
+      data?.duration ??
+      raw?.duration;
+
+    const prompt =
+      primaryItem?.prompt ??
+      payload?.prompt ??
+      data?.prompt ??
+      raw?.prompt;
 
     // Log what we received
     const hasImage = !!imageUrl;
@@ -142,25 +187,35 @@ export async function POST(request: NextRequest) {
     }
 
     if (!track) {
-      console.error('❌ [DEBUG] No track found in any lookup. Inserting recovery record...');
+      console.error('❌ [DEBUG] No track found in any lookup for taskId:', taskId);
+
+      // Avoid inserting invalid UUID like "system_recover" into user_id column.
+      // For now, just log and return ok:true so the callback doesn't keep retrying.
+      // If you want to persist orphaned callbacks, you can:
+      // - make user_id nullable in the DB
+      // - or add a dedicated "system" UUID.
       try {
-        const { data: inserted, error: insertErr } = await supabaseServer
+        const { error: insertErr } = await supabaseServer
           .from('tracks')
           .insert({
-            user_id: 'system_recover',
+            user_id: null,
             task_id: taskId,
             status: 'callback_inserted',
             image_url: imageUrl || null,
             resolution: null,
             created_at: new Date().toISOString(),
-          })
-          .select();
-        console.log('🧩 [DEBUG] Recovery insert result:', inserted, insertErr);
-        return NextResponse.json({ ok: true, inserted });
+          });
+
+        if (insertErr) {
+          console.error('🔥 [DEBUG ERROR] Recovery insert error:', insertErr);
+        } else {
+          console.log('🧩 [DEBUG] Recovery record inserted with null user_id');
+        }
       } catch (e) {
         console.error('🔥 [DEBUG ERROR] Recovery insert exception:', e);
-        return NextResponse.json({ ok: false, error: 'recovery insert failed' }, { status: 500 });
       }
+
+      return NextResponse.json({ ok: true, message: 'callback processed with recovery insert' });
     }
 
     // Check if this is an image callback (taskId matches image_task_id stored in extended_prompt)
