@@ -23,6 +23,7 @@ import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import PricingModal from '@/components/PricingModal';
+import { EmotionPreset } from '@/data/emotionPresets';
 
 const quickVibes = [
   { label: 'Heartbroken', value: 'heartbroken in the city' },
@@ -50,6 +51,14 @@ export default function Home() {
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
   const [showPricingModal, setShowPricingModal] = useState(false);
 
+  // Handler for emotion presets (from PromptPresets component)
+  const handlePresetSelect = (preset: EmotionPreset) => {
+    // Set the prompt directly to the vibe input
+    setVibe(preset.prompt);
+    track('Preset Used', { preset: preset.label });
+  };
+
+  // Handler for trending vibes (string-based)
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
     track('Preset Used', { preset: vibeValue });
@@ -397,7 +406,7 @@ export default function Home() {
 
             <div className="mb-8">
               <p className="text-white text-lg mb-4">Or choose a preset:</p>
-              <PromptPresets onPresetSelect={handleVibeSelect} />
+              <PromptPresets onPresetSelect={handlePresetSelect} />
             </div>
 
             <motion.button

@@ -162,7 +162,7 @@ async function generateWithDeepInfra({
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, modelId, loraId, loraStrength, width, height, steps, seed } = await req.json();
+    const { prompt, modelId, loraId, loraStrength, loras, aspect, width, height, steps, seed } = await req.json();
 
     console.log("====================================================");
     console.log("[DEBUG] Incoming modelId from frontend:", modelId);
@@ -176,20 +176,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Build loras array if LoRA is selected
-    const loras = loraId
-      ? [
-          {
-            id: loraId,
-            scale: loraStrength || 1.0
-          }
-        ]
-      : [];
+    // Build loras array - support both old format (loraId/loraStrength) and new format (loras array)
+    let lorasArray: Array<{ id: string; scale: number }> = [];
+    
+    if (loras && Array.isArray(loras) && loras.length > 0) {
+      // New format: array of { id, strength }
+      lorasArray = loras.map((l: any) => ({
+        id: l.id,
+        scale: l.strength || l.scale || 1.0
+      }));
+    } else if (loraId) {
+      // Old format: single loraId and loraStrength
+      lorasArray = [
+        {
+          id: loraId,
+          scale: loraStrength || 1.0
+        }
+      ];
+    }
 
     // Create a mutable body object for routing logic
     const body: any = {
       model: modelId,
-      loras: loras,
+      loras: lorasArray,
     };
 
     // ────────────────────────────────────────────────────────────────
@@ -201,7 +210,7 @@ export async function POST(req: NextRequest) {
     let provider = "deepinfra";
 
     // CASE 1 — LoRAs selected but model cannot use them
-    if (loras.length > 0 && LORA_SUPPORTED[model] === false) {
+    if (lorasArray.length > 0 && LORA_SUPPORTED[model] === false) {
       console.warn(`[LORA SWITCH] Model '${model}' does NOT support LoRAs. Switching to SDXL Turbo.`);
       finalModel = "stabilityai/sdxl-turbo";
       body.model = finalModel;
@@ -211,7 +220,7 @@ export async function POST(req: NextRequest) {
     }
 
     // CASE 2 — Seedream XL attempted with LoRAs
-    if (finalModel === "seedream-xl" && loras.length > 0) {
+    if (finalModel === "seedream-xl" && lorasArray.length > 0) {
       console.warn("[Seedream] LoRAs removed (Seedream does not support SDXL LoRAs).");
       body.loras = [];
     }

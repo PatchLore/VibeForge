@@ -27,6 +27,7 @@ import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { EmotionPreset } from '@/data/emotionPresets';
 
 export default function CreatePage() {
   const { user, loading } = useAuth();
@@ -46,6 +47,14 @@ export default function CreatePage() {
   const [expandedPrompts, setExpandedPrompts] = useState<{ music: string; art?: string; image?: string } | null>(null);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('');
 
+  // Handler for emotion presets (from PromptPresets component)
+  const handlePresetSelect = (preset: EmotionPreset) => {
+    // Set the prompt directly to the vibe input
+    setVibe(preset.prompt);
+    track('Preset Used', { preset: preset.label });
+  };
+
+  // Handler for trending vibes (string-based)
   const handleVibeSelect = (vibeValue: string) => {
     setVibe(vibeValue);
     track('Preset Used', { preset: vibeValue });
@@ -353,15 +362,26 @@ export default function CreatePage() {
                        transition-all duration-300 ease-out hover:border-primary 
                        hover:shadow-glow-lg"
           >
-            {/* Dreamify Mode - Coming Soon */}
-            <div className="p-3 rounded-2xl border border-white/10 bg-transparent mb-6 opacity-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">🌙 Dreamify Mode</h3>
-                  <p className="text-white/70 text-sm">Coming soon...</p>
+            {/* Dreamify Mode - Coming Soon (Blurred but Visible) */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="p-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm mb-6 blur-sm opacity-40 pointer-events-none"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-white text-lg font-semibold mb-2">🌀 Dreamify Mode</h3>
+                  <p className="text-white/70 text-sm mb-3">Coming soon...</p>
+                  <ul className="text-white/60 text-xs space-y-1">
+                    <li>• Emotional analysis</li>
+                    <li>• Auto music synthesis</li>
+                    <li>• Mood-driven gradients</li>
+                    <li>• Intelligent art pairing</li>
+                  </ul>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -392,7 +412,7 @@ export default function CreatePage() {
 
             <div className="mb-8">
               <p className="text-text text-lg mb-4">Or choose a preset:</p>
-              <PromptPresets onPresetSelect={handleVibeSelect} />
+              <PromptPresets onPresetSelect={handlePresetSelect} />
             </div>
 
             {/* New options: Vocals + Image Inspiration */}

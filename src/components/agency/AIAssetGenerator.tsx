@@ -2,27 +2,29 @@
 
 import React, { useEffect, useState } from "react";
 import { MODELS, LORA_SUPPORTED } from "@/data/models";
-import { LORA_STYLES } from "@/lib/loraStyles";
+import AspectRatioSelector, { aspectResolutionMap } from "./AspectRatioSelector";
+import LoraSelector, { SelectedLoRA } from "./LoraSelector";
+import EmotionalPresets, { EmotionalPreset } from "./EmotionalPresets";
+import GenerationHistory, { HistoryItem } from "./GenerationHistory";
 
 export default function AIAssetGenerator() {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(MODELS[0]?.value ?? null);
-  const [selectedLoraId, setSelectedLoraId] = useState<string>("");
-  const [loraStrength, setLoraStrength] = useState<number>(1.0);
+  const [selectedLoras, setSelectedLoras] = useState<SelectedLoRA[]>([]);
   const [prompt, setPrompt] = useState("");
-  const [width, setWidth] = useState<number>(1024);
-  const [height, setHeight] = useState<number>(1024);
+  const [aspect, setAspect] = useState("1:1");
   const [steps, setSteps] = useState<number | undefined>(undefined);
   const [seed, setSeed] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [imageResult, setImageResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // Derive the selected model
   const selectedModel = MODELS.find(m => m.value === selectedModelId) ?? MODELS[0];
   const supportsLora = selectedModelId ? LORA_SUPPORTED[selectedModelId] ?? false : false;
-  
-  // Get default scale for selected LoRA
-  const selectedLora = LORA_STYLES.find(s => s.id === selectedLoraId);
+
+  // Get width/height from aspect ratio
+  const { width, height } = aspectResolutionMap[aspect] || { width: 1024, height: 1024 };
 
   useEffect(() => {
     // Initialize with first model
@@ -31,12 +33,21 @@ export default function AIAssetGenerator() {
     }
   }, []);
 
-  // Update LoRA strength when LoRA changes
-  useEffect(() => {
-    if (selectedLora) {
-      setLoraStrength(selectedLora.defaultScale);
-    }
-  }, [selectedLora]);
+  const applyPreset = (preset: EmotionalPreset) => {
+    setPrompt(preset.prompt);
+    setAspect(preset.aspect);
+    setSelectedLoras(preset.loras);
+  };
+
+  const regenerateWith = (item: HistoryItem) => {
+    setPrompt(item.prompt);
+    setAspect(item.aspect);
+    setSelectedLoras(item.loras);
+    // Trigger generation after a short delay to allow state to update
+    setTimeout(() => {
+      handleGenerate();
+    }, 100);
+  };
 
   async function handleGenerate() {
     if (!prompt.trim()) {
@@ -57,23 +68,21 @@ export default function AIAssetGenerator() {
       console.log('  Model:', selectedModelId);
       console.log('  Model Label:', selectedModel.label);
       console.log('  Prompt:', prompt);
-      console.log('  Selected LoRA:', selectedLoraId || 'None');
-      console.log('  LoRA Strength:', loraStrength);
+      console.log('  Selected LoRAs:', selectedLoras.length);
+      console.log('  Aspect:', aspect);
       console.log('  Width:', width);
       console.log('  Height:', height);
       console.log('  Steps:', steps);
       console.log('  Seed:', seed);
       
-      // Build request body
-      // Use the model value (e.g., "flux-schnell") - the API will resolve to actual provider/model
+      // Build request body with new format
       const requestBody: any = {
         prompt,
-        modelId: selectedModelId, // e.g., "flux-schnell", "seedream-xl", etc.
-        provider: "deepinfra", // Will be overridden by API routing logic
-        loraId: selectedLoraId || null,
-        loraStrength: selectedLoraId ? loraStrength : null,
+        modelId: selectedModelId,
+        aspect,
         width,
         height,
+        loras: selectedLoras,
         steps,
         seed,
       };
@@ -103,6 +112,16 @@ export default function AIAssetGenerator() {
       console.log('  Image format:', data.image.substring(0, 30) + '...');
       
       setImageResult(data.image);
+
+      // Add to history
+      const historyItem: HistoryItem = {
+        image: data.image,
+        prompt,
+        loras: selectedLoras,
+        aspect,
+        timestamp: Date.now(),
+      };
+      setHistory(prev => [historyItem, ...prev].slice(0, 20));
     } catch (error: any) {
       console.error('❌ [AIAssetGenerator] Image generation failed:', error);
       setError(error.message || "Image generation failed");
@@ -132,6 +151,8 @@ export default function AIAssetGenerator() {
         />
       </div>
 
+      <EmotionalPresets onSelect={applyPreset} />
+
       <div>
         <label className="font-semibold text-white block mb-2">Model</label>
         <select
@@ -145,74 +166,11 @@ export default function AIAssetGenerator() {
         </select>
       </div>
 
+      <AspectRatioSelector aspect={aspect} onChange={setAspect} />
+
       {supportsLora && (
-        <>
-          <div>
-            <label className="font-semibold text-white block mb-2">LoRA Style</label>
-            <select
-              value={selectedLoraId}
-              onChange={(e) => setSelectedLoraId(e.target.value)}
-              className="w-full rounded-lg bg-black/30 border border-white/10 p-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            >
-              <option value="">No LoRA</option>
-              {LORA_STYLES.map((style) => (
-                <option key={style.id} value={style.id}>
-                  {style.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedLoraId && (
-            <div>
-              <label className="font-semibold text-white block mb-2">
-                LoRA Strength: {loraStrength.toFixed(1)}
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={2.5}
-                step={0.1}
-                value={loraStrength}
-                onChange={(e) => setLoraStrength(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>0.0</span>
-                <span>1.0</span>
-                <span>2.5</span>
-              </div>
-            </div>
-          )}
-        </>
+        <LoraSelector selected={selectedLoras} onChange={setSelectedLoras} />
       )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="font-semibold text-white block mb-2">Width</label>
-          <input
-            type="number"
-            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            value={width}
-            onChange={(e) => setWidth(parseInt(e.target.value) || 1024)}
-            min={256}
-            max={2048}
-            step={64}
-          />
-        </div>
-        <div>
-          <label className="font-semibold text-white block mb-2">Height</label>
-          <input
-            type="number"
-            className="w-full p-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            value={height}
-            onChange={(e) => setHeight(parseInt(e.target.value) || 1024)}
-            min={256}
-            max={2048}
-            step={64}
-          />
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -264,6 +222,12 @@ export default function AIAssetGenerator() {
               Download Image
             </a>
           </div>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="pt-6">
+          <GenerationHistory history={history} onRegenerate={regenerateWith} />
         </div>
       )}
     </div>
