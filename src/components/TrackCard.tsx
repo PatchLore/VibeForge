@@ -241,7 +241,6 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
                 className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
                 style={{
                   imageRendering: "crisp-edges",
-                  WebkitImageRendering: "crisp-edges",
                 }}
                 loading="lazy"
                 referrerPolicy="no-referrer"

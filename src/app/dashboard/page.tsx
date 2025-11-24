@@ -201,7 +201,6 @@ export default function DashboardPage() {
                         className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl mb-3"
                         style={{
                           imageRendering: "crisp-edges",
-                          WebkitImageRendering: "crisp-edges",
                         }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
