@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/app');
+      router.push('/create');
     }
   }, [user, loading, router]);
 
@@ -25,9 +25,13 @@ export default function Home() {
     );
   }
 
-  // Don't render marketing content if user is logged in (will redirect)
+  // Show redirecting state if user is logged in (will redirect to /create)
   if (user) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="text-white text-xl">Redirecting...</div>
+      </div>
+    );
   }
 
   return (
