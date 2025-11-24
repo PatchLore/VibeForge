@@ -15,7 +15,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { generateImage, verifyAndUpscaleTo2K } from "../src/lib/kie";
+import { verifyAndUpscaleTo2K } from "../src/lib/kie";
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,8 +68,29 @@ async function repairTrackImage(track: any) {
   }
   
   try {
-    // Generate new image synchronously
-    const imageUrl = await generateImage(track.extended_prompt_image);
+    // Generate new image via /api/generate (Runware/DeepInfra)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    
+    const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: track.extended_prompt_image,
+        modelId: 'stabilityai/sdxl-turbo',
+        width: 1344,
+        height: 768,
+      }),
+    });
+    
+    if (!imageResponse.ok) {
+      console.log(`[REPAIR] ❌ Skipped — image generation failed for track ${track.id}`);
+      return false;
+    }
+    
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.image;
     
     if (!imageUrl) {
       console.log(`[REPAIR] ❌ Skipped — image invalid for track ${track.id}`);
@@ -79,13 +100,13 @@ async function repairTrackImage(track: any) {
     // Verify the image dimensions
     const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
     
-    if (verified.width >= 2048 && verified.height >= 1152) {
+    if (verified.width >= 1344 && verified.height >= 768) {
       // Update the track with the new image
       const { error: updateError } = await supabase
         .from('tracks')
         .update({
           image_url: imageUrl,
-          resolution: '2048x1152',
+          resolution: '1344x768',
           updated_at: new Date().toISOString()
         })
         .eq('id', track.id);

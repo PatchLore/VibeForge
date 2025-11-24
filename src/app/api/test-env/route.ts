@@ -39,11 +39,6 @@ export async function GET() {
         value: process.env.VIBEFORGE_API_KEY ? `${process.env.VIBEFORGE_API_KEY.substring(0, 20)}...` : 'MISSING',
         fullKey: 'VIBEFORGE_API_KEY'
       },
-      image: {
-        present: !!process.env.KIE_IMAGE_API_KEY,
-        value: process.env.KIE_IMAGE_API_KEY ? `${process.env.KIE_IMAGE_API_KEY.substring(0, 20)}...` : 'MISSING',
-        fullKey: 'KIE_IMAGE_API_KEY'
-      },
       callback: {
         present: !!process.env.KIE_CALLBACK_URL,
         value: process.env.KIE_CALLBACK_URL || 'Using default: https://www.soundswoop.com/api/callback',
@@ -54,6 +49,18 @@ export async function GET() {
         present: !!process.env.KIE_MUSIC_API_KEY,
         value: process.env.KIE_MUSIC_API_KEY ? `${process.env.KIE_MUSIC_API_KEY.substring(0, 20)}...` : 'MISSING',
         fullKey: 'KIE_MUSIC_API_KEY'
+      }
+    },
+    imageGen: {
+      runware: {
+        present: !!process.env.RUNWARE_API_KEY,
+        value: process.env.RUNWARE_API_KEY ? `${process.env.RUNWARE_API_KEY.substring(0, 20)}...` : 'MISSING',
+        fullKey: 'RUNWARE_API_KEY'
+      },
+      deepinfra: {
+        present: !!process.env.DEEPINFRA_API_KEY,
+        value: process.env.DEEPINFRA_API_KEY ? `${process.env.DEEPINFRA_API_KEY.substring(0, 20)}...` : 'MISSING',
+        fullKey: 'DEEPINFRA_API_KEY'
       }
     },
     stripe: {
@@ -113,7 +120,8 @@ export async function GET() {
     envCheck.supabase.anonKey,
     envCheck.supabase.serviceRole,
     envCheck.kie.music,
-    envCheck.kie.image
+    // At least one image generation API key is required
+    { present: (envCheck.imageGen.runware.present || envCheck.imageGen.deepinfra.present), fullKey: 'RUNWARE_API_KEY or DEEPINFRA_API_KEY' }
   ];
 
   const allCriticalPresent = criticalVars.every(v => v.present);

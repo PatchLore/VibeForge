@@ -8,7 +8,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { generateImage, verifyAndUpscaleTo2K } from "../src/lib/kie";
+import { verifyAndUpscaleTo2K } from "../src/lib/kie";
 
 const TRACK_ID = process.env.TRACK_ID || "0ed159ad-3dcd-4e2d-ad88-29e899685f62";
 
@@ -64,9 +64,32 @@ async function repairSpecificTrack() {
     
     console.log(`🎨 [REPAIR] Using prompt: ${track.extended_prompt_image.substring(0, 100)}...`);
     
-    // Generate new image synchronously
+    // Generate new image via /api/generate (Runware/DeepInfra)
     console.log(`🖼️ [REPAIR] Generating new image...`);
-    const imageUrl = await generateImage(track.extended_prompt_image);
+    
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    
+    const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: track.extended_prompt_image,
+        modelId: 'stabilityai/sdxl-turbo',
+        width: 1344,
+        height: 768,
+      }),
+    });
+    
+    if (!imageResponse.ok) {
+      const errorData = await imageResponse.json().catch(() => ({}));
+      console.log(`❌ [REPAIR] Image generation failed:`, errorData);
+      process.exit(1);
+    }
+    
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.image;
     
     if (!imageUrl) {
       console.log(`❌ [REPAIR] No image URL returned from generator`);
@@ -81,7 +104,7 @@ async function repairSpecificTrack() {
     
     console.log(`📏 [REPAIR] Verified size: ${verified.width}x${verified.height}`);
     
-    if (verified.width >= 2048 && verified.height >= 1152) {
+    if (verified.width >= 1344 && verified.height >= 768) {
       // Update the track with the new image
       console.log(`💾 [REPAIR] Image valid, updating database...`);
       
@@ -89,7 +112,7 @@ async function repairSpecificTrack() {
         .from('tracks')
         .update({
           image_url: imageUrl,
-          resolution: '2048x1152',
+          resolution: '1344x768',
           updated_at: new Date().toISOString()
         })
         .eq('id', TRACK_ID);
@@ -102,14 +125,14 @@ async function repairSpecificTrack() {
       console.log(`✅ [REPAIR] Track ${TRACK_ID} successfully repaired!`);
       console.log(`\n📊 Summary:`);
       console.log(`   Old image: ${track.image_url || 'NULL'}`);
-      console.log(`   New image: ${imageUrl}`);
+      console.log(`   New image: ${imageUrl.substring(0, 100)}...`);
       console.log(`   Old resolution: ${track.resolution || 'NULL'}`);
-      console.log(`   New resolution: 2048x1152`);
+      console.log(`   New resolution: 1344x768`);
       console.log(`   Verified: ${verified.width}x${verified.height}`);
       console.log(`⏰ [REPAIR] Finished at ${new Date().toISOString()}`);
     } else {
       console.log(`❌ [REPAIR] Image too small: ${verified.width}x${verified.height}`);
-      console.log(`   Expected: 2048x1152 minimum`);
+      console.log(`   Expected: 1344x768 minimum`);
       process.exit(1);
     }
     

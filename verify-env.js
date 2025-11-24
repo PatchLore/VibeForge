@@ -16,9 +16,12 @@ const requiredVars = {
   'NEXT_PUBLIC_SUPABASE_URL': 'Public Supabase URL (client-side)',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY': 'Public Supabase anon key (client-side)',
   
-  // Kie.ai Configuration
-  'KIE_API_KEY': 'Kie.ai API key for image generation',
-  'VibeForge': 'VibeForge API key for music generation',
+  // Kie.ai Configuration (Music Generation)
+  'VIBEFORGE_API_KEY': 'VibeForge API key for music generation (Kie.ai)',
+  
+  // Image Generation (Runware/DeepInfra - at least one required)
+  'RUNWARE_API_KEY': 'Runware API key for image generation',
+  'DEEPINFRA_API_KEY': 'DeepInfra API key for image generation',
   
   // Callback Configuration
   'KIE_CALLBACK_URL': 'Kie.ai callback URL',

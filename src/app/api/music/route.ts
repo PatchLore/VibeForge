@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateMusic, checkMusicStatus, generateImage } from "@/lib/kie";
+import { generateMusic, checkMusicStatus } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt, generateEnrichedPrompts } from "@/lib/enrichPrompt";
 import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
@@ -180,17 +180,44 @@ export async function POST(req: Request) {
 
     // Generate music and image concurrently using new API structure
     console.log("🚀 [GENERATION START] Starting concurrent music + image generation");
-    const [musicTaskId, imageTaskId] = await Promise.all([
-      generateMusic(cleanedMusicPrompt),
-      generateImage(imagePrompt).catch((e) => {
-        console.warn("⚠️ [GENERATION START] Image generation failed, continuing without image:", e);
-        return null;
-      })
-    ]);
     
-    taskId = musicTaskId;
+    // Generate music via Kie.ai (async, will callback)
+    taskId = await generateMusic(cleanedMusicPrompt);
     console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
-    console.log("🖼️ [GENERATION START] image task_id:", imageTaskId || "none");
+    
+    // Generate image via /api/generate (Runware/DeepInfra) - synchronous
+    let generatedImageUrl: string | null = null;
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000';
+      
+      const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: imagePrompt,
+          modelId: 'stabilityai/sdxl-turbo',
+          width: 1344,
+          height: 768,
+        }),
+      });
+      
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json();
+        if (imageData.image) {
+          generatedImageUrl = imageData.image;
+          console.log("🖼️ [GENERATION START] Image generated successfully via /api/generate");
+        }
+      } else {
+        const errorData = await imageResponse.json().catch(() => ({}));
+        console.warn("⚠️ [GENERATION START] Image generation failed:", errorData);
+      }
+    } catch (e) {
+      console.warn("⚠️ [GENERATION START] Image generation failed, continuing without image:", e);
+    }
+    
+    console.log("🖼️ [GENERATION START] image status:", generatedImageUrl ? "generated" : "none");
 
     if (!taskId) {
       throw new Error("Missing taskId from music generation");
@@ -217,8 +244,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Duplicate task_id detected', taskId }, { status: 409 });
       }
 
-      // Store both music and image taskIds in extended_prompt for callback matching
-      const extendedPrompt = `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}${imageTaskId ? ` | image_task_id: ${imageTaskId}` : ''}`;
+      // Store prompts and image URL if generated
+      const extendedPrompt = `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`;
       
       await supabaseAdmin
         .from('tracks')
@@ -228,6 +255,8 @@ export async function POST(req: Request) {
           title: generatedTitle,
           prompt: userVibe,
           extended_prompt: extendedPrompt,
+          image_url: generatedImageUrl, // Save image immediately if generated
+          resolution: generatedImageUrl ? '1344x768' : null,
           status: 'processing',
           created_at: new Date().toISOString()
         });

@@ -35,9 +35,10 @@ try {
     'SUPABASE_SERVICE_ROLE_KEY',
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'KIE_API_KEY',
-    'VibeForge',
+    'VIBEFORGE_API_KEY', // Music generation (Kie.ai)
     'KIE_CALLBACK_URL',
+    'RUNWARE_API_KEY', // Image generation (Runware)
+    'DEEPINFRA_API_KEY', // Image generation (DeepInfra) - at least one of RUNWARE or DEEPINFRA required
     'NEXT_PUBLIC_BASE_URL',
     'NODE_ENV'
   ];

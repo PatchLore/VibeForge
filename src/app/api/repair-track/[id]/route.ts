@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { generateImage, verifyAndUpscaleTo2K } from "@/lib/kie";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -63,17 +62,44 @@ export async function GET(
     console.log(`🎨 [REPAIR] Using prompt: ${track.extended_prompt_image.substring(0, 100)}...`);
     console.log(`📝 [REPAIR] Full prompt length: ${track.extended_prompt_image.length} characters`);
     
-    // Generate new image synchronously
-    console.log(`🖼️ [REPAIR] Calling generateImage() with prompt...`);
-    const imageUrl = await generateImage(track.extended_prompt_image);
+    // Generate new image via /api/generate (Runware/DeepInfra)
+    console.log(`🖼️ [REPAIR] Calling /api/generate with prompt...`);
     
-    console.log(`📦 [REPAIR] generateImage() returned:`, {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    
+    const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: track.extended_prompt_image,
+        modelId: 'stabilityai/sdxl-turbo',
+        width: 1344,
+        height: 768,
+      }),
+    });
+    
+    if (!imageResponse.ok) {
+      const errorData = await imageResponse.json().catch(() => ({}));
+      console.log(`❌ [REPAIR] Image generation failed:`, errorData);
+      return NextResponse.json({
+        success: false,
+        error: "Image generation failed",
+        details: errorData
+      }, { status: 500 });
+    }
+    
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.image;
+    
+    console.log(`📦 [REPAIR] /api/generate returned:`, {
       hasImageUrl: !!imageUrl,
       preview: imageUrl ? imageUrl.substring(0, 100) + '...' : null
     });
     
     if (!imageUrl) {
-      console.log(`❌ [REPAIR] generateImage() returned undefined/null`);
+      console.log(`❌ [REPAIR] /api/generate returned no image`);
       return NextResponse.json({
         success: false,
         error: "Image generation failed - no result returned"
@@ -81,63 +107,43 @@ export async function GET(
     }
     
     console.log(`✅ [REPAIR] Image generated successfully`);
-    console.log(`🔗 [REPAIR] Image URL: ${imageUrl}`);
+    console.log(`🔗 [REPAIR] Image URL: ${imageUrl.substring(0, 100)}...`);
     
-    // Verify the image dimensions
-    console.log(`🔍 [REPAIR] Verifying image dimensions...`);
-    const verified = await verifyAndUpscaleTo2K(imageUrl, { width: 2048, height: 1152 });
+    // Update the track with the new image
+    console.log(`💾 [REPAIR] Image valid, updating database...`);
     
-    console.log(`📏 [REPAIR] Verified size: ${verified.width}x${verified.height}`);
+    const { error: updateError } = await supabaseServer
+      .from('tracks')
+      .update({
+        image_url: imageUrl,
+        resolution: '1344x768',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', trackId);
     
-    if (verified.width >= 2048 && verified.height >= 1152) {
-      // Update the track with the new image
-      console.log(`💾 [REPAIR] Image valid, updating database...`);
-      
-      const { error: updateError } = await supabaseServer
-        .from('tracks')
-        .update({
-          image_url: imageUrl,
-          resolution: '2048x1152',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', trackId);
-      
-      if (updateError) {
-        console.error(`❌ [REPAIR] Database update error:`, updateError);
-        return NextResponse.json({
-          success: false,
-          error: "Database update failed",
-          details: updateError
-        }, { status: 500 });
-      }
-      
-      console.log(`✅ [REPAIR] Track ${trackId} successfully repaired!`);
-      
-      return NextResponse.json({
-        success: true,
-        message: "Track repaired successfully",
-        track: {
-          id: trackId,
-          title: track.title,
-          oldImageUrl: track.image_url,
-          oldResolution: track.resolution,
-          newImageUrl: imageUrl,
-          newResolution: '2048x1152',
-          verifiedDimensions: `${verified.width}x${verified.height}`
-        }
-      });
-    } else {
-      console.log(`❌ [REPAIR] Image too small: ${verified.width}x${verified.height}`);
+    if (updateError) {
+      console.error(`❌ [REPAIR] Database update error:`, updateError);
       return NextResponse.json({
         success: false,
-        error: "Generated image is too small",
-        details: {
-          width: verified.width,
-          height: verified.height,
-          minimum: "2048x1152"
-        }
-      }, { status: 400 });
+        error: "Database update failed",
+        details: updateError
+      }, { status: 500 });
     }
+    
+    console.log(`✅ [REPAIR] Track ${trackId} successfully repaired!`);
+    
+    return NextResponse.json({
+      success: true,
+      message: "Track repaired successfully",
+      track: {
+        id: trackId,
+        title: track.title,
+        oldImageUrl: track.image_url,
+        oldResolution: track.resolution,
+        newImageUrl: imageUrl,
+        newResolution: '1344x768'
+      }
+    });
     
   } catch (error: any) {
     console.error(`❌ [REPAIR] Fatal error:`, error);

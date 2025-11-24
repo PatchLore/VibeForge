@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { generateImage } from "@/lib/kie";
 import { buildImagePrompt } from "@/lib/enrichPrompt";
 
 export const runtime = "nodejs";
@@ -36,19 +35,40 @@ export async function POST(req: Request) {
     console.log("🎨 [VISUAL] Literal image prompt:", imagePrompt);
     console.log("[IMAGE PROMPT SENT]", imagePrompt);
 
-    // Generate image using enriched prompt
-    const imageUrl = await generateImage(imagePrompt);
+    // Generate image via /api/generate (Runware/DeepInfra)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    
+    const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: imagePrompt,
+        modelId: 'stabilityai/sdxl-turbo',
+        width: 1344,
+        height: 768,
+      }),
+    });
 
-    if (!imageUrl) {
-      throw new Error("Image generation failed");
+    if (!imageResponse.ok) {
+      const errorData = await imageResponse.json().catch(() => ({}));
+      throw new Error(`Image generation failed: ${errorData.error || 'Unknown error'}`);
     }
 
-    console.log("✅ [VISUAL] Image generated successfully:", imageUrl);
+    const imageData = await imageResponse.json();
+    const imageUrl = imageData.image;
+
+    if (!imageUrl) {
+      throw new Error("Image generation failed - no image returned");
+    }
+
+    console.log("✅ [VISUAL] Image generated successfully");
 
     return NextResponse.json({
       success: true,
       imageUrl: imageUrl,
-      resolution: "2048x1152",
+      resolution: "1344x768",
       prompt: prompt,
       literalPrompt: imagePrompt,
       timestamp: new Date().toISOString()

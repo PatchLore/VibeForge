@@ -1,47 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { CREDITS_PER_GENERATION } from '@/lib/config';
-import { generateImage, getImageDimensions, getImageDimensionsFromBuffer } from '@/lib/kie';
-import { buildImagePrompt } from '@/lib/enrichPrompt';
+import { getImageDimensions, getImageDimensionsFromBuffer } from '@/lib/kie';
 import { generateTrackTitle } from '@/lib/generateTrackTitle';
 
 export const dynamic = "force-dynamic";
 
 // Allow this endpoint to be public (no auth required)
 export const runtime = "nodejs";
-
-// Helper function to retry image generation with different resolution
-async function retryWithResolution(
-  resolution: "4K",
-  taskId: string,
-  userId: string,
-  prompt: string,
-  extendedPrompt: string | null
-): Promise<string | null> {
-  try {
-    const imagePrompt = buildImagePrompt(prompt);
-    const retryTaskId = await generateImage(imagePrompt, "", resolution);
-    
-    if (retryTaskId) {
-      if (!supabaseServer) {
-        console.error('❌ [CALLBACK] Supabase not initialized during retryWithResolution');
-        return null;
-      }
-      await supabaseServer
-        .from('tracks')
-        .update({ 
-          extended_prompt: `${extendedPrompt || prompt} | image_task_id: ${retryTaskId} | retry_${resolution.toLowerCase()}: true`,
-          updated_at: new Date().toISOString()
-        })
-        .eq('task_id', taskId);
-      console.log(`🔄 [CALLBACK] ${resolution} retry task created:`, retryTaskId);
-      return retryTaskId;
-    }
-  } catch (error) {
-    console.error(`❌ [CALLBACK] Failed to retry with ${resolution}:`, error);
-  }
-  return null;
-}
 
 export async function GET() {
   return NextResponse.json({ 
@@ -228,104 +194,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // --- Handle Image Callback Separately ---
+    // --- Handle Image Callback (Legacy - for backward compatibility with old Kie.ai image callbacks) ---
+    // Note: New image generation uses /api/generate synchronously, so this is only for old callbacks
     if (imageUrl && (isImageCallback || !track.image_url)) {
-      console.log('🖼️ [CALLBACK] Image URL received.');
-
-      // 1) Request presigned full-size download URL from Kie.ai
+      console.log('🖼️ [CALLBACK] Legacy image URL received (from old Kie.ai callbacks).');
+      
+      // For legacy callbacks, just save the image URL directly
+      // No need for presigned URL fetching since we're moving away from Kie.ai image generation
       try {
-        const dlRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ taskId: taskId, url: imageUrl })
-        });
-
-        const dlJson = await dlRes.json();
-        const presignedUrl = dlJson?.data;
-        if (!dlRes.ok || !presignedUrl) {
-          console.error('❌ [CALLBACK] Failed to get presigned download URL:', dlJson);
-          return NextResponse.json({ ok: false, error: 'presigned url fetch failed' }, { status: 500 });
-        }
-        console.log('🔍 [DEBUG] Presigned URL received:', presignedUrl);
-
-        // --- Get final full-size URL with polling ---
-        let finalUrl: string | null = null;
-        for (let i = 1; i <= 5; i++) {
-          const dlRes = await fetch("https://api.kie.ai/api/v1/gpt4o-image/download-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ taskId, url: imageUrl, resolution: "2K" }),
-          });
-
-          const dlJson = await dlRes.json();
-          const candidate: string | undefined = dlJson?.data;
-          if (!candidate) {
-            console.log(`⏳ [CALLBACK] Attempt ${i}: no download-url yet`);
-            await new Promise(r => setTimeout(r, 3000));
-            continue;
-          }
-
-          const check = await getImageDimensions(candidate);
-          console.log('🔍 [DEBUG] Verification result:', check);
-          console.log(`🖼️ [IMAGE DIM] Attempt ${i}: ${check?.width || "?"}x${check?.height || "?"}`);
-          if (check && check.width >= 2048) {
-            finalUrl = candidate;
-            console.log(`✅ [IMAGE GEN] Verified full-res on attempt ${i}: ${check.width}x${check.height}`);
-            try {
-              console.log('🧩 [DEBUG] Updating image_url + resolution for track:', track.id);
-              const { data: updateRes, error: updateErr } = await supabaseServer
-                .from('tracks')
-                .update({
-                  image_url: finalUrl,
-                  resolution: `${check.width}x${check.height}`,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', track.id)
-                .select()
-                .maybeSingle();
-              console.log('🧩 [DEBUG] Update result:', { updateRes, updateErr });
-            } catch (err) {
-              console.error('🔥 [DEBUG ERROR] Supabase update failed:', err);
-            }
-
-            try {
-              const { data: postCheck, error: postErr } = await supabaseServer
-                .from('tracks')
-                .select('id, image_url, resolution, status, task_id, created_at')
-                .eq('task_id', taskId)
-                .maybeSingle();
-              if (postErr) console.error('🔥 [DEBUG ERROR] Post-update DB check failed:', postErr);
-              console.log('🔍 [DEBUG] Post-update DB check:', postCheck);
-            } catch (err) {
-              console.error('🔥 [DEBUG ERROR] Supabase select failed:', err);
-            }
-            break;
-          }
-
-          await new Promise(r => setTimeout(r, 3000));
-        }
-
-        if (!finalUrl) {
-          console.warn("⚠️ [CALLBACK] Could not verify 2K image after polling — saving latest candidate to avoid nulls.");
-          try {
-            console.log('🔍 [DEBUG] Fallback update for taskId (avoid nulls):', taskId, 'imageUrl:', imageUrl);
-            const fbRes = await supabaseServer
-              .from("tracks")
-              .update({
-                image_url: imageUrl || null,
-                resolution: "unknown",
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", track.id)
-              .select();
-            console.log('🔍 [DEBUG] Fallback update result:', fbRes);
-          } catch (err) {
-            console.error('🔥 [DEBUG ERROR] Fallback update failed:', err);
-          }
+        const { error: updateErr } = await supabaseServer
+          .from('tracks')
+          .update({
+            image_url: imageUrl,
+            resolution: "unknown", // Legacy callback, resolution unknown
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', track.id);
+        
+        if (updateErr) {
+          console.error('❌ [CALLBACK] Failed to update image URL:', updateErr);
+        } else {
+          console.log('✅ [CALLBACK] Legacy image URL saved');
         }
       } catch (err) {
-        console.error('❌ [CALLBACK] Presigned download flow failed:', err);
-        return NextResponse.json({ ok: false, error: 'presigned download flow failed' }, { status: 500 });
+        console.error('❌ [CALLBACK] Legacy image update failed:', err);
       }
     }
 

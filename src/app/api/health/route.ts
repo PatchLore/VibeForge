@@ -11,8 +11,11 @@ export async function GET() {
     },
     kie: {
       music: !!process.env.VIBEFORGE_API_KEY,
-      image: !!process.env.KIE_IMAGE_API_KEY,
       callback: !!process.env.KIE_CALLBACK_URL,
+    },
+    imageGen: {
+      runware: !!process.env.RUNWARE_API_KEY,
+      deepinfra: !!process.env.DEEPINFRA_API_KEY,
     },
     stripe: {
       secret: !!process.env.STRIPE_SECRET_KEY,
@@ -28,7 +31,8 @@ export async function GET() {
     envCheck.supabase.anonKey,
     envCheck.supabase.serviceRole,
     envCheck.kie.music,
-    envCheck.kie.image
+    // At least one image generation API key is required
+    (envCheck.imageGen.runware || envCheck.imageGen.deepinfra)
   ];
 
   const allCriticalPresent = criticalVars.every(v => v);
@@ -37,7 +41,7 @@ export async function GET() {
     !envCheck.supabase.anonKey && 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     !envCheck.supabase.serviceRole && 'SUPABASE_SERVICE_ROLE_KEY',
     !envCheck.kie.music && 'VIBEFORGE_API_KEY',
-    !envCheck.kie.image && 'KIE_IMAGE_API_KEY'
+    !(envCheck.imageGen.runware || envCheck.imageGen.deepinfra) && 'RUNWARE_API_KEY or DEEPINFRA_API_KEY'
   ].filter(Boolean);
 
   return Response.json({ 

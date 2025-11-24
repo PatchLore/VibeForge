@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildImagePrompt } from "@/lib/enrichPrompt";
-import { generateImage } from "@/lib/kie";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,18 +44,54 @@ export async function GET() {
         ? track.extended_prompt_image
         : buildImagePrompt(track.prompt || '');
       try {
-        // Try with primary prompt, then fallback to built prompt if needed
-        let imageUrl = await generateImage(primaryPrompt);
+        // Generate image via /api/generate (Runware/DeepInfra)
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000';
+        
+        let imageUrl: string | null = null;
+        const imageResponse = await fetch(`${baseUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: primaryPrompt,
+            modelId: 'stabilityai/sdxl-turbo',
+            width: 1344,
+            height: 768,
+          }),
+        });
+        
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          imageUrl = imageData.image || null;
+        }
+        
+        // Try fallback prompt if primary failed
         if (!imageUrl && primaryPrompt !== buildImagePrompt(track.prompt || '')) {
           const fallbackPrompt = buildImagePrompt(track.prompt || '');
-          imageUrl = await generateImage(fallbackPrompt);
+          const fallbackResponse = await fetch(`${baseUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: fallbackPrompt,
+              modelId: 'stabilityai/sdxl-turbo',
+              width: 1344,
+              height: 768,
+            }),
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            imageUrl = fallbackData.image || null;
+          }
         }
+        
         if (imageUrl) {
           await supabaseAdmin
             .from("tracks")
             .update({
-              image_url: typeof imageUrl === "string" ? imageUrl : (imageUrl as any)?.imageUrl ?? null,
-              resolution: "2048x1152",
+              image_url: imageUrl,
+              resolution: "1344x768",
               status: "completed", // Restore from archived to completed when image is added
               updated_at: new Date().toISOString(),
             })

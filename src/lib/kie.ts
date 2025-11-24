@@ -1,7 +1,7 @@
 // 🎯 API Key Manager - Clear separation of concerns
+// Note: Image generation now uses /api/generate (Runware/DeepInfra), not Kie.ai
 const KIE_KEYS = {
   music: process.env.VIBEFORGE_API_KEY,
-  image: process.env.KIE_IMAGE_API_KEY,
 };
 
 // ⚠️ Runtime validation with clear warnings
@@ -9,14 +9,9 @@ if (!KIE_KEYS.music) {
   console.warn("⚠️ Missing VIBEFORGE_API_KEY (Music Generation) API key! Please add it to Vercel.");
 }
 
-if (!KIE_KEYS.image) {
-  console.warn("⚠️ Missing KIE_IMAGE_API_KEY (Image Generation) API key! Please add it to Vercel.");
-}
-
 // ✅ Startup confirmation
 console.log("✅ Kie.ai API keys loaded:");
 console.log("🎵 Music Key:", KIE_KEYS.music ? "Loaded ✅" : "Missing ❌");
-console.log("🖼️ Image Key:", KIE_KEYS.image ? "Loaded ✅" : "Missing ❌");
 
 const BASE_URL = "https://api.kie.ai/api/v1";
 
@@ -84,81 +79,9 @@ export async function checkMusicStatus(taskId: string) {
   return result;
 }
 
-// 🖼️ IMAGE GENERATION — Using correct Kie.ai API structure
-// Based on official API docs: /api/v1/jobs/createTask
-export async function generateImage(
-  prompt: string,
-  styleSuffix: string = "",
-  resolution: "2K" | "4K" = "2K"
-): Promise<string | null> {
-  const apiKey = KIE_KEYS.image;
-  if (!apiKey)
-    throw new Error("Missing KIE_IMAGE_API_KEY for image generation");
-
-  const finalPrompt = `${prompt}${styleSuffix ? `, ${styleSuffix}` : ""}`;
-  const model = "bytedance/seedream-v4-text-to-image";
-  
-  // Use correct API structure per documentation
-  // image_size: "landscape_16_9" for 16:9 aspect ratio
-  // image_resolution: "2K" for 2K resolution (combines with image_size to give actual pixels)
-  const callBackUrl = process.env.KIE_CALLBACK_URL || "https://www.soundswoop.com/api/callback";
-  
-  const requestBody = {
-    model: model,
-    callBackUrl: callBackUrl,
-    input: {
-      prompt: finalPrompt,
-      image_size: "landscape_16_9",  // 16:9 aspect ratio
-      image_resolution: resolution,   // 2K or 4K resolution
-      max_images: 1,
-    }
-  };
-  
-  console.log(`🖼️ [IMAGE GEN] Using correct API endpoint: https://api.kie.ai/api/v1/jobs/createTask`);
-  console.log(`🖼️ [IMAGE GEN] Request body:`, JSON.stringify(requestBody, null, 2));
-
-  try {
-    // Use correct endpoint from documentation: https://api.kie.ai/api/v1/jobs/createTask
-    const response = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await response.json();
-    console.log(`🖼️ [IMAGE GEN] status: ${response.status} ok: ${response.ok}`);
-    console.log(`🖼️ [IMAGE GEN] Full response:`, JSON.stringify(data, null, 2));
-    
-    if (!response.ok || (data as any)?.code !== 200) {
-      console.error("❌ [IMAGE GEN] Failed:", data);
-      return null;
-    }
-
-    // Response structure: { code: 200, data: { taskId: "..." } }
-    const taskId = (data as any)?.data?.taskId;
-    
-    if (!taskId) {
-      console.error("❌ [IMAGE GEN] No taskId in response:", data);
-      return null;
-    }
-    
-    console.log(`✅ [IMAGE GEN] Task created: ${taskId}`);
-    console.log(`🖼️ [IMAGE GEN] Image will be delivered via callback at: ${callBackUrl}`);
-    console.log(`🖼️ [IMAGE GEN] Requested resolution: ${resolution} with landscape_16_9`);
-    
-    // Return taskId - the actual image URL will come via callback
-    // The callback will contain resultJson with resultUrls array
-    // For now, return taskId so caller can track the task
-    // In the callback handler, we'll extract the image URL from resultJson.resultUrls[0]
-    return taskId;
-  } catch (error) {
-    console.error("❌ [IMAGE GEN] Exception:", error);
-    return null;
-  }
-}
+// 🖼️ IMAGE GENERATION — REMOVED
+// Image generation now uses /api/generate (Runware/DeepInfra) instead of Kie.ai
+// This function has been removed. Use /api/generate endpoint for image generation.
 
 // 🖼️ Get actual image dimensions by fetching and parsing image metadata
 // Works in Node.js by parsing image binary headers
