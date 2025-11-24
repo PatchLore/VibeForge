@@ -19,13 +19,15 @@ export const MODELS: ModelOption[] = [
 
 // LoRA support matrix — only SDXL Turbo works
 export const LORA_SUPPORTED: Record<string, boolean> = {
+  // Flux models – no LoRAs
   "flux-schnell": false,
   "flux-dev": false,
   "seedream-xl": false,
   "janu-sdxl": false,
 
-  // ONLY SDXL Turbo supports LoRAs on DeepInfra
+  // SDXL base models – LoRA friendly
   "stabilityai/sdxl-turbo": true,
+  "ai-forever/sdxl-turbo": true,
 };
 
 // Model metadata
@@ -41,6 +43,7 @@ export const MODEL_METADATA: Record<string, ModelMetadata> = {
     value: "flux-schnell",
     provider: "runware",
     apiModelId: "runware:101@1",
+    deepInfraModelId: "black-forest-labs/FLUX.1-schnell",
   },
   "flux-dev": {
     value: "flux-dev",
@@ -58,10 +61,15 @@ export const MODEL_METADATA: Record<string, ModelMetadata> = {
     deepInfraModelId: "alionsonny/janus-pro-sdxl",
   },
 
-  // LoRA model (must match DeepInfra exactly)
+  // LoRA models (must match DeepInfra exactly)
   "stabilityai/sdxl-turbo": {
     value: "stabilityai/sdxl-turbo",
     provider: "deepinfra",
     deepInfraModelId: "stabilityai/sdxl-turbo",
+  },
+  "ai-forever/sdxl-turbo": {
+    value: "ai-forever/sdxl-turbo",
+    provider: "deepinfra",
+    deepInfraModelId: "ai-forever/sdxl-turbo",
   },
 };

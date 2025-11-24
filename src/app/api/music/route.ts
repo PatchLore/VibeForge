@@ -4,6 +4,7 @@ import { generateMusic, checkMusicStatus } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt, generateEnrichedPrompts } from "@/lib/enrichPrompt";
 import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";
+import { generateImageDirect } from "@/lib/generateImage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -185,36 +186,20 @@ export async function POST(req: Request) {
     taskId = await generateMusic(cleanedMusicPrompt);
     console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
     
-    // Generate image via /api/generate (Runware/DeepInfra) - synchronous
+    // Generate image directly (no HTTP call needed) - synchronous
     let generatedImageUrl: string | null = null;
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000';
-      
-      const imageResponse = await fetch(`${baseUrl}/api/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: imagePrompt,
-          modelId: 'stabilityai/sdxl-turbo',
-          width: 1344,
-          height: 768,
-        }),
+      console.log("🖼️ [GENERATION START] Generating image directly via generateImageDirect");
+      generatedImageUrl = await generateImageDirect({
+        prompt: imagePrompt,
+        modelId: 'stabilityai/sdxl-turbo',
+        width: 1344,
+        height: 768,
       });
-      
-      if (imageResponse.ok) {
-        const imageData = await imageResponse.json();
-        if (imageData.image) {
-          generatedImageUrl = imageData.image;
-          console.log("🖼️ [GENERATION START] Image generated successfully via /api/generate");
-        }
-      } else {
-        const errorData = await imageResponse.json().catch(() => ({}));
-        console.warn("⚠️ [GENERATION START] Image generation failed:", errorData);
-      }
-    } catch (e) {
-      console.warn("⚠️ [GENERATION START] Image generation failed, continuing without image:", e);
+      console.log("🖼️ [GENERATION START] Image generated successfully:", generatedImageUrl ? "yes" : "no");
+    } catch (e: any) {
+      console.error("❌ [GENERATION START] Image generation failed:", e?.message || e);
+      console.warn("⚠️ [GENERATION START] Continuing without image - music generation will proceed");
     }
     
     console.log("🖼️ [GENERATION START] image status:", generatedImageUrl ? "generated" : "none");

@@ -276,9 +276,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'track fetch failed' }, { status: 500 });
     }
 
-    // Only mark as completed if both audio and image exist
-    if (finalTrack.audio_url && finalTrack.image_url && finalTrack.status !== 'completed') {
-      console.log('✅ [CALLBACK] Both audio and image present, marking as completed');
+    // Mark as completed if audio exists (image may have been generated synchronously or may be missing)
+    // If image is missing but audio exists, we'll mark as completed anyway (image generation may have failed)
+    if (finalTrack.audio_url && finalTrack.status !== 'completed') {
+      if (finalTrack.image_url) {
+        console.log('✅ [CALLBACK] Both audio and image present, marking as completed');
+      } else {
+        console.log('⚠️ [CALLBACK] Audio present but image missing - marking as completed anyway (image generation may have failed)');
+      }
       
       try {
         console.log('🔍 [DEBUG] Marking completed for id:', track.id);
