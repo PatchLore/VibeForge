@@ -362,27 +362,6 @@ export default function CreatePage() {
                        transition-all duration-300 ease-out hover:border-primary 
                        hover:shadow-glow-lg"
           >
-            {/* Dreamify Mode - Coming Soon (Blurred but Visible) */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="p-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm mb-6 blur-sm opacity-40 pointer-events-none"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-white text-lg font-semibold mb-2">🌀 Dreamify Mode</h3>
-                  <p className="text-white/70 text-sm mb-3">Coming soon...</p>
-                  <ul className="text-white/60 text-xs space-y-1">
-                    <li>• Emotional analysis</li>
-                    <li>• Auto music synthesis</li>
-                    <li>• Mood-driven gradients</li>
-                    <li>• Intelligent art pairing</li>
-                  </ul>
-                </div>
-              </div>
-            </motion.div>
-
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-text text-lg">
@@ -415,22 +394,11 @@ export default function CreatePage() {
               <PromptPresets onPresetSelect={handlePresetSelect} />
             </div>
 
-            {/* New options: Vocals + Image Inspiration */}
-            {/* Vocals & Image Inspiration - Coming Soon */}
-            <div className="flex flex-col gap-4 mt-4 mb-8 opacity-50">
-              <div>
-                <label className="block text-white mb-2 text-sm font-semibold">Vocals</label>
-                <select
-                  disabled
-                  className="w-full bg-[#1A002E] text-white rounded-xl p-2 border border-white/10 cursor-not-allowed"
-                >
-                  <option>Coming soon...</option>
-                </select>
-              </div>
-              <div className="border border-white/10 rounded-2xl p-3 text-center">
-                <p className="text-white/80 text-sm font-semibold">🎨 Add Image to Inspire Music</p>
-                <p className="text-white/50 text-xs mt-1">Coming soon...</p>
-              </div>
+            {/* Image → Music Feature */}
+            {/* TODO: Implement image → music API hook + sentiment extraction */}
+            <div className="border border-white/10 rounded-2xl p-4 mt-4 mb-8 text-center">
+              <p className="text-white/80 text-sm font-semibold mb-2">🎨 Add Image to Inspire Music</p>
+              <p className="text-white/60 text-xs">Upload an image and Soundswoop will generate music that matches the mood.</p>
             </div>
 
 
