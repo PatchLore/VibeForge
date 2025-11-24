@@ -228,17 +228,20 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             {/* Neon Glow Border */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
 
-            {/* Maintain true 16:9 ratio and full quality */}
-            <div className="relative aspect-[16/9] overflow-hidden rounded-xl">
+            {/* Full quality image display */}
+            <div
+              className="flex justify-center items-center overflow-visible p-6"
+              style={{ maxWidth: "100%", width: "100%" }}
+            >
               {/* Debug render log */}
               {(() => { try { console.log("🎨 Rendering:", track.title, track.image_url); } catch(_) {} return null; })()}
               <img
                 src={track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
                 alt={track.title}
-                className="w-full h-full object-cover"
-                style={{ 
-                  imageRendering: 'auto',
-                  transform: 'translateZ(0)'
+                className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
+                style={{
+                  imageRendering: "crisp-edges",
+                  WebkitImageRendering: "crisp-edges",
                 }}
                 loading="lazy"
                 referrerPolicy="no-referrer"
@@ -267,7 +270,8 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
             onClick={() => {
               if (track.image_url) {
                 const link = document.createElement('a');
-                link.href = `/api/proxy-image?url=${encodeURIComponent(track.image_url)}`;
+                // Use raw image_url (base64 or direct URL) without proxy for download
+                link.href = track.image_url;
                 link.download = `soundswoop-artwork-${track.id}.png`;
                 document.body.appendChild(link);
                 link.click();

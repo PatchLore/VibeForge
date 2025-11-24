@@ -189,82 +189,82 @@ export default function UnifiedPlayer({
           transition={{ duration: 1, ease: "easeOut" }}
           className="flex flex-col items-center mb-6"
         >
-          <div className="relative max-w-4xl w-full">
-            <div className="relative w-full aspect-video bg-card rounded-2xl overflow-hidden">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
-              
-              {videoUrl.endsWith('.html') ? (
-                <iframe
-                  src={videoUrl}
-                  className="w-full h-full border-0"
-                  allow="autoplay"
-                />
-              ) : (() => {
-                // Heuristic: treat as image if it has an image extension OR if it does not have a known video extension
-                const hasImageExt = /\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl);
-                const hasVideoExt = /\.(mp4|webm|mov|m3u8)$/i.test(videoUrl);
-                const isLikelyImage = hasImageExt || !hasVideoExt;
-                if (isLikelyImage) {
-                  return (
-                    <img
-                      src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
-                      alt="AI Generated Artwork"
-                      className="w-full h-auto rounded-xl object-cover aspect-video"
-                      style={{ 
-                        imageRendering: 'auto',
-                        transform: 'translateZ(0)'
-                      }}
-                      loading="lazy"
-                      onLoad={(e) => {
-                        const img = e.currentTarget as HTMLImageElement;
-                        console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
-                      }}
-                    />
-                  );
-                }
+          <div
+            className="flex justify-center items-center overflow-visible p-6"
+            style={{ maxWidth: "100%", width: "100%" }}
+          >
+            {videoUrl.endsWith('.html') ? (
+              <iframe
+                src={videoUrl}
+                className="w-full h-full border-0"
+                allow="autoplay"
+              />
+            ) : (() => {
+              // Heuristic: treat as image if it has an image extension OR if it does not have a known video extension
+              const hasImageExt = /\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl);
+              const hasVideoExt = /\.(mp4|webm|mov|m3u8)$/i.test(videoUrl);
+              const isLikelyImage = hasImageExt || !hasVideoExt;
+              if (isLikelyImage) {
                 return (
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="w-full h-full object-cover"
-                    loop
-                    muted
-                    playsInline
-                    autoPlay
+                  <img
+                    src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
+                    alt="AI Generated Artwork"
+                    className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
+                    style={{
+                      imageRendering: "crisp-edges",
+                      WebkitImageRendering: "crisp-edges",
+                    }}
+                    loading="lazy"
+                    onLoad={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
+                    }}
                   />
                 );
-              })()}
-            </div>
-            
-            {/* Download Button */}
-            {(/\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl) || !(/\.(mp4|webm|mov|m3u8)$/i.test(videoUrl))) && (
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl;
-                  link.download = `soundswoop-artwork-${Date.now()}.png`;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }}
-                className="mt-4 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                📥 Download Image
-              </motion.button>
-            )}
-            
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="text-xs text-gray-400 text-center mt-3"
-            >
-              Generated with Soundswoop AI
-            </motion.p>
+              }
+              return (
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  className="w-full h-full object-cover"
+                  loop
+                  muted
+                  playsInline
+                  autoPlay
+                />
+              );
+            })()}
           </div>
+          
+          {/* Download Button */}
+          {(/\.(jpg|jpeg|png|gif|webp)$/i.test(videoUrl) || !(/\.(mp4|webm|mov|m3u8)$/i.test(videoUrl))) && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              onClick={() => {
+                const link = document.createElement('a');
+                // Use raw videoUrl (base64 or direct URL) without proxy for download
+                link.href = videoUrl;
+                link.download = `soundswoop-artwork-${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="mt-4 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              📥 Download Image
+            </motion.button>
+          )}
+          
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="text-xs text-gray-400 text-center mt-3"
+          >
+            Generated with Soundswoop AI
+          </motion.p>
         </motion.div>
       )}
       

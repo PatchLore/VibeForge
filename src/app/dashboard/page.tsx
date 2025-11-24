@@ -198,7 +198,11 @@ export default function DashboardPage() {
                       <img
                         src={`/api/proxy-image?url=${encodeURIComponent(track.image_url)}`}
                         alt={track.title || "Generated art"}
-                        className="w-full rounded-xl object-cover aspect-video mb-3"
+                        className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl mb-3"
+                        style={{
+                          imageRendering: "crisp-edges",
+                          WebkitImageRendering: "crisp-edges",
+                        }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
                           console.log(`🖼️ [Dashboard] Image loaded: ${track.title} | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);

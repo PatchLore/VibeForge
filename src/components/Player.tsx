@@ -177,49 +177,49 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
           className="flex flex-col items-center mb-6"
         >
           {/* Artwork Container with Neon Glow */}
-          <div className="relative max-w-4xl w-full">
-            <div className="relative w-full aspect-video bg-card rounded-2xl overflow-hidden">
-              {/* Neon Glow Border */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 blur-sm -z-10" />
-              
-              {videoUrl.endsWith('.html') ? (
-                <iframe
-                  src={videoUrl}
-                  className="w-full h-full border-0"
-                  allow="autoplay"
-                />
-              ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                <img
-                  src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
-                  alt="AI Generated Artwork"
-                  className="w-full h-auto rounded-xl object-cover aspect-video"
-                  style={{ 
-                    imageRendering: 'auto',
-                    transform: 'translateZ(0)'
-                  }}
-                  loading="lazy"
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  className="w-full h-full object-cover"
-                  loop
-                  muted
-                  playsInline
-                  autoPlay
-                />
-              )}
-            </div>
-            
-            {/* Download Button */}
-            {videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+          <div
+            className="flex justify-center items-center overflow-visible p-6"
+            style={{ maxWidth: "100%", width: "100%" }}
+          >
+            {videoUrl.endsWith('.html') ? (
+              <iframe
+                src={videoUrl}
+                className="w-full h-full border-0"
+                allow="autoplay"
+              />
+            ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+              <img
+                src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
+                alt="AI Generated Artwork"
+                className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
+                style={{
+                  imageRendering: "crisp-edges",
+                  WebkitImageRendering: "crisp-edges",
+                }}
+                loading="lazy"
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="w-full h-full object-cover"
+                loop
+                muted
+                playsInline
+                autoPlay
+              />
+            )}
+          </div>
+          
+          {/* Download Button */}
+          {videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
                 onClick={() => {
                   const link = document.createElement('a');
+                  // Use raw videoUrl (base64 or direct URL) without proxy for download
                   link.href = videoUrl;
                   link.download = `soundswoop-artwork-${Date.now()}.png`;
                   document.body.appendChild(link);
@@ -230,18 +230,17 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
               >
                 📥 Download Image
               </motion.button>
-            )}
-            
-            {/* Attribution */}
-            <motion.p
+          )}
+          
+          {/* Attribution */}
+          <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
               className="text-xs text-gray-400 text-center mt-3"
             >
               Generated with Soundswoop AI
-            </motion.p>
-          </div>
+          </motion.p>
         </motion.div>
       )}
       
