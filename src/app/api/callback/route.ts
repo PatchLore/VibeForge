@@ -252,31 +252,37 @@ export async function POST(request: NextRequest) {
     // --- Image overwrite protection ---
     const existingImage = track.image_url;
 
-    // Block 1: Existing high-res base64 — do NOT overwrite
+    // Identify known Kie.ai thumbnail URLs
+    const looksLikeKieThumbnail =
+      imageUrl?.includes("cdn2.suno.ai") ||
+      imageUrl?.includes("cdn1.suno.ai") ||
+      imageUrl?.includes("musicfile.kie.ai") ||
+      imageUrl?.endsWith(".jpeg");
+
+    // Identify low-resolution images by filename pattern
+    const likelyLowRes =
+      imageUrl?.includes("image_") ||
+      imageUrl?.includes("_thumb") ||
+      imageUrl?.includes("_small") ||
+      imageUrl?.includes("_low");
+
+    // Existing base64 guard
     const isExistingBase64 = existingImage?.startsWith("data:image");
 
-    // Block 2: Incoming thumbnail — reject
-    const isIncomingLowRes =
-      imageUrl?.includes("_360") ||
-      imageUrl?.includes("?width=360") ||
-      (imageUrl?.includes("image_") && imageUrl?.endsWith(".jpeg"));
-
+    // Apply rejection rules:
     if (imageUrl) {
-      console.log("[CALLBACK] Received imageUrl:", imageUrl);
-      console.log("[CALLBACK] existingImage:", existingImage);
-
       if (isExistingBase64) {
-        console.log("🚫 [CALLBACK] Not overwriting base64 high-res image.");
-      } else if (isIncomingLowRes) {
-        console.log("🚫 [CALLBACK] Rejecting low-resolution Kie thumbnail.");
+        console.log("🚫 [CALLBACK] High-res base64 already exists. Not overwriting.");
+      } else if (looksLikeKieThumbnail || likelyLowRes) {
+        console.log("🚫 [CALLBACK] Rejecting Kie.ai/thumbnail image:", imageUrl);
       } else if (!existingImage) {
-        console.log("🖼️ [CALLBACK] Saving new imageUrl into DB.");
+        console.log("🖼️ [CALLBACK] Saving callback image (no existing image).");
         try {
           const { error: updateErr } = await supabaseServer
             .from("tracks")
             .update({
               image_url: imageUrl,
-              updated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             })
             .eq("id", track.id);
           
