@@ -249,42 +249,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // --- Image overwrite protection ---
-    const existingImage = track.image_url;
-
-    // Identify known Kie.ai thumbnail URLs
-    const looksLikeKieThumbnail =
-      imageUrl?.includes("cdn2.suno.ai") ||
-      imageUrl?.includes("cdn1.suno.ai") ||
-      imageUrl?.includes("musicfile.kie.ai") ||
-      imageUrl?.endsWith(".jpeg");
-
-    // Identify low-resolution images by filename pattern
-    const likelyLowRes =
-      imageUrl?.includes("image_") ||
-      imageUrl?.includes("_thumb") ||
-      imageUrl?.includes("_small") ||
-      imageUrl?.includes("_low");
-
-    // Existing base64 guard
-    const isExistingBase64 = existingImage?.startsWith("data:image");
-
-    // Apply rejection rules:
+    // --- Handle Image Callback (Legacy - prevent overwriting HD images) ---
     if (imageUrl) {
-      if (isExistingBase64) {
-        console.log("🚫 [CALLBACK] High-res base64 already exists. Not overwriting.");
-      } else if (looksLikeKieThumbnail || likelyLowRes) {
-        console.log("🚫 [CALLBACK] Rejecting Kie.ai/thumbnail image:", imageUrl);
-      } else if (!existingImage) {
-        console.log("🖼️ [CALLBACK] Saving callback image (no existing image).");
+      const isBase64 = track.image_url?.startsWith("data:image");
+      const isHighRes = isBase64 || (track.image_url && track.image_url.length > 200000); // base64 HD
+
+      if (isHighRes) {
+        console.log("🛑 [CALLBACK] HD image already exists — skipping low-res callback image");
+      } else {
+        console.log("🖼️ [CALLBACK] Saving callback image (previous image missing or low-res)");
         try {
           const { error: updateErr } = await supabaseServer
-            .from("tracks")
+            .from('tracks')
             .update({
               image_url: imageUrl,
-              updated_at: new Date().toISOString()
+              resolution: "unknown",
+              updated_at: new Date().toISOString(),
             })
-            .eq("id", track.id);
+            .eq('id', track.id);
           
           if (updateErr) {
             console.error('❌ [CALLBACK] Failed to update image URL:', updateErr);
