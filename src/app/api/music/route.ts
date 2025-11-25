@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateMusic, checkMusicStatus } from "@/lib/kie";
+import { generateMusic } from "@/lib/kie";
 import { buildMusicPrompt, buildImagePrompt, generateEnrichedPrompts } from "@/lib/enrichPrompt";
 import { generateTrackTitle, detectVibe, generateSummary } from "@/lib/generateTrackTitle";
 import { CREDITS_PER_GENERATION, STARTING_CREDITS } from "@/lib/config";

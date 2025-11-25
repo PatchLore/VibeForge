@@ -61,22 +61,75 @@ export async function generateMusic(prompt: string) {
 }
 
 // 🔍 STATUS CHECK
-export async function checkMusicStatus(taskId: string) {
-  const apiKey = KIE_KEYS.music;
-  if (!apiKey) throw new Error("Missing VIBEFORGE_API_KEY music generation API key");
-
-  const response = await fetch(`${BASE_URL}/generate/record-info?taskId=${taskId}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.code !== 200) {
-    console.error("🎵 Status check error:", data);
-    throw new Error(`Status check failed: ${data.msg}`);
+export async function checkMusicStatus(taskId: string): Promise<{
+  state: 'pending' | 'completed' | 'failed';
+  audioUrl?: string | null;
+  duration?: number | null;
+  title?: string | null;
+  prompt?: string | null;
+}> {
+  const API_KEY = process.env.VIBEFORGE_API_KEY || process.env.KIE_MUSIC_API_KEY;
+  if (!API_KEY) {
+    console.error('[KIE] Missing VIBEFORGE_API_KEY / KIE_MUSIC_API_KEY');
+    return { state: 'failed' };
   }
-  
-  const result = data.data?.response?.sunoData?.[0];
-  return result;
+
+  try {
+    const res = await fetch('https://api.kie.ai/api/v1/generate/record-info', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({ task_id: taskId }),
+    });
+
+    console.log('[KIE] checkMusicStatus status:', res.status);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('[KIE] checkMusicStatus error body:', text);
+      return { state: 'failed' };
+    }
+
+    const json: any = await res.json();
+    // Kie.ai usually returns { code, data: { task_id, status, data: [...] } }
+    const data = json?.data ?? json;
+    const records = Array.isArray(data?.data) ? data.data : [];
+    const primary = records[0] ?? null;
+
+    const status = data?.status ?? json?.status ?? null;
+
+    const audioUrl: string | null =
+      primary?.audio_url ||
+      primary?.stream_audio_url ||
+      null;
+
+    const duration: number | null = primary?.duration ?? null;
+    const title: string | null = primary?.title ?? null;
+    const prompt: string | null = primary?.prompt ?? null;
+
+    // Map provider states -> internal states
+    if (audioUrl) {
+      return {
+        state: 'completed',
+        audioUrl,
+        duration,
+        title,
+        prompt,
+      };
+    }
+
+    if (status === 'failed' || status === 'error') {
+      return { state: 'failed' };
+    }
+
+    // If no audio yet, assume still pending
+    return { state: 'pending' };
+  } catch (e: any) {
+    console.error('[KIE] checkMusicStatus exception:', e?.message || e);
+    return { state: 'failed' };
+  }
 }
 
 // 🖼️ IMAGE GENERATION — REMOVED
