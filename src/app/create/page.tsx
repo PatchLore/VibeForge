@@ -14,7 +14,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import UnifiedPlayer from '@/components/UnifiedPlayer';
-import Visualizer from '@/components/Visualizer';
 import TrendingVibes from '@/components/TrendingVibes';
 import TrackCard from '@/components/TrackCard';
 import PromptPresets from '@/components/PromptPresets';
@@ -477,11 +476,6 @@ export default function CreatePage() {
               )}
             </div>
             
-            {!videoUrl && (
-              <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
-                <Visualizer />
-              </div>
-            )}
 
             <FeedbackButtons 
               trackId={Date.now().toString()}

@@ -7,7 +7,6 @@ import UnifiedPlayer from '@/components/UnifiedPlayer';
 import Hero from '@/components/Hero';
 import BenefitsSection from '@/components/BenefitsSection';
 import Footer from '@/components/Footer';
-import Visualizer from '@/components/Visualizer';
 import TrendingVibes from '@/components/TrendingVibes';
 import TrackCard from '@/components/TrackCard';
 import FAQ from '@/components/FAQ';
@@ -478,12 +477,6 @@ export default function Home() {
               )}
             </div>
             
-            {/* Only show Visualizer if no image was generated */}
-            {!videoUrl && (
-              <div className="h-64 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 overflow-hidden">
-                <Visualizer />
-              </div>
-            )}
 
             {/* Feedback Buttons */}
             <FeedbackButtons 

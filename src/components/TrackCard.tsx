@@ -236,7 +236,10 @@ export default function TrackCard({ track, onDelete }: TrackCardProps) {
               {/* Debug render log */}
               {(() => { try { console.log("🎨 Rendering:", track.title, track.image_url); } catch(_) {} return null; })()}
               <img
-                src={track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG}
+                src={(() => {
+                  const isBase64 = track.image_url?.startsWith("data:image");
+                  return isBase64 ? track.image_url : (track.image_url ? `/api/proxy-image?url=${encodeURIComponent(track.image_url)}` : FALLBACK_IMG);
+                })()}
                 alt={track.title}
                 className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
                 style={{

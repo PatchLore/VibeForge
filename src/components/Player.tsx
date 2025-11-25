@@ -189,7 +189,10 @@ export default function Player({ audioUrl, videoUrl, vibe, isPlaying, setIsPlayi
               />
             ) : videoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
               <img
-                src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
+                src={(() => {
+                  const isBase64 = videoUrl?.startsWith("data:image");
+                  return isBase64 ? videoUrl : (videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl);
+                })()}
                 alt="AI Generated Artwork"
                 className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
                 style={{

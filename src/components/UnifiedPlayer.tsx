@@ -144,10 +144,13 @@ export default function UnifiedPlayer({
   };
 
   const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
+    const safeTime = isFinite(time) ? time : 0;
+    const minutes = Math.floor(safeTime / 60);
+    const seconds = Math.floor(safeTime % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  const safeDuration = isFinite(duration) ? duration : 0;
 
   const downloadTrack = () => {
     const link = document.createElement('a');
@@ -205,17 +208,26 @@ export default function UnifiedPlayer({
               const hasVideoExt = /\.(mp4|webm|mov|m3u8)$/i.test(videoUrl);
               const isLikelyImage = hasImageExt || !hasVideoExt;
               if (isLikelyImage) {
+                const isBase64 = videoUrl?.startsWith("data:image");
                 return (
                   <img
-                    src={videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl}
+                    src={isBase64 ? videoUrl : (videoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(videoUrl)}` : videoUrl)}
                     alt="AI Generated Artwork"
                     className="w-auto h-auto max-w-none max-h-none object-contain rounded-xl shadow-2xl"
                     style={{
                       imageRendering: "crisp-edges",
+                      maxWidth: "100%",
+                      width: "100%",
+                      height: "auto",
+                      objectFit: "contain",
                     }}
                     loading="lazy"
                     onLoad={(e) => {
                       const img = e.currentTarget as HTMLImageElement;
+                      console.log("[IMG LOADED]", {
+                        naturalWidth: img.naturalWidth,
+                        naturalHeight: img.naturalHeight,
+                      });
                       console.log(`🖼️ [UnifiedPlayer] Image loaded | Resolution: ${img.naturalWidth}x${img.naturalHeight} | Display: ${img.width}x${img.height}`);
                     }}
                   />
@@ -292,17 +304,17 @@ export default function UnifiedPlayer({
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-gray-300">
           <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
+          <span>{formatTime(safeDuration)}</span>
         </div>
         <input
           type="range"
           min="0"
-          max={duration || 0}
+          max={safeDuration || 0}
           value={currentTime}
           onChange={handleSeek}
           className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
           style={{
-            background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) 100%)`
+            background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${safeDuration > 0 ? (currentTime / safeDuration) * 100 : 0}%, rgba(255,255,255,0.2) ${safeDuration > 0 ? (currentTime / safeDuration) * 100 : 0}%, rgba(255,255,255,0.2) 100%)`
           }}
         />
       </div>

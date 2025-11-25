@@ -61,51 +61,41 @@ export async function POST(request: NextRequest) {
       isArray: Array.isArray(payload),
     });
 
-    // NEW: Normalize new Kie.ai structure
-    const first = Array.isArray(payload?.data) ? payload.data[0] : null;
-
+    // --- REQUIRED RESET: Only process audio from Kie.ai ---
     const audioUrl =
-      first?.audio_url ||
-      payload?.audio_url ||
-      data?.audio_url ||
-      raw?.audio_url;
+      payload?.audio_url ??
+      data?.audio_url ??
+      raw?.audio_url ??
+      payload?.result?.audios?.[0]?.url ??
+      data?.result?.audios?.[0]?.url;
 
-    const imageUrl =
-      first?.image_url ||
-      payload?.image_url ||
-      data?.image_url ||
-      raw?.image_url;
+    const imageUrl = null; // 🔥 NEVER use Kie.ai images again
 
     const duration =
-      first?.duration ||
-      payload?.duration ||
-      data?.duration;
+      payload?.duration ??
+      data?.duration ??
+      raw?.duration;
 
     const title =
-      first?.title ||
-      payload?.title ||
-      data?.title;
+      payload?.title ??
+      data?.title ??
+      raw?.title;
 
     const prompt =
-      first?.tags ||
-      payload?.prompt ||
-      data?.prompt;
+      payload?.prompt ??
+      data?.prompt ??
+      raw?.prompt;
 
-    // Log what we received
-    const hasImage = !!imageUrl;
+    // Log what we received (audio only)
     const hasAudio = !!audioUrl;
     
-    if (hasImage && !hasAudio) {
-      console.log('🖼️ [CALLBACK] Received partial payload: image only');
-    } else if (hasAudio && !hasImage) {
-      console.log('🎵 [CALLBACK] Received partial payload: audio only');
-    } else if (hasImage && hasAudio) {
-      console.log('✅ [CALLBACK] Received complete payload: image + audio');
+    if (hasAudio) {
+      console.log('🎵 [CALLBACK] Received audio payload');
     } else {
-      console.log('⏳ [CALLBACK] Received partial payload: no image or audio yet');
+      console.log('⏳ [CALLBACK] Received payload: no audio yet');
     }
 
-    console.log('📌 taskId:', taskId, 'status:', status, 'hasImage:', hasImage, 'hasAudio:', hasAudio);
+    console.log('📌 taskId:', taskId, 'status:', status, 'hasAudio:', hasAudio);
 
     if (!taskId) {
       console.error('❌ [CALLBACK] Missing task_id');
@@ -206,35 +196,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // --- Handle Image Callback with protection ---
-    // NEW RULE: Never overwrite base64 images with low-res URLs
-    if (!track.image_url && imageUrl) {
-      // Only update if no existing image_url
-      await supabaseServer
-        .from('tracks')
-        .update({
-          image_url: imageUrl,
-          resolution: "unknown",
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', track.id);
-      console.log('🖼️ [CALLBACK] Image URL saved (no existing image)');
-    } else if (imageUrl && !track.image_url?.startsWith("data:image")) {
-      // Only update if existing image is not base64
-      await supabaseServer
-        .from('tracks')
-        .update({
-          image_url: imageUrl,
-          resolution: "unknown",
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', track.id);
-      console.log('🖼️ [CALLBACK] Image URL saved (replacing non-base64 image)');
-    } else if (imageUrl && track.image_url?.startsWith("data:image")) {
-      console.log('🚫 [CALLBACK] Skipping image update - base64 image already exists');
-    }
-
-    // --- Handle Audio Callback Separately ---
+    // --- REQUIRED RESET: Never update image_url from callback ---
+    // Only update audio_url when available
     if (audioUrl && !track.audio_url) {
       console.log('🎵 [CALLBACK] Audio URL received.');
       
@@ -248,6 +211,18 @@ export async function POST(request: NextRequest) {
         .eq('id', track.id);
       
       console.log('✅ [CALLBACK] Audio saved to database');
+    }
+
+    // Ensure track completes when audio arrives
+    if (audioUrl && track.status !== 'completed') {
+      await supabaseServer
+        .from('tracks')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', track.id);
+      console.log('✅ [CALLBACK] Track marked as completed (audio received)');
     }
 
     // Update title and prompt if provided
@@ -267,20 +242,18 @@ export async function POST(request: NextRequest) {
       console.log("🎵 [TITLE AUTO] Generated unique title:", safeTitle);
     }
 
-    // --- Final Check: Mark complete and deduct credits when audio exists ---
-    // Image is NOT required for completion (image generation happens before callback)
-    let finalTrack: { audio_url: string | null; duration: number | null; user_id: string | null; status: string | null } | null = null;
+    // --- Final Check: Deduct credits when audio exists ---
+    let finalTrack: { audio_url: string | null; user_id: string | null; status: string | null } | null = null;
     try {
       const finalSel = await supabaseServer
         .from('tracks')
-        .select('audio_url, duration, user_id, status')
+        .select('audio_url, user_id, status')
         .eq('id', track.id)
         .single();
       if (finalSel.error) {
         console.error('🔥 [DEBUG ERROR] Final select failed:', finalSel.error);
       }
       finalTrack = finalSel.data as any;
-      console.log('🔍 [DEBUG] Final select state:', finalSel);
     } catch (err) {
       console.error('🔥 [DEBUG ERROR] Final select exception:', err);
     }
@@ -290,28 +263,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'track fetch failed' }, { status: 500 });
     }
 
-    // Mark as completed if audio exists (image_url is set by /api/music, not callback)
-    // duration is now valid
-    if (finalTrack.audio_url && finalTrack.status !== 'completed') {
-      console.log('✅ [CALLBACK] Audio present, marking as completed');
-      
-      try {
-        console.log('🔍 [DEBUG] Marking completed for id:', track.id);
-        const doneRes = await supabaseServer
-          .from('tracks')
-          .update({
-            status: 'completed',
-            duration: duration || finalTrack.duration,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', track.id)
-          .select();
-        console.log('🔍 [DEBUG] Completed update result:', doneRes);
-      } catch (err) {
-        console.error('🔥 [DEBUG ERROR] Completed update failed:', err);
-      }
-
-      // Deduct credits atomically via RPC
+    // Deduct credits when audio is present and track is completed
+    if (finalTrack.audio_url && finalTrack.status === 'completed') {
       const { data: deducted, error: rpcErr } = await supabaseServer.rpc(
         'deduct_credits',
         { p_user_id: finalTrack.user_id, p_amount: CREDITS_PER_GENERATION }
@@ -324,19 +277,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('💎 [CALLBACK] Credits deducted via RPC.');
       }
-    } else {
-      console.log('⏳ [CALLBACK] Waiting for audio. Current state:', {
-        hasAudio: !!finalTrack.audio_url,
-        status: finalTrack.status
-      });
     }
-
-    // 🧩 Final debug summary
-    console.log('🧩 [DEBUG SUMMARY]', {
-      taskId,
-      hasAudio: !!finalTrack?.audio_url,
-      status: finalTrack?.status,
-    });
 
     return NextResponse.json({ ok: true, taskId });
   } catch (e: any) {
