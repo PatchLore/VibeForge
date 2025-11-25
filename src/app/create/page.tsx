@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import UnifiedPlayer from '@/components/UnifiedPlayer';
 import TrendingVibes from '@/components/TrendingVibes';
@@ -209,63 +209,105 @@ export default function CreatePage() {
     }
   };
 
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const pollForCompletion = async (taskId: string) => {
-    const maxAttempts = 60;
-    let attempts = 0;
+    if (!taskId) return;
 
-    const poll = async () => {
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    const fetchStatus = async () => {
+      if (!taskId) return;
+
       try {
-        const response = await fetch(`/api/status?taskId=${taskId}`);
-        
-        // Check if response is ok
-        if (!response.ok) {
-          console.error('Status check failed:', response.status, response.statusText);
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(poll, 15000);
-          } else {
-            setError(`Generation check failed (${response.status}). Please try again.`);
-            setIsGenerating(false);
+        const res = await fetch(`/api/status?taskId=${taskId}`);
+        const json = await res.json();
+
+        console.log("[STATUS] Poll result:", json);
+
+        // --- STOP POLLING WHEN COMPLETED ---
+        if (json?.status === "completed") {
+          console.log("[STATUS] Completed. Clearing interval.");
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
-          return;
-        }
-        
-        const json = await response.json();
-        console.log('Poll response:', json);
 
-        if (json.status === 'SUCCESS' && json.track) {
-          setAudioUrl(json.track.audioUrl);
-          setVideoUrl(json.track.imageUrl || null);
-          setAudioSource('generated');
+          // Update UI state
+          if (json.track) {
+            setAudioUrl(json.track.audio_url || json.track.audioUrl);
+            setVideoUrl(json.track.image_url || json.track.imageUrl || null);
+            setAudioSource('generated');
+            
+            // Refresh tracks list to include the new track
+            fetchUserTracks();
+          }
           
-          // Refresh tracks list to include the new track
-          fetchUserTracks();
-          
-          setIsGenerating(false);
-          return;
-        } else if (json.error) {
-          console.error('Status error:', json.error);
-          setError(json.error);
           setIsGenerating(false);
           return;
         }
 
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 15000);
-        } else {
-          setError('Generation is taking longer than expected. Please try again.');
+        // --- STOP POLLING WHEN NOT_FOUND ---
+        if (res.status === 404) {
+          console.warn("[STATUS] No track found. Stopping polling.");
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          setError('Track not found. Please try generating again.');
           setIsGenerating(false);
+          return;
         }
+
+        // --- STOP POLLING WHEN FAILED ---
+        if (json?.status === "failed") {
+          console.warn("[STATUS] Track failed. Stopping polling.");
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          setError('Generation failed. Please try again.');
+          setIsGenerating(false);
+          return;
+        }
+
+        // Continue polling if still processing
+        if (json?.status === "processing" || json?.status === "PENDING") {
+          // Keep polling, interval will continue
+          return;
+        }
+
       } catch (err) {
-        console.error('Polling error:', err);
+        console.error("[STATUS] Error:", err);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         setError('Something went wrong while checking generation status.');
         setIsGenerating(false);
       }
     };
 
-    setTimeout(poll, 5000);
+    // Start polling after 5 seconds, then every 2 seconds
+    setTimeout(() => {
+      fetchStatus(); // Initial call
+      intervalRef.current = setInterval(fetchStatus, 2000);
+    }, 5000);
   };
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-bg text-text">
