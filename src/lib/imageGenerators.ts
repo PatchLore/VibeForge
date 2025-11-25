@@ -49,7 +49,9 @@ export async function generateRunwareFLUX({
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Runware failed: ${res.status} ${text}`);
+    const errorText = text.substring(0, 300);
+    console.error(`❌ [RUNWARE] HTTP ${res.status} error:`, errorText);
+    throw new Error(`Runware failed: ${res.status} ${errorText}`);
   }
 
   const json = await res.json();
@@ -104,16 +106,29 @@ export async function generateDeepInfraFLUX({
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`DeepInfra FLUX failed: ${res.status} ${text}`);
+    const errorText = text.substring(0, 300);
+    console.error(`❌ [DEEPINFRA FLUX] HTTP ${res.status} error:`, errorText);
+    throw new Error(`DeepInfra FLUX failed: ${res.status} ${errorText}`);
   }
 
   const json = await res.json();
+  console.log("🔍 [DEEPINFRA FLUX] Response JSON keys:", Object.keys(json || {}));
   const url = json?.images?.[0];
-  if (!url) throw new Error("DeepInfra FLUX returned no image");
+  console.log("🔍 [DEEPINFRA FLUX] Image URL extracted:", url ? "yes" : "no", url ? url.substring(0, 100) : "");
+  if (!url) {
+    console.error("❌ [DEEPINFRA FLUX] No image URL in response:", JSON.stringify(json, null, 2).substring(0, 500));
+    throw new Error("DeepInfra FLUX returned no image");
+  }
 
   // Convert to base64
+  console.log("🔍 [DEEPINFRA FLUX] Fetching image from URL...");
   const img = await fetch(url);
+  if (!img.ok) {
+    console.error(`❌ [DEEPINFRA FLUX] Failed to fetch image: ${img.status}`);
+    throw new Error(`Failed to fetch image: ${img.status}`);
+  }
   const buf = Buffer.from(await img.arrayBuffer());
+  console.log("✅ [DEEPINFRA FLUX] Image fetched, buffer size:", buf.length);
   return `data:image/png;base64,${buf.toString("base64")}`;
 }
 
@@ -158,14 +173,27 @@ export async function generateDeepInfraSDXLTurbo({
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`DeepInfra SDXL Turbo failed: ${res.status} ${text}`);
+    const errorText = text.substring(0, 300);
+    console.error(`❌ [DEEPINFRA SDXL] HTTP ${res.status} error:`, errorText);
+    throw new Error(`DeepInfra SDXL Turbo failed: ${res.status} ${errorText}`);
   }
 
   const json = await res.json();
+  console.log("🔍 [DEEPINFRA SDXL] Response JSON keys:", Object.keys(json || {}));
   const url = json?.images?.[0];
-  if (!url) throw new Error("DeepInfra Turbo returned no image");
+  console.log("🔍 [DEEPINFRA SDXL] Image URL extracted:", url ? "yes" : "no", url ? url.substring(0, 100) : "");
+  if (!url) {
+    console.error("❌ [DEEPINFRA SDXL] No image URL in response:", JSON.stringify(json, null, 2).substring(0, 500));
+    throw new Error("DeepInfra Turbo returned no image");
+  }
 
+  console.log("🔍 [DEEPINFRA SDXL] Fetching image from URL...");
   const img = await fetch(url);
+  if (!img.ok) {
+    console.error(`❌ [DEEPINFRA SDXL] Failed to fetch image: ${img.status}`);
+    throw new Error(`Failed to fetch image: ${img.status}`);
+  }
   const buf = Buffer.from(await img.arrayBuffer());
+  console.log("✅ [DEEPINFRA SDXL] Image fetched, buffer size:", buf.length);
   return `data:image/png;base64,${buf.toString("base64")}`;
 }

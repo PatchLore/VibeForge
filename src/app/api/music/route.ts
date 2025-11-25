@@ -183,21 +183,35 @@ export async function POST(req: Request) {
     console.log("🚀 [GENERATION START] Starting concurrent music + image generation");
     
     // Generate music via Kie.ai (async, will callback)
+    console.log("🎵 [GENERATION START] BEFORE generateMusic() call");
     taskId = await generateMusic(cleanedMusicPrompt);
+    console.log("🎵 [GENERATION START] AFTER generateMusic() returned taskId:", taskId);
     console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
+    
+    if (!taskId) {
+      console.error("❌ [GENERATION START] CRITICAL: generateMusic() returned undefined/null taskId!");
+      throw new Error("Music generation returned no taskId");
+    }
     
     // Generate image directly (no HTTP call needed) - synchronous
     let generatedImageUrl: string | null = null;
     try {
-      console.log("🖼️ [GENERATION START] Generating image directly via generateImageDirect");
+      console.log("🖼️ [GENERATION START] BEFORE generateImageDirect() call");
+      console.log("🖼️ [GENERATION START] Image prompt:", imagePrompt.substring(0, 100) + "...");
       generatedImageUrl = await generateImageDirect({
         prompt: imagePrompt,
         width: 1344,
         height: 768,
       });
+      console.log("🖼️ [GENERATION START] AFTER generateImageDirect() returned");
       console.log("🖼️ [GENERATION START] Image generated successfully:", generatedImageUrl ? "yes" : "no");
+      if (generatedImageUrl) {
+        console.log("🖼️ [GENERATION START] Image data URI length:", generatedImageUrl.length);
+        console.log("🖼️ [GENERATION START] Image starts with data:image:", generatedImageUrl.startsWith("data:image"));
+      }
     } catch (e: any) {
-      console.error("❌ [GENERATION START] Image generation failed:", e?.message || e);
+      console.error("❌ [GENERATION START] Image generation EXCEPTION:", e?.message || e);
+      console.error("❌ [GENERATION START] Image generation STACK:", e?.stack);
       console.warn("⚠️ [GENERATION START] Continuing without image - music generation will proceed");
     }
     

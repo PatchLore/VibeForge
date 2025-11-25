@@ -17,44 +17,57 @@ export async function generateImageDirect({
   steps?: number;
   seed?: number;
 }) {
-  console.log("🎨 [GEN] Start:", { prompt, width, height });
+  console.log("🎨 [GEN] Start:", { prompt: prompt.substring(0, 100), width, height, steps, seed });
 
   // 1 — Runware first
   try {
-    console.log("🎨 Trying Runware → FLUX.1-schnell");
-    return await generateRunwareFLUX({
+    console.log("🎨 [GEN] Attempting Runware → FLUX.1-schnell");
+    const runwareResult = await generateRunwareFLUX({
       prompt,
       width,
       height,
       steps,
       seed,
     });
-  } catch (e) {
-    console.error("❌ Runware failed:", e);
+    console.log("✅ [GEN] Runware succeeded, result length:", runwareResult?.length || 0);
+    return runwareResult;
+  } catch (e: any) {
+    console.error("❌ [GEN] Runware failed:", e?.message || e);
+    console.error("❌ [GEN] Runware error stack:", e?.stack);
   }
 
   // 2 — DeepInfra FLUX.1-schnell fallback
   try {
-    console.log("🎨 Trying DeepInfra → FLUX.1-schnell");
-    return await generateDeepInfraFLUX({
+    console.log("🎨 [GEN] Attempting DeepInfra → FLUX.1-schnell");
+    const fluxResult = await generateDeepInfraFLUX({
       prompt,
       width,
       height,
       steps,
       seed,
     });
-  } catch (e) {
-    console.error("❌ DeepInfra FLUX failed:", e);
+    console.log("✅ [GEN] DeepInfra FLUX succeeded, result length:", fluxResult?.length || 0);
+    return fluxResult;
+  } catch (e: any) {
+    console.error("❌ [GEN] DeepInfra FLUX failed:", e?.message || e);
+    console.error("❌ [GEN] DeepInfra FLUX error stack:", e?.stack);
   }
 
   // 3 — Final fallback SDXL Turbo
-  console.log("🎨 Trying DeepInfra → SDXL-Turbo (final fallback)");
-
-  return await generateDeepInfraSDXLTurbo({
-    prompt,
-    width,
-    height,
-    steps,
-    seed,
-  });
+  console.log("🎨 [GEN] Attempting DeepInfra → SDXL-Turbo (final fallback)");
+  try {
+    const turboResult = await generateDeepInfraSDXLTurbo({
+      prompt,
+      width,
+      height,
+      steps,
+      seed,
+    });
+    console.log("✅ [GEN] DeepInfra SDXL Turbo succeeded, result length:", turboResult?.length || 0);
+    return turboResult;
+  } catch (e: any) {
+    console.error("❌ [GEN] DeepInfra SDXL Turbo FAILED (final fallback):", e?.message || e);
+    console.error("❌ [GEN] DeepInfra SDXL Turbo error stack:", e?.stack);
+    throw new Error(`All image generation fallbacks failed: ${e?.message || e}`);
+  }
 }

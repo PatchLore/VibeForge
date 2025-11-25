@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
     });
 
     // --- REQUIRED RESET: Only process audio from Kie.ai ---
+    // CRITICAL FIX: Check primaryItem FIRST (Kie.ai array format)
     const audioUrl =
+      primaryItem?.audio_url ??
+      primaryItem?.stream_audio_url ??
+      primaryItem?.source_audio_url ??
       payload?.audio_url ??
       data?.audio_url ??
       raw?.audio_url ??
@@ -71,17 +75,22 @@ export async function POST(request: NextRequest) {
 
     const imageUrl = null; // 🔥 NEVER use Kie.ai images again
 
+    // Extract metadata (prefer primaryItem for Kie.ai array format)
     const duration =
+      primaryItem?.duration ??
       payload?.duration ??
       data?.duration ??
       raw?.duration;
 
     const title =
+      primaryItem?.title ??
       payload?.title ??
       data?.title ??
       raw?.title;
 
     const prompt =
+      primaryItem?.prompt ??
+      primaryItem?.tags ??
       payload?.prompt ??
       data?.prompt ??
       raw?.prompt;
@@ -107,12 +116,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'database unavailable' }, { status: 500 });
     }
 
-    const outerTaskId =
-      payload?.task_id ??
-      payload?.taskId ??
-      raw?.task_id ??
-      raw?.taskId;
-
+    // Extract task IDs for matching
+    // Use taskId (already extracted from multiple locations including primaryItem)
+    const outerTaskId = taskId; // Use the normalized taskId we already extracted
+    
     // NEW: extract inner audio IDs (Kie array callback)
     const innerTrackIds = Array.isArray(payload?.data)
       ? payload.data
@@ -120,24 +127,29 @@ export async function POST(request: NextRequest) {
           .filter(Boolean)
       : [];
 
-    console.log("🧩 [DEBUG] Outer taskId:", outerTaskId);
-    console.log("🧩 [DEBUG] Inner trackIds:", innerTrackIds);
+    console.log("🧩 [DEBUG] Using normalized taskId for lookup:", outerTaskId);
+    console.log("🧩 [DEBUG] Inner trackIds from payload.data:", innerTrackIds);
+    console.log("🧩 [DEBUG] PrimaryItem has audio_url:", !!primaryItem?.audio_url);
+    console.log("🧩 [DEBUG] PrimaryItem has stream_audio_url:", !!primaryItem?.stream_audio_url);
 
-    // TRY 1: find track by outer task_id
+    // TRY 1: find track by normalized taskId (most reliable)
     let trackResponse = await supabaseServer
       .from("tracks")
       .select("*")
       .eq("task_id", outerTaskId)
       .maybeSingle();
 
+    console.log("🔍 [CALLBACK] TRY 1 - Lookup by taskId:", outerTaskId, "Found:", !!trackResponse.data);
+
     // TRY 2: if not found, try inner ID
     if (!trackResponse.data && innerTrackIds.length > 0) {
-      console.log("🔍 [CALLBACK] Searching by inner IDs...");
+      console.log("🔍 [CALLBACK] TRY 2 - Searching by inner IDs:", innerTrackIds);
       trackResponse = await supabaseServer
         .from("tracks")
         .select("*")
         .in("task_id", innerTrackIds)
         .maybeSingle();
+      console.log("🔍 [CALLBACK] TRY 2 - Found:", !!trackResponse.data);
     }
 
     if (!trackResponse.data) {
@@ -147,15 +159,20 @@ export async function POST(request: NextRequest) {
 
     const track = trackResponse.data;
 
+    const matchedBy = track.task_id === outerTaskId ? 'outerTaskId' : 
+                     (innerTrackIds.includes(track.task_id) ? 'innerTrackId' : 'unknown');
+
     console.log('🧩 [DEBUG] Incoming taskId:', taskId);
     console.log('🧩 [DEBUG] Track matched:', {
       id: track.id,
       user_id: track.user_id,
       task_id: track.task_id,
       has_image_url: !!track.image_url,
+      has_audio_url: !!track.audio_url,
       status: track.status,
-      matchedBy: track.task_id === taskId ? 'task_id' : 'extended_prompt:image_task_id'
+      matchedBy: matchedBy
     });
+    console.log('🧩 [DEBUG] Audio URL extracted:', audioUrl ? "yes" : "no", audioUrl ? audioUrl.substring(0, 100) : "");
     
     // If already completed, be idempotent
     if (track.status === 'completed') {
@@ -179,30 +196,48 @@ export async function POST(request: NextRequest) {
     // --- REQUIRED RESET: Never update image_url from callback ---
     // Only update audio_url when available
     if (audioUrl && !track.audio_url) {
-      console.log('🎵 [CALLBACK] Audio URL received.');
+      console.log('🎵 [CALLBACK] Audio URL received, updating database...');
+      console.log('🎵 [CALLBACK] Audio URL length:', audioUrl.length);
+      console.log('🎵 [CALLBACK] Duration:', duration);
       
-      await supabaseServer
+      const { data: updateData, error: updateError } = await supabaseServer
         .from('tracks')
         .update({
           audio_url: audioUrl,
           duration: duration ?? null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', track.id);
+        .eq('id', track.id)
+        .select();
       
-      console.log('✅ [CALLBACK] Audio saved to database');
+      if (updateError) {
+        console.error('❌ [CALLBACK] Failed to update audio_url:', updateError);
+      } else {
+        console.log('✅ [CALLBACK] Audio saved to database, updated row:', updateData?.[0]?.id);
+      }
+    } else if (audioUrl && track.audio_url) {
+      console.log('ℹ️ [CALLBACK] Audio URL already exists in database, skipping update');
+    } else if (!audioUrl) {
+      console.log('⏳ [CALLBACK] No audio URL in callback payload yet');
     }
 
     // Ensure track completes when audio arrives
     if (audioUrl && track.status !== 'completed') {
-      await supabaseServer
+      console.log('✅ [CALLBACK] Marking track as completed (audio received)');
+      const { data: completeData, error: completeError } = await supabaseServer
         .from('tracks')
         .update({
           status: 'completed',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', track.id);
-      console.log('✅ [CALLBACK] Track marked as completed (audio received)');
+        .eq('id', track.id)
+        .select();
+      
+      if (completeError) {
+        console.error('❌ [CALLBACK] Failed to mark as completed:', completeError);
+      } else {
+        console.log('✅ [CALLBACK] Track marked as completed, updated row:', completeData?.[0]?.id);
+      }
     }
 
     // Update title and prompt if provided
