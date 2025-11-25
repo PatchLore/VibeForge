@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       console.log('📝 [CALLBACK] Text-phase callback received for taskId:', taskId);
 
       // Try to find track by task_id only (no more recovery insert)
+      console.log("[CALLBACK] Searching DB for taskId:", taskId);
       const { data: track, error: trackErr } = await supabaseServer
         .from('tracks')
         .select('id, user_id, title, prompt, status')
@@ -97,8 +98,12 @@ export async function POST(request: NextRequest) {
 
       if (!track) {
         console.warn('⚠️ [CALLBACK] Text-phase: no track found for taskId:', taskId);
+        console.warn("[CALLBACK] No track found with taskId:", taskId);
+        console.warn("[CALLBACK] This means taskId was NOT saved correctly during /api/music");
         return NextResponse.json({ ok: true, message: 'text callback ignored (no track yet)' });
       }
+
+      console.log("[CALLBACK] FOUND TRACK:", track.id);
 
       // Extract metadata from primaryItem
       const textTitle = primaryItem?.title || null;
@@ -153,6 +158,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Look up track by task_id
+      console.log("[CALLBACK] Searching DB for taskId:", taskId);
       const { data: track, error: trackErr } = await supabaseServer
         .from('tracks')
         .select('id, user_id, status, prompt, title, audio_url')
@@ -166,8 +172,12 @@ export async function POST(request: NextRequest) {
 
       if (!track) {
         console.error('❌ [CALLBACK] Complete-phase: no track found for taskId:', taskId);
+        console.warn("[CALLBACK] No track found with taskId:", taskId);
+        console.warn("[CALLBACK] This means taskId was NOT saved correctly during /api/music");
         return NextResponse.json({ ok: false, error: 'track_not_found' }, { status: 404 });
       }
+
+      console.log("[CALLBACK] FOUND TRACK:", track.id);
 
       // If already completed, be idempotent
       if (track.status === 'completed' && track.audio_url) {

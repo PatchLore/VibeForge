@@ -184,14 +184,74 @@ export async function POST(req: Request) {
     
     // Generate music via Kie.ai (async, will callback)
     console.log("🎵 [GENERATION START] BEFORE generateMusic() call");
-    taskId = await generateMusic(cleanedMusicPrompt);
-    console.log("🎵 [GENERATION START] AFTER generateMusic() returned taskId:", taskId);
-    console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
+    const musicResponse = await generateMusic(cleanedMusicPrompt);
     
-    if (!taskId) {
-      console.error("❌ [GENERATION START] CRITICAL: generateMusic() returned undefined/null taskId!");
-      throw new Error("Music generation returned no taskId");
+    // --- TASK-ID INSERTION FIX ---
+    // Handle both string (legacy) and object (new) return types
+    const extractedTaskId = typeof musicResponse === 'string' 
+      ? musicResponse 
+      : (musicResponse?.taskId || null);
+    
+    if (!extractedTaskId) {
+      console.error("[CREATE TRACK] ERROR: generateMusic() returned NULL taskId");
+      return NextResponse.json(
+        { error: "Music API failed to return task ID" },
+        { status: 500 }
+      );
     }
+
+    taskId = extractedTaskId;
+    console.log("[CREATE TRACK] Task ID returned from Kie:", taskId);
+
+    // Insert the track BEFORE any image generation happens
+    const vibe = detectVibe(userVibe);
+    const summary = generateSummary(userVibe);
+    const generatedTitle = generateTrackTitle(userVibe);
+    const extendedPrompt = `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`;
+
+    // Ensure task_id is unique before insert
+    const { data: existing, error: existingErr } = await supabaseAdmin
+      .from('tracks')
+      .select('id')
+      .eq('task_id', taskId)
+      .maybeSingle();
+
+    if (existingErr) {
+      console.warn('⚠️ [CREATE TRACK] task check error:', existingErr.message);
+    }
+
+    if (existing?.id) {
+      console.warn(`⚠️ [CREATE TRACK] Duplicate task_id skipped: ${taskId}`);
+      return NextResponse.json({ error: 'Duplicate task_id detected', taskId }, { status: 409 });
+    }
+
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from("tracks")
+      .insert({
+        task_id: taskId,       // <-- CRITICAL FIELD
+        user_id: user.id,
+        title: generatedTitle,
+        prompt: userVibe,
+        extended_prompt: extendedPrompt,
+        status: "processing",
+        image_url: null,
+        audio_url: null,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[CREATE TRACK] FAILED TO INSERT TRACK:", insertError);
+      return NextResponse.json(
+        { error: "Database insert error", details: insertError },
+        { status: 500 }
+      );
+    }
+
+    console.log("[CREATE TRACK] Track inserted with taskId:", inserted.task_id);
+    const trackId = inserted.id;
+    console.log("🎵 [GENERATION START] music task_id:", taskId, "model: V5");
     
     // Generate image directly (no HTTP call needed) - synchronous
     let generatedImageUrl: string | null = null;
@@ -217,50 +277,21 @@ export async function POST(req: Request) {
     
     console.log("🖼️ [GENERATION START] image status:", generatedImageUrl ? "generated" : "none");
 
-    if (!taskId) {
-      throw new Error("Missing taskId from music generation");
-    }
-
-    const vibe = detectVibe(userVibe);
-    const summary = generateSummary(userVibe);
-    const generatedTitle = generateTrackTitle(userVibe);
-
-    try {
-      // Ensure task_id is unique before insert
-      const { data: existing, error: existingErr } = await supabaseAdmin
-        .from('tracks')
-        .select('id')
-        .eq('task_id', taskId)
-        .maybeSingle();
-
-      if (existingErr) {
-        console.warn('⚠️ [GENERATION START] task check error:', existingErr.message);
+    // Update the track with image URL if generated
+    if (generatedImageUrl && inserted?.id) {
+      try {
+        await supabaseAdmin
+          .from('tracks')
+          .update({
+            image_url: generatedImageUrl,
+            resolution: '1344x768',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', inserted.id);
+        console.log("📝 [GENERATION START] Image URL updated for track:", inserted.id);
+      } catch (e) {
+        console.warn("⚠️ [GENERATION START] Failed to update image URL:", e);
       }
-
-      if (existing?.id) {
-        console.warn(`⚠️ Duplicate task_id skipped: ${taskId}`);
-        return NextResponse.json({ error: 'Duplicate task_id detected', taskId }, { status: 409 });
-      }
-
-      // Store prompts and image URL if generated
-      const extendedPrompt = `${userVibe} | Music: ${cleanedMusicPrompt} | Visual: ${imagePrompt}`;
-      
-      await supabaseAdmin
-        .from('tracks')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          title: generatedTitle,
-          prompt: userVibe,
-          extended_prompt: extendedPrompt,
-          image_url: generatedImageUrl, // Save image immediately if generated
-          resolution: generatedImageUrl ? '1344x768' : null,
-          status: 'processing',
-          created_at: new Date().toISOString()
-        });
-      console.log("📝 [GENERATION START] Pending track inserted for task linkage");
-    } catch (e) {
-      console.warn("⚠️ [GENERATION START] Failed to insert pending track:", e);
     }
 
     remainingCredits = currentCredits;

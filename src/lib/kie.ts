@@ -51,8 +51,21 @@ export async function generateMusic(prompt: string) {
       throw new Error(`Music generation failed: ${data.msg}`);
     }
 
-    console.log("✅ [KieAI] Task ID received:", data.data?.taskId);
-    return data.data.taskId;
+    const taskId = data.data?.taskId || data.data?.task_id;
+    console.log("[KIE] MUSIC RESPONSE:", {
+      taskId: taskId,
+      raw: data
+    });
+    
+    if (!taskId) {
+      console.error("❌ [KIE] No taskId in response:", data);
+      throw new Error("Music generation response missing taskId");
+    }
+
+    return {
+      taskId: taskId,
+      raw: data
+    };
   } catch (error: any) {
     clearTimeout(timeoutId);
     console.error("❌ [KieAI] Fetch error:", error);

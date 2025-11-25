@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 1) Look up track in DB by task_id
+  console.log("[STATUS] Looking for taskId:", taskId);
   const { data: track, error: trackErr } = await supabaseServer
     .from('tracks')
     .select('id, user_id, status, audio_url, image_url, created_at, duration, title, prompt')
@@ -44,11 +45,15 @@ export async function GET(req: NextRequest) {
 
   if (!track) {
     console.warn('⚠️ [STATUS] No track found for taskId:', taskId);
+    console.warn("[STATUS] No track found for taskId:", taskId);
+    console.warn("[STATUS] This confirms taskId mismatch or missing insert.");
     return NextResponse.json(
       { status: 'not_found', taskId },
       { status: 404 }
     );
   }
+
+  console.log("[STATUS] Track found:", track.id);
 
   // 2) If already completed, return immediately
   if (track.status === 'completed' && track.audio_url) {
