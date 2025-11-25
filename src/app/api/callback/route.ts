@@ -107,65 +107,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'database unavailable' }, { status: 500 });
     }
 
-    // Load the pending track - check both task_id and image_task_id
-    let track = null;
-    
-    // First, try to find by task_id (for music callbacks)
-    const { data: trackByTaskId } = await supabaseServer
-      .from('tracks')
-      .select('id, user_id, status, prompt, extended_prompt, image_url, audio_url, task_id')
-      .eq('task_id', taskId)
+    const outerTaskId =
+      payload?.task_id ??
+      payload?.taskId ??
+      raw?.task_id ??
+      raw?.taskId;
+
+    // NEW: extract inner audio IDs (Kie array callback)
+    const innerTrackIds = Array.isArray(payload?.data)
+      ? payload.data
+          .map((item: any) => item?.id)
+          .filter(Boolean)
+      : [];
+
+    console.log("🧩 [DEBUG] Outer taskId:", outerTaskId);
+    console.log("🧩 [DEBUG] Inner trackIds:", innerTrackIds);
+
+    // TRY 1: find track by outer task_id
+    let trackResponse = await supabaseServer
+      .from("tracks")
+      .select("*")
+      .eq("task_id", outerTaskId)
       .maybeSingle();
-    
-    if (trackByTaskId) {
-      track = trackByTaskId;
-    } else {
-      // If not found, might be an image callback - try to find by image_task_id in extended_prompt
-      const { data: trackByImageTask } = await supabaseServer
-        .from('tracks')
-        .select('id, user_id, status, prompt, extended_prompt, image_url, audio_url, task_id')
-        .like('extended_prompt', `%image_task_id: ${taskId}%`)
-        .order('created_at', { ascending: false })
-        .limit(1)
+
+    // TRY 2: if not found, try inner ID
+    if (!trackResponse.data && innerTrackIds.length > 0) {
+      console.log("🔍 [CALLBACK] Searching by inner IDs...");
+      trackResponse = await supabaseServer
+        .from("tracks")
+        .select("*")
+        .in("task_id", innerTrackIds)
         .maybeSingle();
-      
-      if (trackByImageTask) {
-        track = trackByImageTask;
-        console.log('🖼️ [CALLBACK] Found track by image taskId:', taskId);
-      }
     }
 
-    if (!track) {
-      console.error('❌ [DEBUG] No track found in any lookup for taskId:', taskId);
-
-      // Avoid inserting invalid UUID like "system_recover" into user_id column.
-      // For now, just log and return ok:true so the callback doesn't keep retrying.
-      // If you want to persist orphaned callbacks, you can:
-      // - make user_id nullable in the DB
-      // - or add a dedicated "system" UUID.
-      try {
-        const { error: insertErr } = await supabaseServer
-          .from('tracks')
-          .insert({
-            user_id: null,
-            task_id: taskId,
-            status: 'callback_inserted',
-            image_url: null, // Never set image_url from callback
-            resolution: null,
-            created_at: new Date().toISOString(),
-          });
-
-        if (insertErr) {
-          console.error('🔥 [DEBUG ERROR] Recovery insert error:', insertErr);
-        } else {
-          console.log('🧩 [DEBUG] Recovery record inserted with null user_id');
-        }
-      } catch (e) {
-        console.error('🔥 [DEBUG ERROR] Recovery insert exception:', e);
-      }
-
-      return NextResponse.json({ ok: true, message: 'callback processed with recovery insert' });
+    if (!trackResponse.data) {
+      console.error("❌ [CALLBACK] No track found for ANY id. Ignoring callback.");
+      return NextResponse.json({ ok: false, message: "no matching track" });
     }
+
+    const track = trackResponse.data;
 
     console.log('🧩 [DEBUG] Incoming taskId:', taskId);
     console.log('🧩 [DEBUG] Track matched:', {
