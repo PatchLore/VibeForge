@@ -192,7 +192,6 @@ export async function POST(req: Request) {
       console.log("🖼️ [GENERATION START] Generating image directly via generateImageDirect");
       generatedImageUrl = await generateImageDirect({
         prompt: imagePrompt,
-        modelId: 'stabilityai/sdxl-turbo',
         width: 1344,
         height: 768,
       });
