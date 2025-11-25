@@ -249,30 +249,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // --- Handle Image Callback (Legacy - for backward compatibility with old Kie.ai image callbacks) ---
-    // Note: New image generation uses /api/generate synchronously, so this is only for old callbacks
-    if (imageUrl && (isImageCallback || !track.image_url)) {
-      console.log('🖼️ [CALLBACK] Legacy image URL received (from old Kie.ai callbacks).');
-      
-      // For legacy callbacks, just save the image URL directly
-      // No need for presigned URL fetching since we're moving away from Kie.ai image generation
-      try {
-        const { error: updateErr } = await supabaseServer
-          .from('tracks')
-          .update({
-            image_url: imageUrl,
-            resolution: "unknown", // Legacy callback, resolution unknown
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', track.id);
-        
-        if (updateErr) {
-          console.error('❌ [CALLBACK] Failed to update image URL:', updateErr);
-        } else {
-          console.log('✅ [CALLBACK] Legacy image URL saved');
+    // --- Image overwrite protection ---
+    const existingImage = track.image_url;
+
+    // Block 1: Existing high-res base64 — do NOT overwrite
+    const isExistingBase64 = existingImage?.startsWith("data:image");
+
+    // Block 2: Incoming thumbnail — reject
+    const isIncomingLowRes =
+      imageUrl?.includes("_360") ||
+      imageUrl?.includes("?width=360") ||
+      (imageUrl?.includes("image_") && imageUrl?.endsWith(".jpeg"));
+
+    if (imageUrl) {
+      console.log("[CALLBACK] Received imageUrl:", imageUrl);
+      console.log("[CALLBACK] existingImage:", existingImage);
+
+      if (isExistingBase64) {
+        console.log("🚫 [CALLBACK] Not overwriting base64 high-res image.");
+      } else if (isIncomingLowRes) {
+        console.log("🚫 [CALLBACK] Rejecting low-resolution Kie thumbnail.");
+      } else if (!existingImage) {
+        console.log("🖼️ [CALLBACK] Saving new imageUrl into DB.");
+        try {
+          const { error: updateErr } = await supabaseServer
+            .from("tracks")
+            .update({
+              image_url: imageUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", track.id);
+          
+          if (updateErr) {
+            console.error('❌ [CALLBACK] Failed to update image URL:', updateErr);
+          } else {
+            console.log('✅ [CALLBACK] Image URL saved');
+          }
+        } catch (err) {
+          console.error('❌ [CALLBACK] Image update failed:', err);
         }
-      } catch (err) {
-        console.error('❌ [CALLBACK] Legacy image update failed:', err);
       }
     }
 
