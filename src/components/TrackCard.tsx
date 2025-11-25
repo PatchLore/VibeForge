@@ -1,3 +1,5 @@
+'use client';
+
 // 🚨 Used by Trending Vibes Page - Test any changes with /app page
 // Last verified: 2025-01-27
 // This component is used by:
@@ -6,8 +8,6 @@
 // - TrendingVibes component
 // Changes must maintain backward compatibility with existing track data structures
 // 🖼️ Image Quality Fix (Feb 2025): uses /api/proxy-image for full-res delivery
-
-'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
