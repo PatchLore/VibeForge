@@ -1,3 +1,5 @@
+'use client';
+
 // 🚨 Protected: Trending Vibes Page — DO NOT MODIFY WITHOUT BACKUP
 // Last verified working: 2025-01-27
 // This page handles:
@@ -8,8 +10,6 @@
 //
 // IMPORTANT: Any changes to this file or its dependencies (TrackCard, TrendingVibes, etc.)
 // must be thoroughly tested before committing to ensure trending page functionality remains intact.
-
-'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
