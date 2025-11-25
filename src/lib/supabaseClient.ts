@@ -1,3 +1,5 @@
+'use client';
+
 import { createBrowserClient } from '@supabase/ssr';
 
 // Frontend-only Supabase client (for browser components)

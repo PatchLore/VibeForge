@@ -24,7 +24,7 @@ import { expandPrompt, getRandomVibe } from '@/lib/prompt';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { EmotionPreset } from '@/data/emotionPresets';
 
