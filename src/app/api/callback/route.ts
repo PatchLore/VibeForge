@@ -61,58 +61,51 @@ export async function POST(request: NextRequest) {
       isArray: Array.isArray(payload),
     });
 
-    // 🔒 Never accept image URLs from Kie.ai
-    // All image generation is done BEFORE callback via /api/music -> generateImageDirect()
-    const allowImageUpdate = false;
+    // NEW: Normalize new Kie.ai structure
+    const first = Array.isArray(payload?.data) ? payload.data[0] : null;
 
-    // --- Image URL extraction REMOVED ---
-    // All image generation happens synchronously in /api/music before callback
-    // Callback should NEVER update image_url to prevent overwriting HD base64 images
-    // const imageUrl = ... (REMOVED)
-
-    // --- Parse audio URL from multiple possible locations ---
-    // Priority 1: Kie.ai style: data.data[0].audio_url (primaryItem)
     const audioUrl =
-      primaryItem?.audio_url ||
-      primaryItem?.stream_audio_url ||
-      primaryItem?.source_audio_url ||
-      (data?.result?.audios?.[0]?.url ||
-        data?.output?.audio_url ||
-        payload?.result?.audios?.[0]?.url ||
-        payload?.output?.audio_url) ||
-      (payload?.audio_url ??
-        data?.audio_url ??
-        raw?.audio_url);
+      first?.audio_url ||
+      payload?.audio_url ||
+      data?.audio_url ||
+      raw?.audio_url;
 
-    // Extract other metadata (prefer primaryItem, then envelope)
-    const title =
-      primaryItem?.title ??
-      payload?.title ??
-      data?.title ??
-      raw?.title;
+    const imageUrl =
+      first?.image_url ||
+      payload?.image_url ||
+      data?.image_url ||
+      raw?.image_url;
 
     const duration =
-      primaryItem?.duration ??
-      payload?.duration ??
-      data?.duration ??
-      raw?.duration;
+      first?.duration ||
+      payload?.duration ||
+      data?.duration;
+
+    const title =
+      first?.title ||
+      payload?.title ||
+      data?.title;
 
     const prompt =
-      primaryItem?.prompt ??
-      payload?.prompt ??
-      data?.prompt ??
-      raw?.prompt;
+      first?.tags ||
+      payload?.prompt ||
+      data?.prompt;
 
-    // Log what we received (audio only - image is never processed from callback)
+    // Log what we received
+    const hasImage = !!imageUrl;
     const hasAudio = !!audioUrl;
     
-    if (hasAudio) {
-      console.log('🎵 [CALLBACK] Received audio payload');
+    if (hasImage && !hasAudio) {
+      console.log('🖼️ [CALLBACK] Received partial payload: image only');
+    } else if (hasAudio && !hasImage) {
+      console.log('🎵 [CALLBACK] Received partial payload: audio only');
+    } else if (hasImage && hasAudio) {
+      console.log('✅ [CALLBACK] Received complete payload: image + audio');
     } else {
-      console.log('⏳ [CALLBACK] Received payload: no audio yet');
+      console.log('⏳ [CALLBACK] Received partial payload: no image or audio yet');
     }
 
-    console.log('📌 taskId:', taskId, 'status:', status, 'hasAudio:', hasAudio);
+    console.log('📌 taskId:', taskId, 'status:', status, 'hasImage:', hasImage, 'hasAudio:', hasAudio);
 
     if (!taskId) {
       console.error('❌ [CALLBACK] Missing task_id');
@@ -213,12 +206,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'generation failed' }, { status: 200 });
     }
 
-    // --- Image URL handling REMOVED ---
-    // Callback NEVER updates image_url
-    // All images are generated synchronously in /api/music before callback
-    // This prevents Kie.ai thumbnails from overwriting HD base64 images
-    if (!allowImageUpdate) {
-      console.log('🔒 [CALLBACK] Image updates disabled - image_url will not be modified');
+    // --- Handle Image Callback with protection ---
+    // NEW RULE: Never overwrite base64 images with low-res URLs
+    if (!track.image_url && imageUrl) {
+      // Only update if no existing image_url
+      await supabaseServer
+        .from('tracks')
+        .update({
+          image_url: imageUrl,
+          resolution: "unknown",
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', track.id);
+      console.log('🖼️ [CALLBACK] Image URL saved (no existing image)');
+    } else if (imageUrl && !track.image_url?.startsWith("data:image")) {
+      // Only update if existing image is not base64
+      await supabaseServer
+        .from('tracks')
+        .update({
+          image_url: imageUrl,
+          resolution: "unknown",
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', track.id);
+      console.log('🖼️ [CALLBACK] Image URL saved (replacing non-base64 image)');
+    } else if (imageUrl && track.image_url?.startsWith("data:image")) {
+      console.log('🚫 [CALLBACK] Skipping image update - base64 image already exists');
     }
 
     // --- Handle Audio Callback Separately ---
@@ -256,11 +269,11 @@ export async function POST(request: NextRequest) {
 
     // --- Final Check: Mark complete and deduct credits when audio exists ---
     // Image is NOT required for completion (image generation happens before callback)
-    let finalTrack: { audio_url: string | null; user_id: string | null; status: string | null } | null = null;
+    let finalTrack: { audio_url: string | null; duration: number | null; user_id: string | null; status: string | null } | null = null;
     try {
       const finalSel = await supabaseServer
         .from('tracks')
-        .select('audio_url, user_id, status')
+        .select('audio_url, duration, user_id, status')
         .eq('id', track.id)
         .single();
       if (finalSel.error) {
@@ -278,6 +291,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark as completed if audio exists (image_url is set by /api/music, not callback)
+    // duration is now valid
     if (finalTrack.audio_url && finalTrack.status !== 'completed') {
       console.log('✅ [CALLBACK] Audio present, marking as completed');
       
@@ -287,6 +301,7 @@ export async function POST(request: NextRequest) {
           .from('tracks')
           .update({
             status: 'completed',
+            duration: duration || finalTrack.duration,
             updated_at: new Date().toISOString()
           })
           .eq('id', track.id)
