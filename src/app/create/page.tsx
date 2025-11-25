@@ -40,6 +40,7 @@ export default function CreatePage() {
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
   const [tracksLoading, setTracksLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [audioSource, setAudioSource] = useState<'generated' | 'fallback' | null>(null);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,9 @@ export default function CreatePage() {
     track('Inspire Me Clicked');
   };
 
+  // Ensure component is mounted on client before rendering to prevent SSR hook issues
   useEffect(() => {
+    setIsMounted(true);
     setIsClient(true);
   }, []);
 
@@ -116,6 +119,15 @@ export default function CreatePage() {
       setTracksLoading(false);
     }
   };
+
+  // Prevent SSR rendering that could cause React #310 with useRef
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-pink-900 to-cyan-900 flex items-center justify-center">
+        <div className="animate-pulse text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   // Show loading while checking auth
   if (loading) {
