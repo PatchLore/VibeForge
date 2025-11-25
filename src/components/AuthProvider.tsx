@@ -1,21 +1,20 @@
 'use client';
 
-import { createBrowserClient } from "@supabase/ssr";
 import { useEffect, useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [supabase] = useState(() =>
-    createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  );
-
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     async function init() {
       try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) {
+          setIsReady(true);
+          return;
+        }
+
         const { data, error } = await supabase.auth.getSession();
 
         // If refresh token is invalid → reset everything
@@ -32,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     init();
-  }, [supabase]);
+  }, []);
 
   if (!isReady) return null; // Prevent chunk load crash
   return <>{children}</>;

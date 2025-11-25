@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 interface CreditsDisplayProps {
@@ -33,6 +33,7 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
   // Fetch credits from Supabase profiles table
   const fetchCredits = useCallback(async () => {
     try {
+      const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -65,6 +66,7 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
 
   // Fetch credits on mount and subscribe to changes
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
     // Initial fetch
@@ -95,9 +97,7 @@ export default function CreditsDisplay({ className = '', externalCredits }: Cred
       .subscribe();
 
     return () => {
-      if (supabase) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
   }, [fetchCredits]);
 

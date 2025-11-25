@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 function PricingSuccessContent() {
   const searchParams = useSearchParams();
@@ -19,6 +19,7 @@ function PricingSuccessContent() {
     const fetchData = async () => {
       try {
         // Fetch user data
+        const supabase = getSupabaseBrowserClient();
         if (supabase) {
           const { data: { user } } = await supabase.auth.getUser();
           setUser(user);

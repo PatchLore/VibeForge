@@ -19,7 +19,7 @@ import { getRandomVibe } from '@/lib/promptExpansion';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { EmotionPreset } from '@/data/emotionPresets';
 
 const quickVibes = [
@@ -81,6 +81,7 @@ export default function Home() {
     
     try {
       // Get the current session token for server-side authentication
+      const supabase = getSupabaseBrowserClient();
       if (!supabase) {
         setError('Authentication service unavailable');
         return;

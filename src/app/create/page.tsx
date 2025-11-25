@@ -24,7 +24,7 @@ import { expandPrompt, getRandomVibe } from '@/lib/prompt';
 import { track } from '@vercel/analytics';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { EmotionPreset } from '@/data/emotionPresets';
 
@@ -140,6 +140,7 @@ export default function CreatePage() {
     track('Track Generated', { vibe });
     
     try {
+      const supabase = getSupabaseBrowserClient();
       if (!supabase) {
         setError('Authentication service unavailable');
         return;

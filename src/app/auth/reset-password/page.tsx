@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { motion } from 'framer-motion';
 
 export default function ResetPasswordPage() {
@@ -32,14 +32,16 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (!supabase) {
-      setError('Service unavailable');
-      return;
-    }
-
     setLoading(true);
 
     try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        setError('Service unavailable');
+        setLoading(false);
+        return;
+      }
+      
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       });

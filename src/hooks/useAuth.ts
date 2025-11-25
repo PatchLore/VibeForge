@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 export interface AuthState {
   user: User | null;
@@ -18,6 +18,7 @@ export function useAuth() {
   });
 
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       setAuthState({ user: null, session: null, loading: false });
       return;
@@ -25,7 +26,7 @@ export function useAuth() {
 
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session }, error } = await supabase!.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error('Error getting session:', error);
       }
@@ -39,7 +40,7 @@ export function useAuth() {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setAuthState({
           user: session?.user ?? null,
@@ -53,9 +54,10 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase!.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -65,9 +67,10 @@ export function useAuth() {
   };
 
   const signUp = async (email: string, password: string) => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const response = await supabase!.auth.signUp({
+    const response = await supabase.auth.signUp({
       email,
       password,
     });
@@ -77,29 +80,40 @@ export function useAuth() {
   };
 
   const signOut = async () => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { error } = await supabase!.auth.signOut();
+    const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
 
   const resetPassword = async (email: string) => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { error } = await supabase!.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/reset-password`,
+    const redirectTo = typeof window !== 'undefined' 
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/reset-password`
+      : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/reset-password`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
     
     if (error) throw error;
   };
 
   const signInWithGoogle = async () => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase!.auth.signInWithOAuth({
+    const redirectTo = typeof window !== 'undefined'
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`
+      : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/callback`;
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
+        redirectTo,
       },
     });
     
@@ -108,12 +122,17 @@ export function useAuth() {
   };
 
   const signInWithApple = async () => {
+    const supabase = getSupabaseBrowserClient();
     if (!supabase) throw new Error('Supabase not configured');
     
-    const { data, error } = await supabase!.auth.signInWithOAuth({
+    const redirectTo = typeof window !== 'undefined'
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`
+      : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/callback`;
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
+        redirectTo,
       },
     });
     
