@@ -47,7 +47,7 @@ export default function GoldenSample() {
           <div className="flex flex-col items-center">
             <div className="w-full aspect-[9/16] bg-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center mb-3 md:mb-4 overflow-hidden relative">
               <video
-                src="/videos/newloop.mp4"
+                src="/videos/Newloop.mp4"
                 autoPlay
                 loop
                 muted

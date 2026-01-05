@@ -65,7 +65,7 @@ export default function Hero() {
                   <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-6 relative">
                     {!videoError ? (
                       <video
-                        src="/videos/newloop.mp4"
+                        src="/videos/Newloop.mp4"
                         autoPlay
                         loop
                         muted
