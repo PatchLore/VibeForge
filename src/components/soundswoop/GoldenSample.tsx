@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function GoldenSample() {
   return (
     <section id="golden-sample" className="px-4 py-16 md:py-24 bg-black">
@@ -29,24 +31,29 @@ export default function GoldenSample() {
         <div className="grid md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-12">
           {/* Album Cover - Square */}
           <div className="flex flex-col items-center">
-            <div className="w-full aspect-square bg-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center mb-3 md:mb-4 overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center">
-                <p className="text-gray-400 text-xs md:text-sm text-center px-2 md:px-4">
-                  Album Cover<br />Placeholder
-                </p>
-              </div>
+            <div className="w-full aspect-square bg-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center mb-3 md:mb-4 overflow-hidden relative">
+              <Image
+                src="/images/images/neon-drift-cover.png.png"
+                alt="Neon Drift Album Cover"
+                fill
+                className="object-cover"
+                priority
+              />
             </div>
             <p className="text-xs text-gray-500 text-center">Album Cover</p>
           </div>
 
           {/* Spotify Canvas Loop - Vertical 9:16 */}
           <div className="flex flex-col items-center">
-            <div className="w-full aspect-[9/16] bg-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center mb-3 md:mb-4 overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-pink-600/30 to-purple-600/30 flex items-center justify-center">
-                <p className="text-gray-400 text-xs md:text-sm text-center px-2 md:px-4">
-                  Spotify Canvas<br />Loop<br />Placeholder
-                </p>
-              </div>
+            <div className="w-full aspect-[9/16] bg-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center mb-3 md:mb-4 overflow-hidden relative">
+              <video
+                src="/videos/neondriftspotify.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
             </div>
             <p className="text-xs text-gray-500 text-center">Spotify Canvas Loop</p>
           </div>
