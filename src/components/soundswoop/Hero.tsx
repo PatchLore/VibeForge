@@ -70,8 +70,11 @@ export default function Hero() {
                         loop
                         muted
                         playsInline
+                        preload="auto"
+                        disablePictureInPicture
                         onError={() => setVideoError(true)}
                         className="w-full h-full object-cover rounded-xl"
+                        style={{ transform: 'none', willChange: 'auto' }}
                       />
                     ) : (
                       <div className="w-full aspect-square relative rounded-xl overflow-hidden">

@@ -52,7 +52,10 @@ export default function GoldenSample() {
                 loop
                 muted
                 playsInline
+                preload="auto"
+                disablePictureInPicture
                 className="w-full h-full object-cover"
+                style={{ transform: 'none', willChange: 'auto' }}
               />
             </div>
             <p className="text-xs text-gray-500 text-center">Spotify Canvas Loop</p>
