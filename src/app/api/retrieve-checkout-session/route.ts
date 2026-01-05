@@ -1,16 +1,34 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 
-// Initialize Stripe client
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-09-30.clover",
-});
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Helper function to initialize Stripe client
+function getStripeClient(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+  }
+  return new Stripe(secretKey, {
+    apiVersion: "2025-09-30.clover",
+  });
+}
+
 export async function GET(request: Request) {
   try {
+    // Check for Stripe secret key before processing
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ Missing STRIPE_SECRET_KEY environment variable');
+      return NextResponse.json(
+        { error: 'Stripe configuration is missing. STRIPE_SECRET_KEY environment variable is not set.' },
+        { status: 500 }
+      );
+    }
+
+    // Initialize Stripe client inside the handler
+    const stripe = getStripeClient();
+
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('session_id');
 
